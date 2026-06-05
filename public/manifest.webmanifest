@@ -1,7 +1,7 @@
 {
   "name": "Simple Marketing HQ",
   "short_name": "Simple HQ",
-  "description": "An AI marketing advisor for small businesses.",
+  "description": "AI marketing advisor for small businesses.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

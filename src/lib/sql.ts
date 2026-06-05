@@ -1,11 +1,4 @@
-# SQL Required
-
-SQL is required for the production SaaS MVP because Simple Marketing HQ now needs user accounts, saved business profiles, saved LaunchPad Diagnostics, LaunchPad Growth Scores, LaunchPad Action Plans, check-ins, visitor intelligence, referral foundations, and subscription-ready records.
-
-Run the full SQL below in the Supabase SQL Editor before depending on production persistence. The local MVP can still run with browser storage as a fallback until Supabase environment variables are configured.
-
-```sql
--- Simple Marketing HQ MVP schema
+export const requiredSql = `-- Simple Marketing HQ MVP schema
 -- Run this in the Supabase SQL Editor before relying on production persistence.
 
 create extension if not exists pgcrypto;
@@ -424,5 +417,4 @@ $$;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
-  for each row execute procedure public.handle_new_user();
-```
+  for each row execute procedure public.handle_new_user();`;

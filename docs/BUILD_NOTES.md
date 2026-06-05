@@ -9,7 +9,7 @@
 - LaunchPad is reserved for the internal diagnostic/advisor system inside the app.
 - Chosen stack: Next.js, TypeScript, Tailwind CSS, App Router, Supabase-ready helpers, and Vercel-ready defaults.
 - PWA-first foundation includes manifest metadata, app icon placeholders, mobile viewport support, and installable app naming.
-- The first build is intentionally a clean foundation, not the full Simple Marketing HQ platform.
+- Current build target is a sellable SaaS MVP foundation with public website, account-ready flows, saved diagnostic fallback, customer dashboard, check-ins, content engine, visitor/referral placeholders, and subscription-ready structure.
 
 ## Installed Packages
 
@@ -30,6 +30,8 @@
 - LaunchPad Advisor dashboard placeholder
 - RB2B tracking-ready component and environment variable
 - Supabase-ready client/server helper files
+- Exact Supabase SQL is documented in `docs/SQL_REQUIRED.md`.
+- Local browser storage is used as a fallback until Supabase environment variables and SQL are configured.
 
 ## Next Implementation Steps
 

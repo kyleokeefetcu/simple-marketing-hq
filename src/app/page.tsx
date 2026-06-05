@@ -1,219 +1,146 @@
-"use client";
+import Link from "next/link";
+import type { ReactNode } from "react";
+import { ArrowRight, BarChart3, CheckCircle2, ClipboardList, LineChart, Target } from "lucide-react";
+import { SectionHeading } from "@/components/section-heading";
+import { SiteHeader } from "@/components/site-header";
+import { brand } from "@/lib/brand";
 
-import { ArrowRight, BarChart3, CheckCircle2, ClipboardList, Globe, LineChart, LockKeyhole, Sparkles } from "lucide-react";
-import { useMemo, useState } from "react";
-import { clsx } from "clsx";
-
-const quizSteps = [
-  {
-    label: "Traffic",
-    question: "How are people finding you today?",
-    options: ["Mostly referrals", "Organic search", "Paid ads", "Not sure yet"],
-  },
-  {
-    label: "Conversion",
-    question: "What happens after someone lands on your site?",
-    options: ["They book or buy", "They browse quietly", "They bounce fast", "We do not track it"],
-  },
-  {
-    label: "Priority",
-    question: "What would help most this month?",
-    options: ["More qualified leads", "Clearer offer", "Better follow-up", "A full diagnosis"],
-  },
+const steps = [
+  ["Start the LaunchPad Diagnostic", "Answer simple questions about your offer, customers, lead flow, and follow-up."],
+  ["Get your Growth Score", "See the bottleneck that is most likely blocking more leads or booked calls."],
+  ["Follow your Action Plan", "Focus on the next highest-leverage marketing move instead of guessing."],
 ];
 
 export default function Home() {
-  const [websiteUrl, setWebsiteUrl] = useState("");
-  const [currentStep, setCurrentStep] = useState(0);
-  const [answers, setAnswers] = useState<string[]>([]);
-
-  const diagnosisReady = websiteUrl.trim().length > 6 && answers.length === quizSteps.length;
-
-  const recommendedAction = useMemo(() => {
-    const priority = answers[2];
-
-    if (priority === "Clearer offer") {
-      return "Clarify the offer and homepage call-to-action before scaling traffic.";
-    }
-
-    if (priority === "Better follow-up") {
-      return "Map the lead handoff and follow-up sequence before adding new campaigns.";
-    }
-
-    if (priority === "More qualified leads") {
-      return "Audit traffic sources and build a focused lead capture path.";
-    }
-
-    return "Run the full LaunchPad Diagnostic once the master prompt is loaded.";
-  }, [answers]);
-
-  function chooseAnswer(answer: string) {
-    const nextAnswers = [...answers];
-    nextAnswers[currentStep] = answer;
-    setAnswers(nextAnswers);
-    setCurrentStep((step) => Math.min(step + 1, quizSteps.length - 1));
-  }
-
-  const step = quizSteps[currentStep];
-
   return (
     <main className="min-h-screen">
+      <SiteHeader />
+
       <section className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-4">
-          <div className="flex items-center gap-3">
-            <div className="grid size-10 place-items-center rounded-md bg-cyan-900 text-amber-300">
-              <Sparkles size={21} aria-hidden="true" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-950">Simple Marketing HQ</p>
-              <p className="text-xs text-slate-500">AI marketing advisor for small businesses</p>
+        <div className="mx-auto grid w-full max-w-6xl gap-8 px-5 py-10 lg:grid-cols-[1.08fr_0.92fr] lg:py-16">
+          <div className="flex flex-col justify-center">
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">{brand.positioning}</p>
+            <h1 className="mt-4 max-w-3xl text-4xl font-semibold text-slate-950 sm:text-6xl">
+              Simple marketing guidance for small businesses that want more leads.
+            </h1>
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
+              Complete the LaunchPad Diagnostic, get your Growth Score, and see the next best move to improve your marketing.
+            </p>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/diagnostic"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-cyan-800"
+              >
+                Start Your Free Diagnostic
+                <ArrowRight size={18} aria-hidden="true" />
+              </Link>
+              <Link
+                href="/how-it-works"
+                className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 px-5 py-3 font-semibold text-slate-800 transition hover:bg-slate-50"
+              >
+                See How It Works
+              </Link>
             </div>
           </div>
-          <div className="hidden items-center gap-2 text-sm text-slate-600 sm:flex">
-            <CheckCircle2 size={16} className="text-emerald-600" aria-hidden="true" />
-            Vercel-ready
+
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-5 shadow-sm">
+            <div className="rounded-lg bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-500">{brand.growthScoreName}</p>
+                  <p className="mt-1 text-5xl font-semibold text-cyan-900">76</p>
+                </div>
+                <div className="grid size-14 place-items-center rounded-md bg-amber-100 text-amber-700">
+                  <BarChart3 size={28} aria-hidden="true" />
+                </div>
+              </div>
+              <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-100">
+                <div className="h-full w-3/4 rounded-full bg-cyan-800" />
+              </div>
+              <div className="mt-5 rounded-md border border-slate-200 p-4">
+                <p className="text-sm font-semibold text-slate-950">Biggest bottleneck</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Your website is getting interest, but the next step is not clear enough to turn visitors into booked calls.
+                </p>
+              </div>
+              <div className="mt-3 rounded-md bg-cyan-50 p-4">
+                <p className="text-sm font-semibold text-cyan-950">Next move</p>
+                <p className="mt-2 text-sm leading-6 text-cyan-900">
+                  Strengthen the first call-to-action and add proof near the form.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto grid w-full max-w-6xl gap-6 px-5 py-6 lg:grid-cols-[1.05fr_0.95fr] lg:py-10">
-        <div className="flex flex-col justify-between gap-8 rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-          <div className="space-y-5">
-            <div className="inline-flex items-center gap-2 rounded-md border border-cyan-100 bg-cyan-50 px-3 py-2 text-sm font-medium text-cyan-900">
-              <Globe size={16} aria-hidden="true" />
-              LaunchPad Diagnostic
-            </div>
-            <div className="space-y-3">
-              <h1 className="max-w-3xl text-4xl font-semibold tracking-normal text-slate-950 sm:text-5xl">
-                Welcome to Simple Marketing HQ.
-              </h1>
-              <p className="max-w-2xl text-base leading-7 text-slate-600">
-                Let&apos;s build your LaunchPad Growth Plan. This starter experience captures a website URL, guides a short onboarding quiz, and prepares the app for AI diagnosis, account creation, Supabase persistence, RB2B tracking, and advisor workflows.
-              </p>
-            </div>
-          </div>
+      <section className="bg-slate-50 px-5 py-12">
+        <SectionHeading
+          eyebrow="How it works"
+          title="Your business growth game plan, without the clutter."
+          body="Simple Marketing HQ keeps the product focused: diagnosis, clarity, action, and momentum."
+        />
+        <div className="mx-auto mt-8 grid w-full max-w-6xl gap-4 md:grid-cols-3">
+          {steps.map(([title, body], index) => (
+            <article key={title} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-4 grid size-10 place-items-center rounded-md bg-cyan-900 text-white">{index + 1}</div>
+              <h3 className="text-lg font-semibold text-slate-950">{title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            {[
-              ["LaunchPad Diagnostic", "Quiz funnel shell"],
-              ["LaunchPad Growth Score", "AI-ready flow"],
-              ["LaunchPad Advisor", "Dashboard placeholder"],
-            ].map(([title, body]) => (
-              <div key={title} className="rounded-md border border-slate-200 p-4">
-                <p className="text-sm font-semibold text-slate-950">{title}</p>
-                <p className="mt-1 text-sm text-slate-500">{body}</p>
+      <section className="px-5 py-12">
+        <div className="mx-auto grid w-full max-w-6xl gap-4 md:grid-cols-3">
+          <Feature icon={<ClipboardList />} title={brand.diagnosticName} body="A one-question-at-a-time intake that captures your website, offer, customer, channels, and follow-up bottleneck." />
+          <Feature icon={<LineChart />} title={brand.growthScoreName} body="A simple score with grades for offer strength, messaging clarity, lead flow, and speed-to-lead." />
+          <Feature icon={<Target />} title={brand.actionPlanName} body="A practical plan that tells you what to fix first, what to ignore, and what to do next." />
+        </div>
+      </section>
+
+      <section className="bg-white px-5 py-12">
+        <div className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-2">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Who it is for</p>
+            <h2 className="mt-3 text-3xl font-semibold text-slate-950">Built for owners who need leads, not another giant dashboard.</h2>
+          </div>
+          <div className="grid gap-3">
+            {["Local businesses", "Professional services", "Home services", "Coaches and consultants", "B2B service companies"].map((item) => (
+              <div key={item} className="flex items-center gap-3 rounded-md border border-slate-200 p-4">
+                <CheckCircle2 className="text-emerald-600" size={18} aria-hidden="true" />
+                <span className="font-medium text-slate-800">{item}</span>
               </div>
             ))}
           </div>
         </div>
-
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">LaunchPad Diagnostic</p>
-              <h2 className="mt-1 text-2xl font-semibold text-slate-950">Build your Growth Plan</h2>
-            </div>
-            <div className="grid size-11 place-items-center rounded-md bg-amber-100 text-amber-700">
-              <ClipboardList size={22} aria-hidden="true" />
-            </div>
-          </div>
-
-          <label className="block text-sm font-medium text-slate-700" htmlFor="website-url">
-            Website URL
-          </label>
-          <input
-            id="website-url"
-            value={websiteUrl}
-            onChange={(event) => setWebsiteUrl(event.target.value)}
-            placeholder="https://yourcompany.com"
-            className="mt-2 w-full rounded-md border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100"
-          />
-
-          <div className="mt-6">
-            <div className="mb-3 flex items-center justify-between text-sm">
-              <span className="font-medium text-slate-700">{step.label}</span>
-              <span className="text-slate-500">
-                {currentStep + 1} of {quizSteps.length}
-              </span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-              <div
-                className="h-full rounded-full bg-cyan-800 transition-all"
-                style={{ width: `${((answers.length || 1) / quizSteps.length) * 100}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="mt-5">
-            <h3 className="text-lg font-semibold text-slate-950">{step.question}</h3>
-            <div className="mt-4 grid gap-3">
-              {step.options.map((option) => {
-                const selected = answers[currentStep] === option;
-
-                return (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => chooseAnswer(option)}
-                    className={clsx(
-                      "flex min-h-12 items-center justify-between rounded-md border px-4 py-3 text-left text-sm font-medium transition",
-                      selected
-                        ? "border-cyan-800 bg-cyan-50 text-cyan-950"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-cyan-300 hover:bg-cyan-50",
-                    )}
-                  >
-                    {option}
-                    <ArrowRight size={16} aria-hidden="true" />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
       </section>
 
-      <section className="mx-auto grid w-full max-w-6xl gap-6 px-5 pb-10 lg:grid-cols-3">
-        <StatusPanel
-          icon={<BarChart3 size={22} aria-hidden="true" />}
-          title="LaunchPad Diagnostic flow"
-          status={diagnosisReady ? "Ready for prompt wiring" : "Waiting for intake"}
-          body={diagnosisReady ? "The intake has enough signal for the future AI diagnosis endpoint." : "Add a website URL and complete the quiz to unlock the LaunchPad Recommendations placeholder."}
-        />
-        <StatusPanel
-          icon={<LineChart size={22} aria-hidden="true" />}
-          title="LaunchPad Recommendations"
-          status={diagnosisReady ? "Generated locally" : "Pending"}
-          body={diagnosisReady ? recommendedAction : "The production version will use the master prompt and OpenAI API to shape the LaunchPad Action Plan."}
-        />
-        <StatusPanel
-          icon={<LockKeyhole size={22} aria-hidden="true" />}
-          title="Lead capture and auth"
-          status="Supabase-ready"
-          body="Client and server helper files are in place. Database SQL will be added after the data model is defined."
-        />
+      <section className="bg-cyan-950 px-5 py-12 text-white">
+        <div className="mx-auto grid w-full max-w-6xl gap-6 md:grid-cols-[1fr_1fr_auto] md:items-center">
+          <div>
+            <p className="text-sm font-semibold text-amber-200">Free now, paid-ready later</p>
+            <h2 className="mt-2 text-3xl font-semibold">Start with diagnosis. Upgrade for execution.</h2>
+          </div>
+          <p className="text-sm leading-6 text-cyan-100">
+            Free users get clarity, scores, and a focused action plan. Paid plans will unlock saved history, deeper execution, content assets, visitor intelligence, referrals, and optimization.
+          </p>
+          <Link href="/diagnostic" className="inline-flex min-h-12 items-center justify-center rounded-md bg-amber-300 px-5 py-3 font-semibold text-cyan-950">
+            Start Diagnostic
+          </Link>
+        </div>
       </section>
     </main>
   );
 }
 
-function StatusPanel({
-  icon,
-  title,
-  status,
-  body,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  status: string;
-  body: string;
-}) {
+function Feature({ icon, title, body }: { icon: ReactNode; title: string; body: string }) {
   return (
     <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="grid size-10 place-items-center rounded-md bg-slate-100 text-cyan-900">{icon}</div>
-        <span className="rounded-md bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">{status}</span>
+      <div className="mb-4 grid size-10 place-items-center rounded-md bg-slate-100 text-cyan-900">
+        {icon}
       </div>
-      <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
+      <h3 className="text-lg font-semibold text-slate-950">{title}</h3>
       <p className="mt-2 text-sm leading-6 text-slate-600">{body}</p>
     </article>
   );

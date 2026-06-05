@@ -1,15 +1,17 @@
 import type { Metadata, Viewport } from "next";
+import type { ReactNode } from "react";
 import { Rb2bTracking } from "@/components/rb2b-tracking";
+import { brand } from "@/lib/brand";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Simple Marketing HQ",
-  description: "An AI marketing advisor for small businesses.",
-  applicationName: "Simple Marketing HQ",
+  title: brand.appName,
+  description: "AI marketing advisor for small businesses.",
+  applicationName: brand.appName,
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "Simple HQ",
+    title: brand.appShortName,
     statusBarStyle: "default",
   },
   icons: {
@@ -28,7 +30,7 @@ export const viewport: Viewport = {
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: ReactNode;
 }>) {
   return (
     <html lang="en">
