@@ -85,11 +85,24 @@ export default function DiagnosticResultPage() {
               Create account and save
               <ArrowRight size={18} aria-hidden="true" />
             </Link>
-            <Link href="/dashboard" className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 px-5 py-3 font-semibold text-slate-800">
-              View dashboard
+            <Link href="/offer-builder" className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 px-5 py-3 font-semibold text-slate-800">
+              Build offer starter
             </Link>
           </div>
         </article>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
+          {[
+            ["Offer Builder", "Turn the result into an offer stack, proof layer, risk reducer, and CTA.", "/offer-builder"],
+            ["Content Engine", "Create hooks and campaign assets from the offer and bottleneck.", "/content-engine"],
+            [brand.advisorName, "Get the next action with steps, asset, and follow-up move.", "/advisor"],
+          ].map(([title, body, href]) => (
+            <Link key={title} href={href} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+              <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{body}</p>
+            </Link>
+          ))}
+        </div>
       </section>
     </main>
   );
