@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Building2, ClipboardList, Eye, MessageSquare, Share2, Target } from "lucide-react";
+import { Building2, ClipboardList, Compass, Eye, Lightbulb, MessageSquare, Rocket, Share2, Target } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/app-header";
 import { StatCard } from "@/components/stat-card";
 import { brand } from "@/lib/brand";
+import { commandCenterModules } from "@/lib/command-center";
 import { dashboardModules, getStoredResult, type LaunchPadResult } from "@/lib/launchpad";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getSavedCheckIns, getSavedDiagnostics, type SavedCheckInSummary, type SavedDiagnosticSummary } from "@/lib/supabase/diagnostics";
@@ -79,9 +80,9 @@ export function DashboardHome() {
         <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
           <article className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">{brand.appName}</p>
-            <h1 className="mt-3 text-4xl font-semibold text-slate-950">Your business growth game plan.</h1>
+            <h1 className="mt-3 text-4xl font-semibold text-slate-950">Your marketing foundation command center.</h1>
             <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
-              Your dashboard keeps the focus on the next practical move: message, customers, website, visibility, referrals, follow-up, and momentum.
+              Prepare the offer, message, audience, strategy, content, schedule, assets, and recommendations before choosing the channel for takeoff.
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <Link href="/diagnostic" className="inline-flex min-h-12 items-center justify-center rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
@@ -107,6 +108,26 @@ export function DashboardHome() {
           <StatCard icon={<Eye size={21} />} label="Saved diagnostics" value={String(diagnostics.length)} body="LaunchPad Diagnostic history tied to your account." />
           <StatCard icon={<Share2 size={21} />} label="Referrals received" value={latestCheckIn ? String(latestCheckIn.referralsCount) : "--"} body="Referral activity from your weekly check-in." />
         </div>
+
+        <article className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Command center spine</p>
+              <h2 className="mt-2 text-2xl font-semibold text-slate-950">Build the foundation before launch.</h2>
+            </div>
+            <Link href="/offer-builder" className="inline-flex min-h-12 items-center justify-center rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
+              Start Offer Builder
+            </Link>
+          </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            {commandCenterModules.map((module) => (
+              <Link key={module.slug} href={module.href} className="rounded-md border border-slate-200 p-4 transition hover:border-cyan-300 hover:bg-cyan-50">
+                <p className="font-semibold text-slate-950">{module.title}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{module.body}</p>
+              </Link>
+            ))}
+          </div>
+        </article>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {dashboardModules.map((module) => (
@@ -154,7 +175,10 @@ export function DashboardHome() {
         </article>
 
         <div className="mt-5 grid gap-4 lg:grid-cols-3">
-          <QuickLink href="/content-engine" icon={<MessageSquare size={21} />} title="Stop Stack Content Engine" body="Generate hooks and campaign ideas designed to stop attention and move toward leads." />
+          <QuickLink href="/offer-builder" icon={<Rocket size={21} />} title="Offer Builder" body="Shape outcome, pain, proof, risk reducer, package framing, and CTA before launch." />
+          <QuickLink href="/strategy-map" icon={<Compass size={21} />} title="Strategy Map" body="Turn the diagnosis into next 7 days, next 30 days, missing assets, and launch order." />
+          <QuickLink href="/advisor" icon={<Lightbulb size={21} />} title={brand.advisorName} body="Get the next action, why it matters, execution steps, and the asset to build." />
+          <QuickLink href="/content-engine" icon={<MessageSquare size={21} />} title="Content Engine" body="Generate hooks, scripts, posts, sequences, lead magnets, and campaign ideas." />
           <QuickLink href="/dashboard/referrals" icon={<Building2 size={21} />} title="Referral profile" body="Create a referral-ready business profile and power team foundation." />
           <QuickLink href="/check-in" icon={<ClipboardList size={21} />} title="Weekly check-in" body="Save fresh lead, booking, referral, and follow-up notes for your dashboard." />
         </div>
