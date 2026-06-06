@@ -22,7 +22,7 @@ export function assertRb2bApiReady() {
   }
 }
 
-export async function fetchRb2bVisitorIntelligencePlaceholder() {
+export async function prepareRb2bVisitorIntelligenceRequest() {
   assertRb2bApiReady();
 
   return {
