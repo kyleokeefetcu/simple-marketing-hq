@@ -10,7 +10,7 @@ export type DiagnosticQuestion = {
   question: string;
   helper: string;
   type: "url" | "text" | "choice";
-  placeholder?: string;
+  inputHint?: string;
   options?: DiagnosticAnswer[];
 };
 
@@ -39,7 +39,7 @@ export const diagnosticQuestions: DiagnosticQuestion[] = [
     question: "What is your business website?",
     helper: "We will use this to create a starter website analysis and confirm what your business sells.",
     type: "url",
-    placeholder: "https://yourcompany.com",
+    inputHint: "https://yourcompany.com",
   },
   {
     id: "whatSelling",
@@ -47,7 +47,7 @@ export const diagnosticQuestions: DiagnosticQuestion[] = [
     question: "What are you selling?",
     helper: "Keep it plain. Services, products, appointments, consultations, estimates, or something else.",
     type: "text",
-    placeholder: "Roof repair, bookkeeping, coaching, design services...",
+    inputHint: "Roof repair, bookkeeping, coaching, design services...",
   },
   {
     id: "targetCustomer",
@@ -55,7 +55,7 @@ export const diagnosticQuestions: DiagnosticQuestion[] = [
     question: "Who are you selling to?",
     helper: "Choose the group you most want more of right now.",
     type: "text",
-    placeholder: "Homeowners, local businesses, founders, families...",
+    inputHint: "Homeowners, local businesses, founders, families...",
   },
   {
     id: "customerResult",
@@ -63,7 +63,7 @@ export const diagnosticQuestions: DiagnosticQuestion[] = [
     question: "What result do customers want most?",
     helper: "This helps your LaunchPad Action Plan focus on what buyers actually care about.",
     type: "text",
-    placeholder: "More leads, less stress, faster repairs, more booked calls...",
+    inputHint: "More leads, less stress, faster repairs, more booked calls...",
   },
   {
     id: "currentOffer",
@@ -136,17 +136,17 @@ export const diagnosticQuestions: DiagnosticQuestion[] = [
 export const dashboardModules = [
   { slug: "message", title: "Your Message", body: "Offer, headline, positioning, elevator pitch, and scripts." },
   { slug: "customers", title: "Your Customers", body: "Ideal customer, pain points, customer goals, and referral sources." },
-  { slug: "website", title: "Your Website", body: "Website diagnosis, CTA review, trust signals, lead capture, Fred placeholder, and RB2B foundation." },
+  { slug: "website", title: "Your Website", body: "Website diagnosis, CTA review, trust signals, lead capture, visitor intelligence, and follow-up opportunities." },
   { slug: "visibility", title: "Your Visibility", body: "SEO, Google Business Profile, social content, paid ads, and content recommendations." },
-  { slug: "referrals", title: "Your Referrals", body: "Referral-ready profile, partner network, shares, introductions, and power team placeholder." },
-  { slug: "follow-up", title: "Your Follow-Up", body: "Speed-to-lead, missed opportunities, suggested scripts, and sequence placeholders." },
+  { slug: "referrals", title: "Your Referrals", body: "Referral-ready profile, trusted partner list, shareable introduction details, and referral tracking." },
+  { slug: "follow-up", title: "Your Follow-Up", body: "Speed-to-lead, missed opportunities, suggested scripts, and response recommendations." },
   { slug: "momentum", title: "Your Momentum", body: "Weekly traction, check-ins, referrals, repeat visitors, and the next recommended action." },
 ];
 
 export function buildLaunchPadResult(answers: Record<string, string>): LaunchPadResult {
   const websiteUrl = answers.websiteUrl || "";
   const host = websiteUrl.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0];
-  const businessName = host ? titleCase(host.split(".")[0].replace(/[-_]/g, " ")) : "Your business";
+  const businessName = answers.detectedBusinessName || (host ? titleCase(host.split(".")[0].replace(/[-_]/g, " ")) : "Your business");
   const clearOffer = answers.currentOffer?.includes("clear") && !answers.currentOffer?.includes("needs");
   const slowFollowUp = ["nextDay", "inconsistent"].includes(answers.responseSpeed || "");
   const dropoff = answers.leadDropoff || "unknown";
@@ -184,7 +184,7 @@ export function buildLaunchPadResult(answers: Record<string, string>): LaunchPad
     ],
     websiteFindings: [
       `Starter analysis detected ${businessName} from the website URL.`,
-      "Website crawler/API analysis is ready to connect when OpenAI and Supabase are configured.",
+      answers.websiteAnalysisSummary || "Website review will use your saved URL and diagnostic answers to guide the next action.",
       "Review homepage headline, primary CTA, trust signals, lead capture, SEO basics, and service area.",
     ],
     answers,
