@@ -130,6 +130,18 @@ The app should support:
 - RB2B/server-side visitor intelligence foundations.
 - Referral partner foundations.
 
+## RB2B / Visitor Intelligence Direction
+
+There are two separate RB2B use cases:
+
+1. Simple Marketing HQ tracking
+   This is browser tracking for `simplemarketinghq.com` only. `NEXT_PUBLIC_RB2B_SCRIPT_ID` may be used for our own site tracking only if RB2B provides a browser script ID.
+
+2. Customer/client website tracking
+   This is tracking for each Business / Client website. It must not use one universal Simple Marketing HQ script across all customer websites. Customer tracking requires RB2B API Partner or OEM Partner approval, customer domain configuration, approved customer installation instructions, and a confirmed data routing model.
+
+Current product rule: do not make live RB2B API calls, register customer domains, generate customer scripts, or expose customer tracking setup until RB2B confirms the correct partner/OEM integration flow. `RB2B_API_KEY` remains server-only.
+
 ## Pricing Direction
 
 Simple Marketing HQ is priced as a marketing foundation command center, not a cheap scanner.
