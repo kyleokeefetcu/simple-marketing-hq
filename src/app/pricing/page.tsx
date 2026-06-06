@@ -7,10 +7,13 @@ const included = [
   "LaunchPad Growth Score",
   "Biggest bottleneck analysis",
   "LaunchPad Action Plan",
+  "Offer Builder starter",
+  "Strategy Map starter",
   "Saved dashboard after account creation",
   "Weekly check-ins",
   "Referral-ready profile",
-  "Stop Stack content ideas",
+  "Content Engine starter",
+  "Advisor next action",
 ];
 
 export default function PricingPage() {
@@ -19,9 +22,9 @@ export default function PricingPage() {
       <SiteHeader />
       <section className="mx-auto w-full max-w-5xl px-5 py-12">
         <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Pricing</p>
-        <h1 className="mt-3 max-w-3xl text-4xl font-semibold text-slate-950">Start with a free diagnostic and a saved growth dashboard.</h1>
+        <h1 className="mt-3 max-w-3xl text-4xl font-semibold text-slate-950">Start with a free foundation command center.</h1>
         <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-          Simple Marketing HQ starts by helping you find the bottleneck and choose the next practical move.
+          Simple Marketing HQ starts by diagnosing the foundation, building the first offer and content assets, and mapping what should happen before channel deployment.
         </p>
         <article className="mt-8 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
