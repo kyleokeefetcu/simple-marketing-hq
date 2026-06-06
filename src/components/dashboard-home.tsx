@@ -2,19 +2,21 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Bell, Building2, ClipboardList, Eye, MessageSquare, Share2, Target } from "lucide-react";
+import { Building2, ClipboardList, Eye, MessageSquare, Share2, Target } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/app-header";
 import { StatCard } from "@/components/stat-card";
 import { brand } from "@/lib/brand";
 import { dashboardModules, getStoredResult, type LaunchPadResult } from "@/lib/launchpad";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { getSavedDiagnostics, type SavedDiagnosticSummary } from "@/lib/supabase/diagnostics";
+import { getSavedCheckIns, getSavedDiagnostics, type SavedCheckInSummary, type SavedDiagnosticSummary } from "@/lib/supabase/diagnostics";
 
 export function DashboardHome() {
   const [result] = useState<LaunchPadResult | null>(() => getStoredResult());
   const [diagnostics, setDiagnostics] = useState<SavedDiagnosticSummary[]>([]);
+  const [checkIns, setCheckIns] = useState<SavedCheckInSummary[]>([]);
   const [diagnosticStatus, setDiagnosticStatus] = useState("Connect Supabase to show saved diagnostics.");
+  const [requiresLogin, setRequiresLogin] = useState(false);
 
   useEffect(() => {
     async function loadDiagnostics() {
@@ -23,13 +25,15 @@ export function DashboardHome() {
 
       const { data } = await supabase.auth.getUser();
       if (!data.user) {
+        setRequiresLogin(true);
         setDiagnosticStatus("Log in to show saved diagnostics from Supabase.");
         return;
       }
 
       try {
-        const saved = await getSavedDiagnostics(supabase);
+        const [saved, savedCheckIns] = await Promise.all([getSavedDiagnostics(supabase), getSavedCheckIns(supabase)]);
         setDiagnostics(saved);
+        setCheckIns(savedCheckIns);
         setDiagnosticStatus(saved.length ? "Saved diagnostics loaded from Supabase." : "No saved diagnostics yet.");
       } catch (error) {
         setDiagnosticStatus(`Could not load saved diagnostics: ${(error as Error).message}`);
@@ -38,6 +42,35 @@ export function DashboardHome() {
 
     void loadDiagnostics();
   }, []);
+
+  const latestDiagnostic = diagnostics[0];
+  const latestCheckIn = checkIns[0];
+  const score = latestDiagnostic?.growthScore ?? result?.growthScore ?? null;
+
+  if (requiresLogin) {
+    return (
+      <main className="min-h-screen bg-slate-50">
+        <AppHeader />
+        <section className="mx-auto w-full max-w-3xl px-5 py-12">
+          <article className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">{brand.appName}</p>
+            <h1 className="mt-3 text-4xl font-semibold text-slate-950">Log in to view your saved dashboard.</h1>
+            <p className="mt-3 text-base leading-7 text-slate-600">
+              Your dashboard shows saved LaunchPad Diagnostics, check-ins, action plans, and referral profile data tied to your account.
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <Link href="/login" className="inline-flex min-h-12 items-center justify-center rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
+                Login
+              </Link>
+              <Link href="/signup" className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 px-5 py-3 font-semibold text-slate-800">
+                Create account
+              </Link>
+            </div>
+          </article>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -61,18 +94,18 @@ export function DashboardHome() {
           </article>
           <article className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm font-semibold text-slate-500">{brand.growthScoreName}</p>
-            <p className="mt-2 text-6xl font-semibold text-cyan-900">{result?.growthScore ?? "--"}</p>
+            <p className="mt-2 text-6xl font-semibold text-cyan-900">{score ?? "--"}</p>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              {result ? result.biggestBottleneck : "Run the LaunchPad Diagnostic to generate your first score."}
+              {latestDiagnostic?.biggestBottleneck ?? result?.biggestBottleneck ?? "Run the LaunchPad Diagnostic to generate your first score."}
             </p>
           </article>
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-4">
-          <StatCard icon={<Target size={21} />} label="Leads" value="12" body="Placeholder for weekly lead count from check-ins." />
-          <StatCard icon={<ClipboardList size={21} />} label="Booked calls" value="4" body="Track calls and missed opportunities without CRM overload." />
-          <StatCard icon={<Eye size={21} />} label="High-intent visitors" value="7" body="RB2B-style company-level visitor intelligence placeholder." />
-          <StatCard icon={<Share2 size={21} />} label="Referrals received" value="2" body="Referral partner foundation for future tracking." />
+          <StatCard icon={<Target size={21} />} label="Leads" value={latestCheckIn ? String(latestCheckIn.leadsCount) : "--"} body="Saved from your most recent weekly check-in." />
+          <StatCard icon={<ClipboardList size={21} />} label="Booked calls" value={latestCheckIn ? String(latestCheckIn.bookedCallsCount) : "--"} body="Track booked conversations from your check-ins." />
+          <StatCard icon={<Eye size={21} />} label="Saved diagnostics" value={String(diagnostics.length)} body="LaunchPad Diagnostic history tied to your account." />
+          <StatCard icon={<Share2 size={21} />} label="Referrals received" value={latestCheckIn ? String(latestCheckIn.referralsCount) : "--"} body="Referral activity from your weekly check-in." />
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -123,7 +156,7 @@ export function DashboardHome() {
         <div className="mt-5 grid gap-4 lg:grid-cols-3">
           <QuickLink href="/content-engine" icon={<MessageSquare size={21} />} title="Stop Stack Content Engine" body="Generate hooks and campaign ideas designed to stop attention and move toward leads." />
           <QuickLink href="/dashboard/referrals" icon={<Building2 size={21} />} title="Referral profile" body="Create a referral-ready business profile and power team foundation." />
-          <QuickLink href="/billing" icon={<Bell size={21} />} title="Upgrade path" body="Subscription-ready plan gates for future paid execution and optimization." />
+          <QuickLink href="/check-in" icon={<ClipboardList size={21} />} title="Weekly check-in" body="Save fresh lead, booking, referral, and follow-up notes for your dashboard." />
         </div>
       </section>
     </main>
