@@ -37,7 +37,7 @@ export const diagnosticQuestions: DiagnosticQuestion[] = [
     id: "websiteUrl",
     eyebrow: "Step 1",
     question: "What is your business website?",
-    helper: "We will use this to create a starter website analysis and confirm what your business sells.",
+    helper: "We will use this as one input for your marketing foundation review, then confirm the important parts manually.",
     type: "url",
     inputHint: "https://yourcompany.com",
   },
@@ -134,13 +134,13 @@ export const diagnosticQuestions: DiagnosticQuestion[] = [
 ];
 
 export const dashboardModules = [
-  { slug: "message", title: "Your Message", body: "Offer, headline, positioning, elevator pitch, and scripts." },
-  { slug: "customers", title: "Your Customers", body: "Ideal customer, pain points, customer goals, and referral sources." },
-  { slug: "website", title: "Your Website", body: "Website diagnosis, CTA review, trust signals, lead capture, visitor intelligence, and follow-up opportunities." },
-  { slug: "visibility", title: "Your Visibility", body: "SEO, Google Business Profile, social content, paid ads, and content recommendations." },
+  { slug: "message", title: "Your Message", body: "Offer, headline, positioning, authority hooks, elevator pitch, and scripts." },
+  { slug: "customers", title: "Your Customers", body: "Audience pains, objections, customer goals, segments, and best referral sources." },
+  { slug: "website", title: "Your Website", body: "Conversion readiness, CTA clarity, proof, lead capture, and follow-up opportunities." },
+  { slug: "visibility", title: "Your Visibility", body: "Channel readiness, campaign preparation, content themes, and launch order." },
   { slug: "referrals", title: "Your Referrals", body: "Referral-ready profile, trusted partner list, shareable introduction details, and referral tracking." },
-  { slug: "follow-up", title: "Your Follow-Up", body: "Speed-to-lead, missed opportunities, suggested scripts, and response recommendations." },
-  { slug: "momentum", title: "Your Momentum", body: "Weekly traction, check-ins, referrals, repeat visitors, and the next recommended action." },
+  { slug: "follow-up", title: "Your Follow-Up", body: "Speed-to-lead, missed opportunities, suggested scripts, email/SMS assets, and response recommendations." },
+  { slug: "momentum", title: "Your Momentum", body: "Weekly traction, check-ins, asset progress, referrals, repeat visitors, and the next recommended action." },
 ];
 
 export function buildLaunchPadResult(answers: Record<string, string>): LaunchPadResult {
@@ -179,13 +179,13 @@ export function buildLaunchPadResult(answers: Record<string, string>): LaunchPad
     nextMove,
     actionItems: [
       nextMove,
-      "Add a stronger website call-to-action tied to a specific customer outcome.",
-      "Create one simple follow-up script for every new lead this week.",
+      "Build a starter offer stack: outcome, pain, proof, risk reducer, and clear CTA.",
+      "Create one authority content asset that explains the customer problem and the next step.",
     ],
     websiteFindings: [
-      `Website review detected ${businessName} from the website URL.`,
-      answers.websiteAnalysisSummary || "Website review will use your saved URL and diagnostic answers to guide the next action.",
-      "Review homepage headline, primary CTA, trust signals, lead capture, SEO basics, and service area.",
+      `Foundation review detected ${businessName} from the website URL.`,
+      answers.websiteAnalysisSummary || "Website input will be combined with your diagnostic answers to shape the command center plan.",
+      "Review offer clarity, audience clarity, message clarity, proof, lead capture, follow-up, content consistency, and channel readiness.",
     ],
     answers,
   };
@@ -213,7 +213,7 @@ export function getStopStackIdeas(result: LaunchPadResult | null) {
     },
     {
       title: "Ad opener",
-      idea: `Start with the tension: "Before you buy more ads, find the bottleneck." Connect it to ${bottleneck.toLowerCase()} and invite viewers to start the free diagnostic.`,
+      idea: `Start with the tension: "Before you launch another channel, fix the foundation." Connect it to ${bottleneck.toLowerCase()} and invite viewers to start the LaunchPad Diagnostic.`,
     },
     {
       title: "Email subject line",
