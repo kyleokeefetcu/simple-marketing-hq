@@ -25,12 +25,6 @@ export default function ContentEnginePage() {
             </article>
           ))}
         </div>
-        <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-5">
-          <p className="font-semibold text-amber-950">Paid-ready placeholder</p>
-          <p className="mt-2 text-sm leading-6 text-amber-900">
-            Future paid plans can unlock more campaigns, landing page openers, ads, YouTube hooks, email subject lines, and saved generated assets.
-          </p>
-        </div>
       </section>
     </main>
   );
