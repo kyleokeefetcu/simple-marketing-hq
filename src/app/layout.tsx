@@ -6,7 +6,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: brand.appName,
-  description: "AI marketing advisor for small businesses.",
+  description: "AI marketing advisor and foundation command center for small businesses.",
   applicationName: brand.appName,
   manifest: "/manifest.webmanifest",
   appleWebApp: {
