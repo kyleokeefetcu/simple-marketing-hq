@@ -3,14 +3,41 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Bell, Building2, ClipboardList, Eye, MessageSquare, Share2, Target } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/app-header";
 import { StatCard } from "@/components/stat-card";
 import { brand } from "@/lib/brand";
 import { dashboardModules, getStoredResult, type LaunchPadResult } from "@/lib/launchpad";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { getSavedDiagnostics, type SavedDiagnosticSummary } from "@/lib/supabase/diagnostics";
 
 export function DashboardHome() {
   const [result] = useState<LaunchPadResult | null>(() => getStoredResult());
+  const [diagnostics, setDiagnostics] = useState<SavedDiagnosticSummary[]>([]);
+  const [diagnosticStatus, setDiagnosticStatus] = useState("Connect Supabase to show saved diagnostics.");
+
+  useEffect(() => {
+    async function loadDiagnostics() {
+      const supabase = createBrowserSupabaseClient();
+      if (!supabase) return;
+
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) {
+        setDiagnosticStatus("Log in to show saved diagnostics from Supabase.");
+        return;
+      }
+
+      try {
+        const saved = await getSavedDiagnostics(supabase);
+        setDiagnostics(saved);
+        setDiagnosticStatus(saved.length ? "Saved diagnostics loaded from Supabase." : "No saved diagnostics yet.");
+      } catch (error) {
+        setDiagnosticStatus(`Could not load saved diagnostics: ${(error as Error).message}`);
+      }
+    }
+
+    void loadDiagnostics();
+  }, []);
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -56,6 +83,42 @@ export function DashboardHome() {
             </Link>
           ))}
         </div>
+
+        <article className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-950">Saved LaunchPad Diagnostics</h2>
+              <p className="mt-1 text-sm text-slate-600">{diagnosticStatus}</p>
+            </div>
+            <Link href="/diagnostic" className="rounded-md bg-cyan-900 px-4 py-2 text-sm font-semibold text-white">
+              New Diagnostic
+            </Link>
+          </div>
+          <div className="mt-5 grid gap-3">
+            {diagnostics.length ? (
+              diagnostics.map((diagnostic) => (
+                <div key={diagnostic.id} className="rounded-md border border-slate-200 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="font-semibold text-slate-950">{diagnostic.businessName}</p>
+                      <p className="mt-1 text-sm text-slate-500">{diagnostic.websiteUrl}</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">{diagnostic.biggestBottleneck}</p>
+                    </div>
+                    <div className="rounded-md bg-cyan-50 px-3 py-2 text-center">
+                      <p className="text-xs font-semibold text-cyan-800">Score</p>
+                      <p className="text-2xl font-semibold text-cyan-950">{diagnostic.growthScore ?? "--"}</p>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm font-medium text-cyan-900">{diagnostic.nextMove}</p>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-md border border-dashed border-slate-300 p-4 text-sm leading-6 text-slate-600">
+                Complete the LaunchPad Diagnostic while logged in, or create an account after completing a diagnostic, to save it to Supabase.
+              </div>
+            )}
+          </div>
+        </article>
 
         <div className="mt-5 grid gap-4 lg:grid-cols-3">
           <QuickLink href="/content-engine" icon={<MessageSquare size={21} />} title="Stop Stack Content Engine" body="Generate hooks and campaign ideas designed to stop attention and move toward leads." />

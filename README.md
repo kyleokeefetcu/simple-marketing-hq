@@ -13,6 +13,8 @@ npm run dev
 
 Copy `.env.example` to `.env.local` and add real values when you are ready to connect Supabase, OpenAI, and RB2B.
 
+Supabase setup details live in `docs/SUPABASE_CONNECTION.md`.
+
 ## Next Step
 
 Paste the full Simple Marketing HQ master prompt into `docs/PRODUCT_BRIEF.md` under the placeholder section, then continue implementation from that brief.

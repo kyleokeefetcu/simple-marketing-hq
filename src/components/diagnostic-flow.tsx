@@ -5,11 +5,14 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { brand } from "@/lib/brand";
 import { buildLaunchPadResult, diagnosticQuestions, saveStoredResult } from "@/lib/launchpad";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { saveLaunchPadResultToSupabase } from "@/lib/supabase/diagnostics";
 
 export function DiagnosticFlow() {
   const router = useRouter();
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [saveStatus, setSaveStatus] = useState("");
   const question = diagnosticQuestions[stepIndex];
   const currentValue = answers[question.id] ?? "";
   const progress = ((stepIndex + 1) / diagnosticQuestions.length) * 100;
@@ -19,11 +22,24 @@ export function DiagnosticFlow() {
     setAnswers((current) => ({ ...current, [question.id]: value }));
   }
 
-  function goNext() {
+  async function goNext() {
     if (!canContinue) return;
     if (stepIndex === diagnosticQuestions.length - 1) {
       const result = buildLaunchPadResult(answers);
       saveStoredResult(result);
+      const supabase = createBrowserSupabaseClient();
+      if (supabase) {
+        const { data } = await supabase.auth.getUser();
+        if (data.user) {
+          try {
+            const savedId = await saveLaunchPadResultToSupabase(supabase, data.user, result);
+            window.localStorage.setItem("simple-marketing-hq:last-saved-diagnostic-id", savedId);
+          } catch (error) {
+            setSaveStatus(`Saved locally, but Supabase save failed: ${(error as Error).message}`);
+            return;
+          }
+        }
+      }
       router.push("/diagnostic/result");
       return;
     }
@@ -87,6 +103,7 @@ export function DiagnosticFlow() {
                 Starter website analysis will confirm the business name, offer, CTA, proof, lead capture, and conversion bottlenecks.
               </div>
             ) : null}
+            {saveStatus ? <p className="mt-5 rounded-md bg-amber-50 p-4 text-sm font-medium text-amber-800">{saveStatus}</p> : null}
 
             <div className="mt-8 flex items-center justify-between gap-3">
               <button

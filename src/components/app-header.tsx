@@ -1,8 +1,23 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { LayoutDashboard, LogOut, Sparkles } from "lucide-react";
 import { brand } from "@/lib/brand";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 export function AppHeader() {
+  const router = useRouter();
+
+  async function logOut() {
+    const supabase = createBrowserSupabaseClient();
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+    window.localStorage.removeItem("simple-marketing-hq:user");
+    router.push("/login");
+  }
+
   return (
     <header className="border-b border-slate-200 bg-white">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-4">
@@ -23,13 +38,14 @@ export function AppHeader() {
           >
             <LayoutDashboard size={18} aria-hidden="true" />
           </Link>
-          <Link
-            href="/login"
+          <button
+            type="button"
+            onClick={logOut}
             className="grid size-10 place-items-center rounded-md border border-slate-200 text-slate-700 transition hover:bg-slate-50"
             aria-label="Logout"
           >
             <LogOut size={18} aria-hidden="true" />
-          </Link>
+          </button>
         </div>
       </div>
     </header>

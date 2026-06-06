@@ -1,10 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
-import { env } from "@/lib/env";
 
 export function createBrowserSupabaseClient() {
-  if (!env.supabaseUrl || !env.supabaseAnonKey) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
     return null;
   }
 
-  return createClient(env.supabaseUrl, env.supabaseAnonKey);
+  return createClient(supabaseUrl, supabaseAnonKey);
 }
