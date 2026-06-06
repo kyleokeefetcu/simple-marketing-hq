@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { AppHeader } from "@/components/app-header";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { saveReferralProfileToSupabase } from "@/lib/supabase/diagnostics";
 
 const fields = [
   ["businessName", "Business name"],
@@ -16,12 +18,41 @@ const fields = [
 
 export default function ReferralProfilePage() {
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
-  function saveProfile(event: React.FormEvent<HTMLFormElement>) {
+  async function saveProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = Object.fromEntries(new FormData(event.currentTarget).entries());
-    window.localStorage.setItem("simple-marketing-hq:referral-profile", JSON.stringify({ ...data, updatedAt: new Date().toISOString() }));
-    setSaved(true);
+    setError("");
+    setIsSaving(true);
+    const data = Object.fromEntries(new FormData(event.currentTarget).entries()) as Record<string, string>;
+    const supabase = createBrowserSupabaseClient();
+
+    try {
+      if (supabase) {
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData.user) {
+          setError("Log in before saving a referral profile.");
+          return;
+        }
+        await saveReferralProfileToSupabase(supabase, userData.user, {
+          businessName: data.businessName,
+          description: data.description,
+          services: data.services,
+          serviceArea: data.serviceArea,
+          idealCustomer: data.idealCustomer,
+          bestReferralTypes: data.bestReferralTypes,
+          contactMethod: data.contactMethod,
+          bookingLink: data.bookingLink,
+        });
+      }
+      window.localStorage.setItem("simple-marketing-hq:referral-profile", JSON.stringify({ ...data, updatedAt: new Date().toISOString() }));
+      setSaved(true);
+    } catch (saveError) {
+      setError((saveError as Error).message);
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -40,21 +71,24 @@ export default function ReferralProfilePage() {
               {fields.map(([name, label]) => (
                 <label key={name} className="block text-sm font-medium text-slate-700">
                   {label}
-                  <input name={name} className="mt-2 w-full rounded-md border border-slate-300 px-4 py-3 outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100" />
+                  <input required name={name} className="mt-2 w-full rounded-md border border-slate-300 px-4 py-3 outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100" />
                 </label>
               ))}
             </div>
-            <button className="mt-6 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">Save referral profile</button>
-            {saved ? <p className="mt-4 text-sm font-semibold text-emerald-700">Referral profile saved locally. Supabase persistence is ready in the SQL schema.</p> : null}
+            <button disabled={isSaving} className="mt-6 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
+              {isSaving ? "Saving..." : "Save referral profile"}
+            </button>
+            {saved ? <p className="mt-4 text-sm font-semibold text-emerald-700">Referral profile saved. Use it to make clearer partner introductions.</p> : null}
+            {error ? <p className="mt-4 rounded-md bg-red-50 p-3 text-sm font-medium text-red-700">{error}</p> : null}
           </form>
 
           <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-xl font-semibold text-slate-950">Referral actions</h2>
+            <h2 className="text-xl font-semibold text-slate-950">How to use this profile</h2>
             <div className="mt-4 grid gap-3">
-              {["Share Profile", "Refer Someone", "Request Intro", "Invite Referral Partner", "Save Trusted Partner", "Create Power Team"].map((action) => (
+              {["Share your strongest offer", "Write an intro message", "Define your ideal referral", "Invite a referral partner"].map((action) => (
                 <div key={action} className="rounded-md border border-slate-200 p-4">
                   <p className="font-semibold text-slate-950">{action}</p>
-                  <p className="mt-1 text-sm text-slate-600">MVP foundation ready for partner workflows.</p>
+                  <p className="mt-1 text-sm text-slate-600">Save your profile first, then use these details when you ask for warm introductions.</p>
                 </div>
               ))}
             </div>
