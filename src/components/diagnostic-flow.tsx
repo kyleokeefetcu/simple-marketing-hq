@@ -75,7 +75,8 @@ export function DiagnosticFlow() {
         const { data } = await supabase.auth.getUser();
         if (data.user) {
           try {
-            const savedId = await saveLaunchPadResultToSupabase(supabase, data.user, result);
+            const selectedBusinessId = window.localStorage.getItem("simple-marketing-hq:selected-business-id");
+            const savedId = await saveLaunchPadResultToSupabase(supabase, data.user, result, selectedBusinessId);
             window.localStorage.setItem("simple-marketing-hq:last-saved-diagnostic-id", savedId);
           } catch (error) {
             setSaveStatus(`Saved locally, but Supabase save failed: ${(error as Error).message}`);
