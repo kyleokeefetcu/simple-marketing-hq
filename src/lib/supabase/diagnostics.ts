@@ -5,6 +5,7 @@ import type { LaunchPadResult } from "@/lib/launchpad";
 
 export type SavedDiagnosticSummary = {
   id: string;
+  businessId: string | null;
   businessName: string;
   websiteUrl: string;
   growthScore: number | null;
@@ -13,8 +14,19 @@ export type SavedDiagnosticSummary = {
   completedAt: string;
 };
 
+export type BusinessSummary = {
+  id: string;
+  name: string;
+  websiteUrl: string;
+  description: string;
+  services: string;
+  idealCustomer: string;
+  createdAt: string;
+};
+
 export type SavedCheckInSummary = {
   id: string;
+  businessId: string | null;
   leadsCount: number;
   bookedCallsCount: number;
   referralsCount: number;
@@ -45,6 +57,7 @@ export type ReferralProfileInput = {
 
 type DiagnosticRow = {
   id: string;
+  business_id: string | null;
   website_url: string | null;
   completed_at: string | null;
   created_at: string;
@@ -56,10 +69,21 @@ type DiagnosticRow = {
   } | null;
 };
 
+type BusinessRow = {
+  id: string;
+  name: string;
+  website_url: string | null;
+  description: string | null;
+  services: string | null;
+  ideal_customer: string | null;
+  created_at: string;
+};
+
 export async function saveLaunchPadResultToSupabase(
   supabase: SupabaseClient,
   user: User,
   result: LaunchPadResult,
+  selectedBusinessId?: string | null,
 ) {
   await supabase.from("profiles").upsert({
     id: user.id,
@@ -67,26 +91,44 @@ export async function saveLaunchPadResultToSupabase(
     full_name: user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? null,
   });
 
-  const { data: business, error: businessError } = await supabase
-    .from("businesses")
-    .insert({
-      owner_id: user.id,
-      name: result.businessName,
-      website_url: result.websiteUrl,
-      services: result.answers.whatSelling ?? null,
-      ideal_customer: result.answers.targetCustomer ?? null,
-      description: result.answers.customerResult ?? null,
-    })
-    .select("id")
-    .single();
+  let businessId = selectedBusinessId ?? null;
 
-  if (businessError) throw businessError;
+  if (businessId) {
+    const { error: updateBusinessError } = await supabase
+      .from("businesses")
+      .update({
+        name: result.businessName,
+        website_url: result.websiteUrl,
+        services: result.answers.whatSelling ?? null,
+        ideal_customer: result.answers.targetCustomer ?? null,
+        description: result.answers.customerResult ?? null,
+      })
+      .eq("id", businessId);
+
+    if (updateBusinessError) throw updateBusinessError;
+  } else {
+    const { data: business, error: businessError } = await supabase
+      .from("businesses")
+      .insert({
+        owner_id: user.id,
+        name: result.businessName,
+        website_url: result.websiteUrl,
+        services: result.answers.whatSelling ?? null,
+        ideal_customer: result.answers.targetCustomer ?? null,
+        description: result.answers.customerResult ?? null,
+      })
+      .select("id")
+      .single();
+
+    if (businessError) throw businessError;
+    businessId = business.id;
+  }
 
   const { data: diagnostic, error: diagnosticError } = await supabase
     .from("launchpad_diagnostics")
     .insert({
       user_id: user.id,
-      business_id: business.id,
+      business_id: businessId,
       website_url: result.websiteUrl,
       completed_at: result.completedAt,
       summary: {
@@ -114,7 +156,7 @@ export async function saveLaunchPadResultToSupabase(
     supabase.from("launchpad_answers").insert(answerRows),
     supabase.from("website_analyses").insert({
       diagnostic_id: diagnosticId,
-      business_id: business.id,
+      business_id: businessId,
       website_url: result.websiteUrl,
       analysis: {
         findings: result.websiteFindings,
@@ -141,7 +183,7 @@ export async function saveLaunchPadResultToSupabase(
     supabase.from("launchpad_recommendations").insert(
       result.actionItems.map((item, index) => ({
         diagnostic_id: diagnosticId,
-        business_id: business.id,
+        business_id: businessId,
         title: `Action item ${index + 1}`,
         description: item,
         category: "launchpad_action_plan",
@@ -163,21 +205,68 @@ export async function savePendingDiagnosticForUser(supabase: SupabaseClient) {
   if (!data.user || !raw) return null;
 
   const result = JSON.parse(raw) as LaunchPadResult;
-  const savedId = await saveLaunchPadResultToSupabase(supabase, data.user, result);
+  const selectedBusinessId = window.localStorage.getItem("simple-marketing-hq:selected-business-id");
+  const savedId = await saveLaunchPadResultToSupabase(supabase, data.user, result, selectedBusinessId);
   window.localStorage.setItem("simple-marketing-hq:last-saved-diagnostic-id", savedId);
   return savedId;
 }
 
-export async function getSavedDiagnostics(supabase: SupabaseClient): Promise<SavedDiagnosticSummary[]> {
+export async function getBusinesses(supabase: SupabaseClient): Promise<BusinessSummary[]> {
   const { data, error } = await supabase
-    .from("launchpad_diagnostics")
-    .select("id, website_url, completed_at, created_at, summary")
+    .from("businesses")
+    .select("id, name, website_url, description, services, ideal_customer, created_at")
     .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return ((data ?? []) as BusinessRow[]).map((row) => ({
+    id: row.id,
+    name: row.name,
+    websiteUrl: row.website_url ?? "",
+    description: row.description ?? "",
+    services: row.services ?? "",
+    idealCustomer: row.ideal_customer ?? "",
+    createdAt: row.created_at,
+  }));
+}
+
+export async function createBusiness(supabase: SupabaseClient, user: User, name: string) {
+  await supabase.from("profiles").upsert({
+    id: user.id,
+    email: user.email,
+    full_name: user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? null,
+  });
+
+  const { data, error } = await supabase
+    .from("businesses")
+    .insert({
+      owner_id: user.id,
+      name,
+    })
+    .select("id")
+    .single();
+
+  if (error) throw error;
+  return data.id as string;
+}
+
+export async function getSavedDiagnostics(supabase: SupabaseClient, businessId?: string | null): Promise<SavedDiagnosticSummary[]> {
+  let query = supabase
+    .from("launchpad_diagnostics")
+    .select("id, business_id, website_url, completed_at, created_at, summary")
+    .order("created_at", { ascending: false });
+
+  if (businessId) {
+    query = query.eq("business_id", businessId);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
 
   return ((data ?? []) as DiagnosticRow[]).map((row) => ({
     id: row.id,
+    businessId: row.business_id,
     businessName: row.summary?.businessName ?? "Saved business",
     websiteUrl: row.website_url ?? "",
     growthScore: row.summary?.growthScore ?? null,
@@ -187,17 +276,24 @@ export async function getSavedDiagnostics(supabase: SupabaseClient): Promise<Sav
   }));
 }
 
-export async function getSavedCheckIns(supabase: SupabaseClient): Promise<SavedCheckInSummary[]> {
-  const { data, error } = await supabase
+export async function getSavedCheckIns(supabase: SupabaseClient, businessId?: string | null): Promise<SavedCheckInSummary[]> {
+  let query = supabase
     .from("check_ins")
-    .select("id, leads_count, booked_calls_count, referrals_count, created_at")
+    .select("id, business_id, leads_count, booked_calls_count, referrals_count, created_at")
     .order("created_at", { ascending: false })
     .limit(8);
+
+  if (businessId) {
+    query = query.eq("business_id", businessId);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
 
   return (data ?? []).map((row) => ({
     id: row.id,
+    businessId: row.business_id ?? null,
     leadsCount: row.leads_count ?? 0,
     bookedCallsCount: row.booked_calls_count ?? 0,
     referralsCount: row.referrals_count ?? 0,
@@ -208,6 +304,7 @@ export async function getSavedCheckIns(supabase: SupabaseClient): Promise<SavedC
 export async function saveCheckInToSupabase(supabase: SupabaseClient, user: User, input: CheckInInput) {
   const { error } = await supabase.from("check_ins").insert({
     user_id: user.id,
+    business_id: window.localStorage.getItem("simple-marketing-hq:selected-business-id"),
     leads_count: toNumber(input.leads),
     booked_calls_count: toNumber(input.booked),
     referrals_count: toNumber(input.referrals),
