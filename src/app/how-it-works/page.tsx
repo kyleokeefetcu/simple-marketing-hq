@@ -9,13 +9,19 @@ export default function HowItWorksPage() {
       <SiteHeader />
       <section className="mx-auto w-full max-w-4xl px-5 py-12">
         <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">How it works</p>
-        <h1 className="mt-3 text-4xl font-semibold text-slate-950">Find the bottleneck. Choose the next move. Keep momentum.</h1>
+        <h1 className="mt-3 text-4xl font-semibold text-slate-950">Prepare the marketing foundation, then launch through the right channel.</h1>
+        <p className="mt-3 text-base leading-7 text-slate-600">
+          Simple Marketing HQ is not a website scanner or generic checklist. It is a calm workspace for building the offer, message, strategy, content, schedule, research, assets, and recommendations a small business needs before takeoff.
+        </p>
         <div className="mt-8 grid gap-4">
           {[
-            [brand.diagnosticName, "Answer a simple quiz and enter your website URL early."],
-            [brand.growthScoreName, "Get practical grades for messaging, offer strength, lead flow, and follow-up."],
-            [brand.actionPlanName, "See the highest-leverage action items for more leads and booked calls."],
-            [brand.advisorName, "Return later for check-ins, updated recommendations, and execution support."],
+            [brand.diagnosticName, "Start with intake across business, offer, audience, website, lead flow, sales process, content, follow-up, and goals."],
+            [brand.growthScoreName, "Score the foundation across offer clarity, audience clarity, message clarity, conversion readiness, lead capture, follow-up, content consistency, channel readiness, proof, and next-action clarity."],
+            [brand.actionPlanName, "Turn the score into the current bottleneck, highest-leverage objective, next 7 days, next 30 days, missing assets, and order of operations."],
+            ["Offer Builder", "Create a starter offer stack with outcome, customer pain, value, speed, effort reduction, risk reducer, package frame, why-now angle, and CTA."],
+            ["Content Engine", "Generate hooks, authority content, short-form derivatives, long-form outlines, lead magnets, emails, and campaign ideas tied to the offer."],
+            [brand.advisorName, "Decide what to build next with diagnosis, why it matters, step-by-step execution, the asset to create, and the following move."],
+            [brand.recommendationsName, "Recommend external tools and channels only after the foundation is ready for deployment."],
           ].map(([title, body], index) => (
             <article key={title} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-sm font-semibold text-cyan-800">0{index + 1}</p>
