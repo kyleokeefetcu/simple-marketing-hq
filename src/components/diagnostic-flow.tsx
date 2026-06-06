@@ -2,7 +2,7 @@
 
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { brand } from "@/lib/brand";
 import { buildLaunchPadResult, diagnosticQuestions, saveStoredResult } from "@/lib/launchpad";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -10,20 +10,63 @@ import { saveLaunchPadResultToSupabase } from "@/lib/supabase/diagnostics";
 
 export function DiagnosticFlow() {
   const router = useRouter();
-  const [stepIndex, setStepIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [stepIndex, setStepIndex] = useState(() => getSavedStepIndex());
+  const [answers, setAnswers] = useState<Record<string, string>>(() => getSavedAnswers());
+  const [isWorking, setIsWorking] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [saveStatus, setSaveStatus] = useState("");
   const question = diagnosticQuestions[stepIndex];
   const currentValue = answers[question.id] ?? "";
   const progress = ((stepIndex + 1) / diagnosticQuestions.length) * 100;
   const canContinue = currentValue.trim().length > 0;
 
+  useEffect(() => {
+    window.localStorage.setItem("simple-marketing-hq:diagnostic-progress", JSON.stringify({ stepIndex, answers }));
+  }, [stepIndex, answers]);
+
   function setAnswer(value: string) {
+    setErrorMessage("");
+    setSaveStatus("");
     setAnswers((current) => ({ ...current, [question.id]: value }));
   }
 
   async function goNext() {
     if (!canContinue) return;
+    setErrorMessage("");
+    setSaveStatus("");
+
+    if (question.type === "url") {
+      const normalizedUrl = normalizeWebsiteUrl(currentValue);
+      const urlError = validateWebsiteUrl(normalizedUrl);
+      if (urlError) {
+        setErrorMessage(urlError);
+        return;
+      }
+      setAnswers((current) => ({ ...current, [question.id]: normalizedUrl }));
+
+      setIsWorking(true);
+      try {
+        const response = await fetch("/api/website/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ websiteUrl: normalizedUrl }),
+        });
+        const analysis = (await response.json()) as { summary?: string; businessName?: string; error?: string };
+        if (!response.ok) {
+          setErrorMessage(analysis.error ?? "We could not review that website URL. You can fix the URL or continue manually.");
+          setIsWorking(false);
+          return;
+        }
+        setAnswers((current) => ({
+          ...current,
+          websiteAnalysisSummary: analysis.summary ?? "",
+          detectedBusinessName: analysis.businessName ?? "",
+        }));
+      } finally {
+        setIsWorking(false);
+      }
+    }
+
     if (stepIndex === diagnosticQuestions.length - 1) {
       const result = buildLaunchPadResult(answers);
       saveStoredResult(result);
@@ -93,16 +136,17 @@ export function DiagnosticFlow() {
                 value={currentValue}
                 onChange={(event) => setAnswer(event.target.value)}
                 type={question.type === "url" ? "url" : "text"}
-                placeholder={question.placeholder}
+                placeholder={question.inputHint}
                 className="mt-6 w-full rounded-md border border-slate-300 px-4 py-4 text-lg outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100"
               />
             )}
 
             {stepIndex === 0 && currentValue ? (
               <div className="mt-5 rounded-md bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-                Starter website analysis will confirm the business name, offer, CTA, proof, lead capture, and conversion bottlenecks.
+                We will review public website basics and use anything we can read to shape your diagnostic.
               </div>
             ) : null}
+            {errorMessage ? <p className="mt-5 rounded-md bg-red-50 p-4 text-sm font-medium text-red-700">{errorMessage}</p> : null}
             {saveStatus ? <p className="mt-5 rounded-md bg-amber-50 p-4 text-sm font-medium text-amber-800">{saveStatus}</p> : null}
 
             <div className="mt-8 flex items-center justify-between gap-3">
@@ -118,10 +162,10 @@ export function DiagnosticFlow() {
               <button
                 type="button"
                 onClick={goNext}
-                disabled={!canContinue}
+                disabled={!canContinue || isWorking}
                 className="inline-flex min-h-12 items-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white transition hover:bg-cyan-800 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {stepIndex === diagnosticQuestions.length - 1 ? "View Growth Plan" : "Continue"}
+                {isWorking ? "Reviewing..." : stepIndex === diagnosticQuestions.length - 1 ? "View Growth Plan" : "Continue"}
                 <ArrowRight size={18} aria-hidden="true" />
               </button>
             </div>
@@ -130,4 +174,36 @@ export function DiagnosticFlow() {
       </section>
     </main>
   );
+}
+
+function getSavedAnswers() {
+  if (typeof window === "undefined") return {};
+  const raw = window.localStorage.getItem("simple-marketing-hq:diagnostic-progress");
+  if (!raw) return {};
+  return (JSON.parse(raw) as { answers?: Record<string, string> }).answers ?? {};
+}
+
+function getSavedStepIndex() {
+  if (typeof window === "undefined") return 0;
+  const raw = window.localStorage.getItem("simple-marketing-hq:diagnostic-progress");
+  if (!raw) return 0;
+  return (JSON.parse(raw) as { stepIndex?: number }).stepIndex ?? 0;
+}
+
+function validateWebsiteUrl(value: string) {
+  try {
+    const url = new URL(value);
+    if (!["http:", "https:"].includes(url.protocol)) {
+      return "Use a website URL that starts with http:// or https://.";
+    }
+    return "";
+  } catch {
+    return "Enter a valid website URL, including https://.";
+  }
+}
+
+function normalizeWebsiteUrl(value: string) {
+  const trimmed = value.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
 }
