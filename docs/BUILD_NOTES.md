@@ -31,7 +31,8 @@
 - Advisor next-action page
 - Lead capture/account creation-ready panel
 - Marketing foundation command center dashboard
-- RB2B browser tracking remains disabled unless `NEXT_PUBLIC_RB2B_SCRIPT_ID` is configured.
+- RB2B browser tracking for `simplemarketinghq.com` remains disabled unless `NEXT_PUBLIC_RB2B_SCRIPT_ID` is configured.
+- Customer/client website visitor tracking is disabled until RB2B partner/OEM approval and domain configuration rules are confirmed.
 - RB2B API access is prepared server-side with `RB2B_API_KEY`, without live API calls yet.
 - Supabase-ready client/server helper files
 - Exact Supabase SQL is documented in `docs/SQL_REQUIRED.md`.
@@ -39,8 +40,10 @@
 
 ## Next Implementation Steps
 
+- Paste the full master prompt into `docs/PRODUCT_BRIEF.md`.
 - Deepen the scoring model across offer clarity, audience clarity, message clarity, conversion readiness, lead capture, follow-up, content consistency, channel readiness, proof/trust, and next-action clarity.
 - Connect the LaunchPad Diagnostic flow to OpenAI after prompt and data contracts are finalized.
 - Add persistence for generated offer, strategy, content, advisor, and recommendation assets when the data contract is finalized.
-- Add the real RB2B script ID in `NEXT_PUBLIC_RB2B_SCRIPT_ID` only when the `reb2b.load("...")` browser snippet is available.
+- Add the real RB2B script ID in `NEXT_PUBLIC_RB2B_SCRIPT_ID` only when the `reb2b.load("...")` browser snippet is available for `simplemarketinghq.com`.
 - Keep the private RB2B API key in `RB2B_API_KEY` only; do not expose it to the browser.
+- Confirm RB2B API Partner or OEM Partner terms before building customer/client website tracking, domain registration, customer scripts, or webhook ingestion.
