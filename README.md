@@ -14,6 +14,7 @@ npm run dev
 Copy `.env.example` to `.env.local` and add real values when you are ready to connect Supabase, OpenAI, and RB2B.
 
 Supabase setup details live in `docs/SUPABASE_CONNECTION.md`.
+RB2B setup details live in `docs/RB2B_SETUP.md`.
 
 ## Next Step
 
