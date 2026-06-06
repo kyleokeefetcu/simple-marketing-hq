@@ -26,5 +26,7 @@ Security rules:
 - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are browser-safe.
 - `SUPABASE_SERVICE_ROLE_KEY` is not browser-safe. Use it only in server-side code.
 - Do not add real secrets to GitHub.
+- Leave `NEXT_PUBLIC_RB2B_SCRIPT_ID` blank unless you have the browser script ID from `reb2b.load("...")`.
+- Store the private RB2B API key only in `RB2B_API_KEY`; never use it as the browser script ID.
 
 The app can use the tables created by `docs/SQL_REQUIRED.md` once these values are present and Supabase Auth is enabled.
