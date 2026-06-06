@@ -1,14 +1,15 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowRight, BarChart3, CheckCircle2, ClipboardList, LineChart, Target } from "lucide-react";
+import { ArrowRight, BarChart3, CheckCircle2, ClipboardList, Compass, LineChart, MessageSquare, Rocket, Target } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { SiteHeader } from "@/components/site-header";
 import { brand } from "@/lib/brand";
+import { commandCenterModules } from "@/lib/command-center";
 
 const steps = [
-  ["Start the LaunchPad Diagnostic", "Answer simple questions about your offer, customers, lead flow, and follow-up."],
-  ["Get your Growth Score", "See the bottleneck that is most likely blocking more leads or booked calls."],
-  ["Follow your Action Plan", "Focus on the next highest-leverage marketing move instead of guessing."],
+  ["Start the LaunchPad Diagnostic", "Complete intake across offer, audience, website, leads, sales process, content, follow-up, and goals."],
+  ["Prepare the foundation", "Build the offer, message, strategy, content assets, schedule, research, and next actions."],
+  ["Choose takeoff channels", "Use recommendations to decide which outside tools or channels are ready for deployment."],
 ];
 
 export default function Home() {
@@ -21,10 +22,10 @@ export default function Home() {
           <div className="flex flex-col justify-center">
             <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">{brand.positioning}</p>
             <h1 className="mt-4 max-w-3xl text-4xl font-semibold text-slate-950 sm:text-6xl">
-              Simple marketing guidance for small businesses that want more leads.
+              Build your marketing foundation before takeoff.
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-              Complete the LaunchPad Diagnostic, get your Growth Score, and see the next best move to improve your marketing.
+              Simple Marketing HQ is an AI marketing advisor and foundation command center for small businesses. Diagnose what is missing, build the offer and assets, then choose the right channel to launch.
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Link
@@ -60,13 +61,13 @@ export default function Home() {
               <div className="mt-5 rounded-md border border-slate-200 p-4">
                 <p className="text-sm font-semibold text-slate-950">Biggest bottleneck</p>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Your website is getting interest, but the next step is not clear enough to turn visitors into booked calls.
+                  The offer is promising, but the message, proof, content plan, and follow-up assets need to be tightened before launch.
                 </p>
               </div>
               <div className="mt-3 rounded-md bg-cyan-50 p-4">
                 <p className="text-sm font-semibold text-cyan-950">Next move</p>
                 <p className="mt-2 text-sm leading-6 text-cyan-900">
-                  Strengthen the first call-to-action and add proof near the form.
+                  Build the offer stack, create one authority content asset, then map the first campaign.
                 </p>
               </div>
             </div>
@@ -77,8 +78,8 @@ export default function Home() {
       <section className="bg-slate-50 px-5 py-12">
         <SectionHeading
           eyebrow="How it works"
-          title="Your business growth game plan, without the clutter."
-          body="Simple Marketing HQ keeps the product focused: diagnosis, clarity, action, and momentum."
+          title="A calm command center for foundational marketing work."
+          body="Simple Marketing HQ prepares the rocket ship: offer, message, audience, strategy, content, schedule, research, assets, recommendations, and next actions."
         />
         <div className="mx-auto mt-8 grid w-full max-w-6xl gap-4 md:grid-cols-3">
           {steps.map(([title, body], index) => (
@@ -93,9 +94,28 @@ export default function Home() {
 
       <section className="px-5 py-12">
         <div className="mx-auto grid w-full max-w-6xl gap-4 md:grid-cols-3">
-          <Feature icon={<ClipboardList />} title={brand.diagnosticName} body="A one-question-at-a-time intake that captures your website, offer, customer, channels, and follow-up bottleneck." />
-          <Feature icon={<LineChart />} title={brand.growthScoreName} body="A simple score with grades for offer strength, messaging clarity, lead flow, and speed-to-lead." />
-          <Feature icon={<Target />} title={brand.actionPlanName} body="A practical plan that tells you what to fix first, what to ignore, and what to do next." />
+          <Feature icon={<ClipboardList />} title={brand.diagnosticName} body="The intake and first assessment layer, not the whole product." />
+          <Feature icon={<LineChart />} title={brand.growthScoreName} body="A foundation score across offer, audience, message, conversion readiness, follow-up, content, proof, and channel readiness." />
+          <Feature icon={<Target />} title={brand.actionPlanName} body="A practical plan that tells you what to build first, why it matters, and what comes next." />
+          <Feature icon={<Rocket />} title="Offer Builder" body="Shape the outcome, value stack, risk reducer, package frame, why-now angle, and CTA." />
+          <Feature icon={<MessageSquare />} title="Content Engine" body="Create hooks, authority content, short-form derivatives, scripts, lead magnets, emails, and campaign assets." />
+          <Feature icon={<Compass />} title="Strategy Map" body="Plan the next 7 days, next 30 days, missing assets, channel readiness, and order of operations." />
+        </div>
+      </section>
+
+      <section className="bg-slate-50 px-5 py-12">
+        <SectionHeading
+          eyebrow="Command center"
+          title="The product spine points beyond the diagnostic."
+          body="The LaunchPad Diagnostic starts the work. The command center turns it into foundational marketing assets and a clear launch path."
+        />
+        <div className="mx-auto mt-8 grid w-full max-w-6xl gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {commandCenterModules.map((module) => (
+            <Link key={module.slug} href={module.href} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+              <h3 className="text-lg font-semibold text-slate-950">{module.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{module.body}</p>
+            </Link>
+          ))}
         </div>
       </section>
 
@@ -120,10 +140,10 @@ export default function Home() {
         <div className="mx-auto grid w-full max-w-6xl gap-6 md:grid-cols-[1fr_1fr_auto] md:items-center">
           <div>
             <p className="text-sm font-semibold text-amber-200">Free now, paid-ready later</p>
-            <h2 className="mt-2 text-3xl font-semibold">Start with diagnosis. Upgrade for execution.</h2>
+            <h2 className="mt-2 text-3xl font-semibold">Start with the foundation. Upgrade for deeper execution.</h2>
           </div>
           <p className="text-sm leading-6 text-cyan-100">
-            Free users get clarity, scores, and a focused action plan. Paid plans will unlock saved history, deeper execution, content assets, visitor intelligence, referrals, and optimization.
+            Free users get intake, scoring, offer starters, content starters, strategy direction, and next actions. Paid plans will unlock deeper execution, saved history, richer assets, visitor intelligence, referrals, and optimization.
           </p>
           <Link href="/diagnostic" className="inline-flex min-h-12 items-center justify-center rounded-md bg-amber-300 px-5 py-3 font-semibold text-cyan-950">
             Start Diagnostic
