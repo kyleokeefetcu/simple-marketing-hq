@@ -16,6 +16,6 @@ Copy `.env.example` to `.env.local` and add real values when you are ready to co
 Supabase setup details live in `docs/SUPABASE_CONNECTION.md`.
 RB2B setup details live in `docs/RB2B_SETUP.md`.
 
-## Next Step
+## Product Direction
 
-Paste the full Simple Marketing HQ master prompt into `docs/PRODUCT_BRIEF.md` under the placeholder section, then continue implementation from that brief.
+Use `docs/PRODUCT_BRIEF.md` as the source of truth for product direction and implementation priorities.
