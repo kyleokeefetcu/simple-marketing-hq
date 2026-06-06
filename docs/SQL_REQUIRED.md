@@ -1,11 +1,20 @@
 # SQL Required
 
-SQL is required for the production SaaS MVP because Simple Marketing HQ now needs user accounts, saved business profiles, saved LaunchPad Diagnostics, LaunchPad Growth Scores, LaunchPad Action Plans, check-ins, visitor intelligence, referral foundations, and subscription-ready records.
+SQL is required for the production SaaS because Simple Marketing HQ uses user accounts, multiple Business / Client profiles, saved LaunchPad Diagnostics, LaunchPad Growth Scores, LaunchPad Action Plans, check-ins, visitor intelligence, referral foundations, and subscription-ready records.
 
-Run the full SQL below in the Supabase SQL Editor before depending on production persistence. The local MVP can still run with browser storage as a fallback until Supabase environment variables are configured.
+No additional SQL is required for the current multi-business/client UI update if you already ran the SQL below. The existing schema supports:
+
+- Multiple businesses per user through `public.businesses.owner_id`.
+- Per-business diagnostics through `public.launchpad_diagnostics.business_id`.
+- Per-business website analyses, recommendations, check-ins, generated assets, visitor records, referral records, and partner recommendations through existing `business_id` columns.
+- RLS ownership by user and by owned business records.
+
+Future team workspaces will require new workspace/membership tables, but the current requirement is supported by the existing user account as the account/workspace layer.
+
+Run the full SQL below in the Supabase SQL Editor before depending on production persistence. The app can still preserve local diagnostic progress in the browser if Supabase environment variables are not configured.
 
 ```sql
--- Simple Marketing HQ MVP schema
+-- Simple Marketing HQ production schema
 -- Run this in the Supabase SQL Editor before relying on production persistence.
 
 create extension if not exists pgcrypto;
