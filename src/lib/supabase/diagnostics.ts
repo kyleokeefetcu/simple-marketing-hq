@@ -13,6 +13,36 @@ export type SavedDiagnosticSummary = {
   completedAt: string;
 };
 
+export type SavedCheckInSummary = {
+  id: string;
+  leadsCount: number;
+  bookedCallsCount: number;
+  referralsCount: number;
+  createdAt: string;
+};
+
+export type CheckInInput = {
+  leads: string;
+  booked: string;
+  referrals: string;
+  objections: string;
+  comments: string;
+  content: string;
+  changes: string;
+  missed: string;
+};
+
+export type ReferralProfileInput = {
+  businessName: string;
+  description: string;
+  services: string;
+  serviceArea: string;
+  idealCustomer: string;
+  bestReferralTypes: string;
+  contactMethod: string;
+  bookingLink: string;
+};
+
 type DiagnosticRow = {
   id: string;
   website_url: string | null;
@@ -88,7 +118,7 @@ export async function saveLaunchPadResultToSupabase(
       website_url: result.websiteUrl,
       analysis: {
         findings: result.websiteFindings,
-        source: "starter-placeholder",
+        source: "starter-analysis",
       },
     }),
     supabase.from("launchpad_scores").insert({
@@ -155,4 +185,81 @@ export async function getSavedDiagnostics(supabase: SupabaseClient): Promise<Sav
     nextMove: row.summary?.nextMove ?? "Run or update the LaunchPad Diagnostic.",
     completedAt: row.completed_at ?? row.created_at,
   }));
+}
+
+export async function getSavedCheckIns(supabase: SupabaseClient): Promise<SavedCheckInSummary[]> {
+  const { data, error } = await supabase
+    .from("check_ins")
+    .select("id, leads_count, booked_calls_count, referrals_count, created_at")
+    .order("created_at", { ascending: false })
+    .limit(8);
+
+  if (error) throw error;
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    leadsCount: row.leads_count ?? 0,
+    bookedCallsCount: row.booked_calls_count ?? 0,
+    referralsCount: row.referrals_count ?? 0,
+    createdAt: row.created_at,
+  }));
+}
+
+export async function saveCheckInToSupabase(supabase: SupabaseClient, user: User, input: CheckInInput) {
+  const { error } = await supabase.from("check_ins").insert({
+    user_id: user.id,
+    leads_count: toNumber(input.leads),
+    booked_calls_count: toNumber(input.booked),
+    referrals_count: toNumber(input.referrals),
+    notes: {
+      objections: input.objections,
+      comments: input.comments,
+      content: input.content,
+      changes: input.changes,
+      missed: input.missed,
+    },
+  });
+
+  if (error) throw error;
+}
+
+export async function saveReferralProfileToSupabase(supabase: SupabaseClient, user: User, input: ReferralProfileInput) {
+  await supabase.from("profiles").upsert({
+    id: user.id,
+    email: user.email,
+    full_name: user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? null,
+  });
+
+  const { data: business, error: businessError } = await supabase
+    .from("businesses")
+    .insert({
+      owner_id: user.id,
+      name: input.businessName,
+      website_url: input.bookingLink,
+      description: input.description,
+      services: input.services,
+      service_area: input.serviceArea,
+      ideal_customer: input.idealCustomer,
+      booking_link: input.bookingLink,
+    })
+    .select("id")
+    .single();
+
+  if (businessError) throw businessError;
+
+  const { error } = await supabase.from("referral_profiles").insert({
+    business_id: business.id,
+    short_description: input.description,
+    best_referral_types: input.bestReferralTypes,
+    contact_method: input.contactMethod,
+    social_links: {},
+    proof: [],
+  });
+
+  if (error) throw error;
+}
+
+function toNumber(value: string) {
+  const parsed = Number.parseInt(value || "0", 10);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
