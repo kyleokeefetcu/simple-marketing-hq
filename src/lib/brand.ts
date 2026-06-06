@@ -3,7 +3,7 @@ export const brand = {
   appShortName: "Simple HQ",
   appDomain: "simplemarketinghq.com",
   appUrl: "https://simplemarketinghq.com",
-  positioning: "AI marketing advisor for small businesses",
+  positioning: "AI marketing advisor and foundation command center for small businesses",
   frameworkName: "LaunchPad",
   diagnosticName: "LaunchPad Diagnostic",
   growthScoreName: "LaunchPad Growth Score",
