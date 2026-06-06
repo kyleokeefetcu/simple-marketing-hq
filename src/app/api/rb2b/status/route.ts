@@ -6,6 +6,6 @@ export function GET() {
 
   return NextResponse.json({
     ...status,
-    note: "RB2B_API_KEY is server-only and is never returned by this endpoint. Live RB2B API calls are not enabled yet.",
+    note: "RB2B_API_KEY is server-only and is never returned by this endpoint. NEXT_PUBLIC_RB2B_SCRIPT_ID is only for Simple Marketing HQ site tracking. Customer website tracking and live RB2B API calls are not enabled yet.",
   });
 }
