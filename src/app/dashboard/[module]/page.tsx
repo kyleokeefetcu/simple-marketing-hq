@@ -6,11 +6,21 @@ import { dashboardModules } from "@/lib/launchpad";
 const moduleDetails: Record<string, string[]> = {
   message: ["Offer", "Homepage headline", "Positioning", "Elevator pitch", "Follow-up scripts"],
   customers: ["Ideal customer", "Pain points", "Customer goals", "Neighborhoods or industries", "Best referral sources"],
-  website: ["Website diagnosis", "CTA review", "Trust signals", "Lead capture", "Fred AI/chat placeholder", "RB2B visitor intelligence placeholder"],
+  website: ["Website diagnosis", "CTA review", "Trust signals", "Lead capture", "Visitor intelligence"],
   visibility: ["SEO", "Google Business Profile", "Social content", "Paid ads", "Content recommendations"],
-  referrals: ["Referral partner profile", "Shareable business profile", "Ideal referral description", "Referral tracking foundation", "Power team placeholder"],
-  "follow-up": ["Speed-to-lead", "Missed opportunity warnings", "Suggested follow-up scripts", "Email/SMS sequence placeholders", "Response recommendations"],
+  referrals: ["Referral partner profile", "Shareable business profile", "Ideal referral description", "Referral tracking", "Trusted partner list"],
+  "follow-up": ["Speed-to-lead", "Missed opportunity warnings", "Suggested follow-up scripts", "Response recommendations"],
   momentum: ["Leads this week", "Booked calls", "Referral activity", "Repeat visitors", "Recommended next action"],
+};
+
+const moduleActions: Record<string, { href: string; label: string; body: string }> = {
+  message: { href: "/diagnostic", label: "Update diagnostic", body: "Refresh your offer and message inputs so your action plan stays current." },
+  customers: { href: "/diagnostic", label: "Update customer focus", body: "Clarify who you want more of and what outcome matters most to them." },
+  website: { href: "/diagnostic", label: "Review website", body: "Run the diagnostic with your current website URL and conversion notes." },
+  visibility: { href: "/content-engine", label: "Generate campaign ideas", body: "Create attention-first hooks for the channel you want to improve." },
+  referrals: { href: "/dashboard/referrals", label: "Edit referral profile", body: "Save a profile you can use for warm introductions and partner conversations." },
+  "follow-up": { href: "/check-in", label: "Log follow-up notes", body: "Capture missed follow-ups, objections, and response patterns from this week." },
+  momentum: { href: "/check-in", label: "Save weekly check-in", body: "Update lead, booking, referral, and follow-up activity." },
 };
 
 export default async function DashboardModulePage({ params }: { params: Promise<{ module: string }> }) {
@@ -33,9 +43,15 @@ export default async function DashboardModulePage({ params }: { params: Promise<
             {moduleDetails[dashboardModule.slug].map((item) => (
               <div key={item} className="rounded-md border border-slate-200 p-4">
                 <p className="font-semibold text-slate-950">{item}</p>
-                <p className="mt-2 text-sm leading-6 text-slate-600">MVP placeholder ready for saved data, AI recommendations, and paid-plan gates.</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">Use your saved diagnostic and check-in history to make this part of the growth plan sharper.</p>
               </div>
             ))}
+          </div>
+          <div className="mt-6 rounded-md bg-cyan-50 p-4">
+            <p className="font-semibold text-cyan-950">{moduleActions[dashboardModule.slug].body}</p>
+            <Link href={moduleActions[dashboardModule.slug].href} className="mt-3 inline-flex rounded-md bg-cyan-900 px-4 py-2 text-sm font-semibold text-white">
+              {moduleActions[dashboardModule.slug].label}
+            </Link>
           </div>
         </article>
       </section>
