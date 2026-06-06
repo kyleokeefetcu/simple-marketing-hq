@@ -28,7 +28,8 @@
 - LaunchPad Recommendations output
 - Lead capture/account creation-ready panel
 - LaunchPad Advisor dashboard placeholder
-- RB2B tracking-ready component and environment variable
+- RB2B browser tracking remains disabled unless `NEXT_PUBLIC_RB2B_SCRIPT_ID` is configured.
+- RB2B API access is prepared server-side with `RB2B_API_KEY`, without live API calls yet.
 - Supabase-ready client/server helper files
 - Exact Supabase SQL is documented in `docs/SQL_REQUIRED.md`.
 - Local browser storage is used as a fallback until Supabase environment variables and SQL are configured.
@@ -40,4 +41,5 @@
 - Add Supabase schema once data requirements are known.
 - Connect the LaunchPad Diagnostic flow to OpenAI after prompt and data contracts are finalized.
 - Add authentication and lead capture persistence.
-- Add the real RB2B script ID in environment variables when available.
+- Add the real RB2B script ID in `NEXT_PUBLIC_RB2B_SCRIPT_ID` only when the `reb2b.load("...")` browser snippet is available.
+- Keep the private RB2B API key in `RB2B_API_KEY` only; do not expose it to the browser.
