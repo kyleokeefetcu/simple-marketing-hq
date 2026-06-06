@@ -183,7 +183,7 @@ export function buildLaunchPadResult(answers: Record<string, string>): LaunchPad
       "Create one simple follow-up script for every new lead this week.",
     ],
     websiteFindings: [
-      `Starter analysis detected ${businessName} from the website URL.`,
+      `Website review detected ${businessName} from the website URL.`,
       answers.websiteAnalysisSummary || "Website review will use your saved URL and diagnostic answers to guide the next action.",
       "Review homepage headline, primary CTA, trust signals, lead capture, SEO basics, and service area.",
     ],
