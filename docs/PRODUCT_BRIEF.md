@@ -12,6 +12,19 @@ Critical naming rule: Simple Marketing HQ is the public product name. LaunchPad 
 
 Simple Marketing HQ is being built as a sellable SaaS from the beginning. It should support a public website, user accounts/login, saved diagnostics, saved business profiles, customer dashboard, diagnostic history, recurring check-ins, subscription-ready architecture, referral foundations, visitor intelligence foundations, and future paid upgrade paths.
 
+Simple Marketing HQ must support users who manage more than one business:
+
+- A business owner with multiple businesses or brands.
+- A marketing agency with multiple client businesses.
+- A consultant or advisor using the platform with different customer accounts.
+- Future team accounts with multiple collaborators inside one workspace.
+
+Data/product hierarchy:
+
+User Account -> Workspace / Account -> Business or Client Profile -> LaunchPad Diagnostic -> Growth Score -> Action Plan -> Offer Builder assets -> Content Engine assets -> Strategy Map -> Advisor threads -> Recommendations.
+
+In the current MVP, the user profile acts as the account/workspace layer. Business / Client profiles are stored as multiple `businesses` rows owned by that user. Future team collaboration can add explicit workspace and membership tables when team seats are implemented.
+
 ## Product Direction
 
 Simple Marketing HQ is not just a website scanner, SEO scanner, diagnostic quiz, checklist app, generic CRM, automation platform, or content calendar. The LaunchPad Diagnostic is the intake and first assessment layer, not the core product.
@@ -103,6 +116,10 @@ Avoid language that reduces the product to a website scanner, SEO scanner, gener
 The app should support:
 
 - Sign up, login, logout.
+- One account/workspace with multiple Business / Client profiles.
+- Business / Client switcher in the dashboard.
+- Add Business / Client flow.
+- Per-business diagnostic, score, action-plan, offer, content, strategy, advisor, and recommendation context.
 - Saved diagnostics and growth scores.
 - Saved business profile.
 - Customer dashboard.
@@ -113,11 +130,34 @@ The app should support:
 - RB2B/server-side visitor intelligence foundations.
 - Referral partner foundations.
 
+## Pricing Direction
+
+Simple Marketing HQ is priced as a marketing foundation command center, not a cheap scanner.
+
+1. Free Diagnostic: $0
+   1 business, 1 LaunchPad Diagnostic, Basic Growth Score, limited recommendations, no full saved asset library.
+
+2. Starter: $25/month
+   1 business, saved diagnostic history, LaunchPad Action Plan, Basic Offer Builder, Basic Content Engine, limited AI generations.
+
+3. Owner: $75/month
+   Up to 3 businesses, Full Offer Builder, Full Content Engine, Strategy Map, LaunchPad Advisor access, saved assets, exportable action plans.
+
+4. Growth / Agency Lite: $150/month
+   Up to 10 businesses/clients, higher AI usage, client/business switcher, saved content plans, saved advisor threads, branded/exportable reports later.
+
+5. Agency Pro: $300/month
+   Up to 25 businesses/clients, team seats, higher AI limits, client workspace/reporting, priority workflows, white-label-ready structure later.
+
+6. Additional Business / Client: $15/month per additional Business / Client after plan limit.
+
 ## Data Direction
 
 Existing Supabase tables support the current MVP persistence for profiles, businesses, LaunchPad diagnostics, answers, website analyses, scores, action plans, recommendations, check-ins, visitor foundations, referral foundations, subscriptions, and partner recommendations.
 
-No new SQL is required for the current command-center UI pass because new module outputs are generated from the saved diagnostic and local state. Add SQL only when generated offer, strategy, content, research, advisor, and schedule assets need first-class saved records.
+The existing `businesses.owner_id` relationship supports multiple businesses per user. The existing `launchpad_diagnostics.business_id` and related `business_id` columns support per-business scoping for diagnostics, recommendations, visitor records, referral records, generated assets, check-ins, and partner recommendations.
+
+No new SQL is required for the current multi-business UI pass because the current schema already supports multiple Business / Client profiles under a user account. Add SQL only when explicit team workspaces/memberships or first-class saved offer, strategy, content, research, advisor, and schedule records are implemented.
 
 ## Acceptance Criteria
 
@@ -133,5 +173,7 @@ The MVP direction is successful when a user can:
 8. Ask the LaunchPad Advisor what to build next.
 9. View focused Recommendations for takeoff channels/tools.
 10. Save diagnostics and return to the dashboard.
+11. Add/select multiple Business / Client profiles under one account.
+12. View per-business status summaries and scoped module links.
 
 Final instruction: Simple Marketing HQ is the public product. LaunchPad is the internal diagnostic/advisor framework. The app should feel like a calm command center that prepares a small business for better marketing launch decisions.
