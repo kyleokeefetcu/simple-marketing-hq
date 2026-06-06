@@ -278,7 +278,7 @@ export function DashboardHome() {
               <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Command center spine</p>
               <h2 className="mt-2 text-2xl font-semibold text-slate-950">Build the foundation before launch.</h2>
             </div>
-              <Link href={scopedHref("/offer-builder", selectedBusinessId)} className="inline-flex min-h-12 items-center justify-center rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
+            <Link href={scopedHref("/offer-builder", selectedBusinessId)} className="inline-flex min-h-12 items-center justify-center rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
               Start Offer Builder
             </Link>
           </div>
@@ -290,6 +290,38 @@ export function DashboardHome() {
               </Link>
             ))}
           </div>
+        </article>
+
+        <article className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Website Visitor Intelligence</p>
+              <h2 className="mt-2 text-2xl font-semibold text-slate-950">Customer website tracking is not active yet.</h2>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+                Simple Marketing HQ site tracking is separate from customer/client website tracking. Customer tracking requires RB2B partner or OEM approval, customer domain configuration, and a confirmed integration flow before any install script is shown.
+              </p>
+            </div>
+            <span className="inline-flex min-h-10 items-center justify-center rounded-md bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700">
+              Activation required
+            </span>
+          </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            <div className="rounded-md border border-slate-200 p-4">
+              <p className="font-semibold text-slate-950">Domain setup</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">Each Business / Client website needs its own approved domain setup. One global Simple Marketing HQ script is not used for customer websites.</p>
+            </div>
+            <div className="rounded-md border border-slate-200 p-4">
+              <p className="font-semibold text-slate-950">Data access</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">Visitor/company records will be routed to the matching business profile so customers only see their own website activity.</p>
+            </div>
+            <div className="rounded-md border border-slate-200 p-4">
+              <p className="font-semibold text-slate-950">Privacy review</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">Activation requires approved consent, privacy, and customer installation language before tracking can be enabled.</p>
+            </div>
+          </div>
+          <button disabled className="mt-5 inline-flex min-h-12 cursor-not-allowed items-center justify-center rounded-md border border-slate-300 px-5 py-3 font-semibold text-slate-500">
+            Configure after partner approval
+          </button>
         </article>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
