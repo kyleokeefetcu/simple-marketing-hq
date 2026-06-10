@@ -2,14 +2,16 @@
 
 SQL is required for the production SaaS because Simple Marketing HQ uses user accounts, multiple Business / Client profiles, saved LaunchPad Diagnostics, LaunchPad Growth Scores, LaunchPad Action Plans, check-ins, visitor intelligence, referral foundations, and subscription-ready records.
 
-No additional SQL is required for the current multi-business/client UI update if you already ran the SQL below. The existing schema supports:
+No additional SQL is required for the current multi-business/client and ICP Builder starter-generator update if you already ran the SQL below. The existing schema supports:
 
 - Multiple businesses per user through `public.businesses.owner_id`.
 - Per-business diagnostics through `public.launchpad_diagnostics.business_id`.
+- Starter ICP inputs through `public.launchpad_answers`.
+- Starter ICP and industry-match summary values through `public.launchpad_diagnostics.summary`.
 - Per-business website analyses, recommendations, check-ins, generated assets, visitor records, referral records, and partner recommendations through existing `business_id` columns.
 - RLS ownership by user and by owned business records.
 
-Future team workspaces will require new workspace/membership tables, but the current requirement is supported by the existing user account as the account/workspace layer.
+Future team workspaces and first-class saved ICP assets will require new workspace/membership and ICP asset tables, but the current requirement is supported by the existing user account as the account/workspace layer.
 
 Run the full SQL below in the Supabase SQL Editor before depending on production persistence. The app can still preserve local diagnostic progress in the browser if Supabase environment variables are not configured.
 
