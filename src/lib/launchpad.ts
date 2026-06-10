@@ -14,6 +14,24 @@ export type DiagnosticQuestion = {
   options?: DiagnosticAnswer[];
 };
 
+export type WebsiteAnalysisProfile = {
+  websiteUrl: string;
+  readable: boolean;
+  businessName: string;
+  industryCategory: string;
+  industryLabel: string;
+  services: string;
+  serviceArea: string;
+  primaryCustomer: string;
+  primaryCta: string;
+  trustSignals: string;
+  leadCapture: string;
+  messagingClarityNotes: string;
+  homepageHeadline: string;
+  summary: string;
+  findings: string[];
+};
+
 export type LaunchPadResult = {
   businessName: string;
   websiteUrl: string;
@@ -40,113 +58,40 @@ export type LaunchPadResult = {
 
 export const diagnosticQuestions: DiagnosticQuestion[] = [
   {
-    id: "websiteUrl",
-    eyebrow: "Step 1",
-    question: "What is your business website?",
-    helper: "We will use this as one input for your marketing foundation review, then confirm the important parts manually.",
-    type: "url",
-    inputHint: "https://yourcompany.com",
-  },
-  {
     id: "whatSelling",
-    eyebrow: "Your offer",
-    question: "What are you selling?",
-    helper: "Keep it plain. Services, products, appointments, consultations, estimates, or something else.",
+    eyebrow: "Fill the gaps",
+    question: "What do you most want to sell right now?",
+    helper: "Pick the offer, service, product, package, or appointment you want the command center to prioritize.",
     type: "text",
-    inputHint: "Roof repair, bookkeeping, coaching, design services...",
-  },
-  {
-    id: "industryCategory",
-    eyebrow: "Industry match",
-    question: "What industry or category best fits your business?",
-    helper: "This helps Simple Marketing HQ adapt pains, objections, proof, channels, and next actions to your market.",
-    type: "choice",
-    options: [
-      { id: "local-service", label: "Local service business", value: "local_service" },
-      { id: "home-services", label: "Contractor / home services", value: "home_services" },
-      { id: "medical", label: "Medical / wellness", value: "medical_wellness" },
-      { id: "real-estate", label: "Real estate", value: "real_estate" },
-      { id: "professional", label: "Legal / professional services", value: "professional_services" },
-      { id: "restaurant", label: "Restaurant / retail", value: "restaurant_retail" },
-      { id: "b2b", label: "B2B services", value: "b2b_services" },
-      { id: "saas", label: "SaaS / software", value: "saas_software" },
-      { id: "coaching", label: "Coaching / consulting", value: "coaching_consulting" },
-      { id: "creator", label: "Creator / course business", value: "creator_course" },
-      { id: "agency", label: "Agency", value: "agency" },
-      { id: "ecommerce", label: "Ecommerce", value: "ecommerce" },
-    ],
+    inputHint: "Roof replacement, bookkeeping cleanup, strategy call, design package...",
   },
   {
     id: "targetCustomer",
-    eyebrow: "ICP Builder",
+    eyebrow: "Fill the gaps",
     question: "Who is the best-fit customer you want more of?",
-    helper: "Name the customer segment, buyer type, company size, budget level, and location or service area if relevant.",
+    helper: "This is about quality, not just audience. Name the customers who are most profitable, easiest to help, or most urgent.",
     type: "text",
     inputHint: "Homeowners in Dallas with storm damage, 10-50 employee law firms, early-stage SaaS founders...",
   },
   {
-    id: "profitableCustomer",
-    eyebrow: "ICP Builder",
-    question: "Which customers are most profitable or easiest to help?",
-    helper: "This separates best-fit customers from people who only look similar on the surface.",
-    type: "text",
-    inputHint: "Customers with urgent repairs, funded teams, businesses with an existing website...",
-  },
-  {
-    id: "hardestCustomer",
-    eyebrow: "ICP Builder",
-    question: "Which customers are hardest to serve or usually a bad fit?",
-    helper: "Bad-fit traits help protect your offer, content, and recommendations from chasing the wrong demand.",
-    type: "text",
-    inputHint: "Price-only shoppers, unclear budgets, people outside our service area...",
-  },
-  {
     id: "customerResult",
-    eyebrow: "Customer outcome",
+    eyebrow: "Fill the gaps",
     question: "What result do customers want most?",
     helper: "This helps your LaunchPad Action Plan focus on what buyers actually care about.",
     type: "text",
     inputHint: "More leads, less stress, faster repairs, more booked calls...",
   },
   {
-    id: "urgentProblem",
-    eyebrow: "Buyer pain",
-    question: "What problem makes your best-fit customer look for help now?",
-    helper: "The strongest ICPs have a trigger: something changed, broke, expired, got expensive, or became urgent.",
+    id: "marketingFrustration",
+    eyebrow: "Fill the gaps",
+    question: "What is your biggest marketing frustration right now?",
+    helper: "Tell us what feels stuck. We will use this to sharpen the bottleneck and next action.",
     type: "text",
-    inputHint: "A roof leak after a storm, missed appointments, slow sales pipeline, rising ad costs...",
-  },
-  {
-    id: "currentAlternative",
-    eyebrow: "Current alternative",
-    question: "What do they usually try before buying from you?",
-    helper: "This helps your message beat the workaround, competitor, DIY path, or delay.",
-    type: "text",
-    inputHint: "DIY fixes, asking friends, hiring a cheaper provider, using spreadsheets...",
-  },
-  {
-    id: "trustFactor",
-    eyebrow: "Proof and trust",
-    question: "What makes them trust you enough to take the next step?",
-    helper: "Proof needs vary by industry: reviews, credentials, case studies, before/after, guarantees, demos, or social proof.",
-    type: "text",
-    inputHint: "Reviews, certifications, before/after photos, case studies, clear pricing...",
-  },
-  {
-    id: "currentOffer",
-    eyebrow: "Current offer",
-    question: "How clear is your current offer?",
-    helper: "Your offer is the thing people say yes to.",
-    type: "choice",
-    options: [
-      { id: "clear", label: "Very clear", value: "The offer is clear and easy to understand." },
-      { id: "somewhat", label: "Somewhat clear", value: "The offer is understandable but could be sharper." },
-      { id: "unclear", label: "Not clear yet", value: "The offer needs work." },
-    ],
+    inputHint: "We get traffic but no calls, referrals are inconsistent, content takes too long...",
   },
   {
     id: "leadSource",
-    eyebrow: "Lead flow",
+    eyebrow: "Fill the gaps",
     question: "How are leads currently coming in?",
     helper: "Pick the main source, even if it is inconsistent.",
     type: "choice",
@@ -160,7 +105,7 @@ export const diagnosticQuestions: DiagnosticQuestion[] = [
   },
   {
     id: "leadDropoff",
-    eyebrow: "Bottleneck",
+    eyebrow: "Fill the gaps",
     question: "Where are leads falling through?",
     helper: "This is usually where the next highest-leverage move lives.",
     type: "choice",
@@ -174,7 +119,7 @@ export const diagnosticQuestions: DiagnosticQuestion[] = [
   },
   {
     id: "responseSpeed",
-    eyebrow: "Speed to lead",
+    eyebrow: "Fill the gaps",
     question: "How quickly do you respond to new leads?",
     helper: "Fast follow-up is often the simplest way to win more booked calls.",
     type: "choice",
@@ -187,15 +132,17 @@ export const diagnosticQuestions: DiagnosticQuestion[] = [
   },
   {
     id: "channels",
-    eyebrow: "Channels",
-    question: "Which marketing channels are you using now?",
-    helper: "Choose the closest fit. Your plan can get more specific later.",
+    eyebrow: "Fill the gaps",
+    question: "What channel do you want to focus on first?",
+    helper: "The command center will prepare the foundation for this channel. You can change it later.",
     type: "choice",
     options: [
-      { id: "one", label: "One main channel", value: "one" },
-      { id: "few", label: "A few channels", value: "few" },
-      { id: "many", label: "Too many channels", value: "many" },
-      { id: "none", label: "No clear channel", value: "none" },
+      { id: "search", label: "Google / SEO", value: "search" },
+      { id: "social", label: "Social content", value: "social" },
+      { id: "email", label: "Email / follow-up", value: "email" },
+      { id: "ads", label: "Paid ads", value: "ads" },
+      { id: "referrals", label: "Referrals", value: "referrals" },
+      { id: "not-sure", label: "Not sure yet", value: "none" },
     ],
   },
 ];
@@ -213,13 +160,15 @@ export const dashboardModules = [
 export function buildLaunchPadResult(answers: Record<string, string>): LaunchPadResult {
   const websiteUrl = answers.websiteUrl || "";
   const host = websiteUrl.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0];
-  const businessName = answers.detectedBusinessName || (host ? titleCase(host.split(".")[0].replace(/[-_]/g, " ")) : "Your business");
-  const clearOffer = answers.currentOffer?.includes("clear") && !answers.currentOffer?.includes("needs");
+  const businessName = answers.businessName || answers.detectedBusinessName || (host ? titleCase(host.split(".")[0].replace(/[-_]/g, " ")) : "Your business");
+  const clearOffer =
+    (answers.currentOffer?.includes("clear") && !answers.currentOffer?.includes("needs")) ||
+    Boolean(answers.whatSelling?.trim() && answers.primaryCta?.trim());
   const hasTarget = Boolean(answers.targetCustomer?.trim());
-  const hasProfitableCustomer = Boolean(answers.profitableCustomer?.trim());
+  const hasProfitableCustomer = Boolean(answers.profitableCustomer?.trim() || answers.primaryCustomer?.trim());
   const hasBadFit = Boolean(answers.hardestCustomer?.trim());
-  const hasUrgentProblem = Boolean(answers.urgentProblem?.trim());
-  const hasAlternative = Boolean(answers.currentAlternative?.trim());
+  const hasUrgentProblem = Boolean(answers.urgentProblem?.trim() || answers.marketingFrustration?.trim());
+  const hasAlternative = Boolean(answers.currentAlternative?.trim() || answers.leadDropoff?.trim());
   const hasTrust = Boolean(answers.trustFactor?.trim());
   const slowFollowUp = ["nextDay", "inconsistent"].includes(answers.responseSpeed || "");
   const dropoff = answers.leadDropoff || "unknown";
@@ -279,6 +228,8 @@ export function buildLaunchPadResult(answers: Record<string, string>): LaunchPad
     websiteFindings: [
       `Foundation review detected ${businessName} from the website URL.`,
       answers.websiteAnalysisSummary || "Website input will be combined with your diagnostic answers to shape the command center plan.",
+      answers.messagingClarityNotes || "Messaging clarity notes will improve as the command center learns from your site and answers.",
+      answers.leadCaptureFound ? `Lead capture found: ${answers.leadCaptureFound}.` : "Lead capture needs a closer review.",
       `Industry match: ${industryProfile.label}. Use this to adapt buyer pains, objections, proof, channels, and next actions.`,
       "Review ICP clarity, industry fit, buyer pain, trigger urgency, offer fit, channel fit, proof, lead capture, follow-up, and content consistency.",
     ],
