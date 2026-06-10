@@ -1,4 +1,4 @@
-import type { LaunchPadResult } from "@/lib/launchpad";
+import { getIndustryProfile, type LaunchPadResult } from "@/lib/launchpad";
 
 export const commandCenterModules = [
   {
@@ -11,13 +11,13 @@ export const commandCenterModules = [
     slug: "growth-score",
     title: "Growth Score",
     href: "/diagnostic/result",
-    body: "Score the marketing foundation across offer clarity, audience clarity, message clarity, conversion readiness, lead capture, follow-up, content, channel readiness, proof, and next-action clarity.",
+    body: "Score the marketing foundation across ICP clarity, industry fit, offer clarity, message clarity, conversion readiness, proof, follow-up, and channel readiness.",
   },
   {
-    slug: "action-plan",
-    title: "Action Plan",
-    href: "/diagnostic/result",
-    body: "Turn the diagnosis into the highest-leverage objective, recommended order of operations, and first execution steps.",
+    slug: "icp-builder",
+    title: "ICP Builder",
+    href: "/icp-builder",
+    body: "Define the best-fit customer, bad-fit traits, buying triggers, objections, proof needed, lead magnets, and channel fit.",
   },
   {
     slug: "offer-builder",
@@ -26,16 +26,16 @@ export const commandCenterModules = [
     body: "Shape the dream outcome, customer pain, value stack, speed-to-result, effort reduction, risk reversal, package frame, and CTA.",
   },
   {
-    slug: "content-engine",
-    title: "Content Engine",
-    href: "/content-engine",
-    body: "Create authority content, short-form hooks, long-form outlines, lead magnet ideas, email sequences, and campaign assets.",
-  },
-  {
     slug: "strategy-map",
     title: "Strategy Map",
     href: "/strategy-map",
     body: "Plan the next 7 days, next 30 days, missing assets, channel readiness, and review rhythm.",
+  },
+  {
+    slug: "content-engine",
+    title: "Content Engine",
+    href: "/content-engine",
+    body: "Create authority content, short-form hooks, long-form outlines, lead magnet ideas, email sequences, and campaign assets.",
   },
   {
     slug: "advisor",
@@ -50,6 +50,48 @@ export const commandCenterModules = [
     body: "Recommend outside tools and channels only after the foundation is clear enough for takeoff.",
   },
 ];
+
+export function buildIcpStarter(result: LaunchPadResult | null) {
+  const industry = getIndustryProfile(result?.answers.industryCategory);
+  const bestFit = result?.answers.targetCustomer || "Best-fit customers are not defined yet. Start by naming the buyer segment, size, budget, location, and decision maker.";
+  const profitable = result?.answers.profitableCustomer || "Prioritize customers with a real urgent problem, enough budget, and a clear reason to act now.";
+  const badFit = result?.answers.hardestCustomer || "Avoid customers who lack budget, urgency, trust, or fit for your core offer.";
+  const urgentProblem = result?.answers.urgentProblem || "Clarify the specific event or pain that makes this customer start looking for help.";
+  const outcome = result?.answers.customerResult || "a measurable outcome they care about";
+  const alternative = result?.answers.currentAlternative || "DIY workarounds, cheaper providers, asking peers, spreadsheets, or doing nothing";
+  const proof = result?.answers.trustFactor || industry.proof;
+  const offer = result?.answers.whatSelling || "your core service or product";
+
+  return {
+    industry: industry.label,
+    bestFitSummary: `${bestFit}. Best early focus: ${profitable}`,
+    badFitWarning: badFit,
+    topPains: [
+      urgentProblem,
+      `They want ${outcome}, but the current path is too slow, unclear, risky, or inconsistent.`,
+      `Their current alternative is ${alternative}, which creates an opening for a clearer, lower-friction offer.`,
+    ],
+    buyingTriggers: industry.triggers.map((trigger) => `${trigger}: connect this to ${urgentProblem.toLowerCase()}.`),
+    objections: [...industry.objections, "Will this be worth the time and money?"],
+    messageAngles: [
+      `Lead with the urgent problem: ${urgentProblem}.`,
+      `Show the cost of staying with ${alternative}.`,
+      `Position ${offer} as the simplest path to ${outcome}.`,
+    ],
+    leadMagnets: industry.leadMagnets,
+    channels: industry.channels,
+    offerAdjustments: [
+      `Add proof near the CTA: ${proof}.`,
+      "Make the first step smaller, clearer, and easier to say yes to.",
+      "Name who the offer is best for and who it is not for.",
+    ],
+    nextActions: [
+      "Write a one-sentence ICP: buyer type, urgent pain, trigger, desired outcome, and proof needed.",
+      "Rewrite the offer headline so it speaks to that ICP and trigger.",
+      "Create one lead magnet or authority asset from the top buying trigger.",
+    ],
+  };
+}
 
 export function buildOfferStarter(result: LaunchPadResult | null) {
   const business = result?.businessName ?? "Your business";
@@ -114,19 +156,20 @@ export function buildAdvisorNextAction(result: LaunchPadResult | null) {
 export function buildToolRecommendations(result: LaunchPadResult | null) {
   const bottleneck = result?.biggestBottleneck ?? "";
   const leadSource = result?.answers.leadSource ?? "";
+  const industry = getIndustryProfile(result?.answers.industryCategory);
   const needsFollowUp = bottleneck.toLowerCase().includes("follow-up");
 
   if (needsFollowUp) {
-    return ["CRM or booking workflow", "Email/SMS follow-up sequence", "Speed-to-lead alerting"];
+    return ["CRM or booking workflow", "Email/SMS follow-up sequence", `Proof asset: ${industry.proof}`];
   }
 
   if (leadSource === "search") {
-    return ["SEO review tool", "Google Business Profile workflow", "Website conversion improvements"];
+    return [industry.channels[0], "Website conversion improvements", `Lead magnet: ${industry.leadMagnets[0]}`];
   }
 
   if (leadSource === "ads") {
-    return ["Ad channel plan", "Landing page offer stack", "Lead capture and follow-up workflow"];
+    return ["Landing page offer stack", "Lead capture and follow-up workflow", `Objection reducer: ${industry.objections[0]}`];
   }
 
-  return ["Content scheduler", "Lead magnet workflow", "Referral partner profile"];
+  return [industry.channels[0], `Lead magnet: ${industry.leadMagnets[0]}`, "Referral partner profile"];
 }
