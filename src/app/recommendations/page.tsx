@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { AppHeader } from "@/components/app-header";
+import { AssetSavePanel } from "@/components/asset-save-panel";
 import { buildToolRecommendations } from "@/lib/command-center";
 import { brand } from "@/lib/brand";
 import { getStoredResult } from "@/lib/launchpad";
+import { useState } from "react";
 
 export default function RecommendationsPage() {
   const [result] = useState(() => getStoredResult());
   const recommendations = buildToolRecommendations(result);
+  const assetTitle = `${result?.businessName ?? "Business"} recommendations`;
+  const assetSummary = `Recommended order: ${recommendations.join(", ")}`;
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -41,6 +44,26 @@ export default function RecommendationsPage() {
             Review Strategy Map
           </Link>
         </article>
+
+        <AssetSavePanel
+          assetType="recommendation"
+          title={assetTitle}
+          summary={assetSummary}
+          input={{
+            businessName: result?.businessName,
+            websiteUrl: result?.websiteUrl,
+            bottleneck: result?.biggestBottleneck,
+            leadSource: result?.answers.leadSource,
+            answers: result?.answers,
+          }}
+          output={{
+            recommendations,
+            order: "Diagnose the foundation, build the offer, create the content or campaign asset, map the strategy, then choose the deployment tool.",
+          }}
+          prompt={{
+            purpose: "Recommend external tools or channels only after the marketing foundation is clear enough to launch.",
+          }}
+        />
       </section>
     </main>
   );
