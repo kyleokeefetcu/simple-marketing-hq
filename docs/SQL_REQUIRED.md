@@ -4,7 +4,7 @@ SQL is required for the production SaaS because Simple Marketing HQ uses user ac
 
 ## Current SQL State
 
-The Supabase project now supports the current paid MVP persistence layer:
+The Supabase project now supports the current production persistence layer:
 
 - Multiple businesses per user through `public.businesses.owner_id`.
 - Per-business diagnostics through `public.launchpad_diagnostics.business_id`.
@@ -12,7 +12,8 @@ The Supabase project now supports the current paid MVP persistence layer:
 - Starter ICP and industry-match summary values through `public.launchpad_diagnostics.summary`.
 - Confirmed website profile data through `public.website_analyses.analysis` and `public.businesses` profile fields.
 - Per-business recommendations, check-ins, generated assets, visitor records, referral records, and partner recommendations through existing `business_id` columns.
-- Paid MVP command-center outputs through `public.marketing_assets`.
+- Production command-center outputs through `public.marketing_assets`.
+- Prompt-pack and Marketing Lab outputs through `public.marketing_assets.role_id`.
 - Advisor conversation persistence through `public.advisor_threads` and `public.advisor_messages`.
 - RLS ownership by user and by owned business records.
 
@@ -52,9 +53,9 @@ Static UI only in active command-center navigation:
 
 ## Current Requirement
 
-No additional SQL is required right now because the `marketing_assets`, `advisor_threads`, and `advisor_messages` SQL was run successfully.
+No additional SQL is required right now because the `marketing_assets.role_id` prompt-pack upgrade, `marketing_assets`, `advisor_threads`, and `advisor_messages` SQL was run successfully.
 
-Future team workspaces, membership roles, Stripe checkout records, and activated RB2B customer-domain tracking may require additional SQL when those workflows are implemented.
+Future team workspaces, membership roles, Stripe checkout records, OpenAI usage logging, and activated RB2B customer-domain tracking may require additional SQL when those workflows are implemented.
 
 ## Command-Center Persistence SQL Already Run
 
@@ -67,6 +68,24 @@ create table if not exists public.marketing_assets (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   business_id uuid not null references public.businesses(id) on delete cascade,
+  role_id text not null default 'advisor' check (
+    role_id in (
+      'icp_builder',
+      'offer_builder',
+      'message_builder',
+      'content_engine',
+      'strategy_map',
+      'marketing_schedule',
+      'research_hub',
+      'advisor',
+      'buyer_psychology_audit',
+      'marketing_reality_check',
+      'market_demand_check',
+      'problem_narrative_builder',
+      'messaging_sequence_builder',
+      'buyer_messaging_engine'
+    )
+  ),
   asset_type text not null check (
     asset_type in (
       'icp',
@@ -76,7 +95,13 @@ create table if not exists public.marketing_assets (
       'strategy_map',
       'marketing_schedule',
       'research',
-      'recommendation'
+      'recommendation',
+      'buyer_psychology_audit',
+      'marketing_reality_check',
+      'market_demand_check',
+      'problem_narrative_builder',
+      'messaging_sequence_builder',
+      'buyer_messaging_engine'
     )
   ),
   title text not null,
@@ -120,8 +145,17 @@ create table if not exists public.advisor_messages (
 create index if not exists marketing_assets_user_business_type_created_idx
   on public.marketing_assets (user_id, business_id, asset_type, created_at desc);
 
+create index if not exists marketing_assets_user_business_role_created_idx
+  on public.marketing_assets (user_id, business_id, role_id, created_at desc);
+
 create index if not exists marketing_assets_business_updated_idx
   on public.marketing_assets (business_id, updated_at desc);
+
+create index if not exists marketing_assets_business_role_updated_idx
+  on public.marketing_assets (business_id, role_id, updated_at desc);
+
+create index if not exists marketing_assets_role_type_idx
+  on public.marketing_assets (role_id, asset_type);
 
 create index if not exists advisor_threads_user_business_updated_idx
   on public.advisor_threads (user_id, business_id, updated_at desc);

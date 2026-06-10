@@ -104,7 +104,7 @@ export async function saveLaunchPadResultToSupabase(
         services: result.answers.whatSelling ?? null,
         ideal_customer: result.answers.targetCustomer ?? null,
         service_area: result.answers.serviceArea ?? null,
-        description: result.answers.customerResult ?? result.answers.messagingClarityNotes ?? null,
+        description: result.customerDesiredOutcome ?? result.answers.messagingClarityNotes ?? null,
       })
       .eq("id", businessId);
 
@@ -119,7 +119,7 @@ export async function saveLaunchPadResultToSupabase(
         services: result.answers.whatSelling ?? null,
         ideal_customer: result.answers.targetCustomer ?? null,
         service_area: result.answers.serviceArea ?? null,
-        description: result.answers.customerResult ?? result.answers.messagingClarityNotes ?? null,
+        description: result.customerDesiredOutcome ?? result.answers.messagingClarityNotes ?? null,
       })
       .select("id")
       .single();
@@ -142,6 +142,11 @@ export async function saveLaunchPadResultToSupabase(
         industryFit: result.industryFit,
         biggestBottleneck: result.biggestBottleneck,
         nextMove: result.nextMove,
+        customerDesiredOutcome: result.customerDesiredOutcome,
+        recommendedFirstChannel: result.recommendedFirstChannel,
+        channelRecommendationWhy: result.channelRecommendationWhy,
+        channelPreparationSteps: result.channelPreparationSteps,
+        channelToIgnoreForNow: result.channelToIgnoreForNow,
         confirmedProfile: {
           industryCategory: result.answers.industryCategory,
           industryLabel: result.answers.industryLabel,
@@ -154,6 +159,9 @@ export async function saveLaunchPadResultToSupabase(
           messagingClarityNotes: result.answers.messagingClarityNotes,
           homepageHeadline: result.answers.homepageHeadline,
         },
+        extractionEvidence: parseJsonRecord(result.answers.websiteAnalysisEvidence),
+        pagesAnalyzed: parseJsonArray(result.answers.pagesAnalyzed),
+        extractionQuality: result.answers.extractionQuality ?? null,
       },
     })
     .select("id")
@@ -191,6 +199,9 @@ export async function saveLaunchPadResultToSupabase(
           messagingClarityNotes: result.answers.messagingClarityNotes,
           homepageHeadline: result.answers.homepageHeadline,
         },
+        extractionEvidence: parseJsonRecord(result.answers.websiteAnalysisEvidence),
+        pagesAnalyzed: parseJsonArray(result.answers.pagesAnalyzed),
+        extractionQuality: result.answers.extractionQuality ?? null,
         source: "ai-first-intake",
       },
     }),
@@ -228,6 +239,26 @@ export async function saveLaunchPadResultToSupabase(
   if (error) throw error;
 
   return diagnosticId;
+}
+
+function parseJsonRecord(value?: string) {
+  if (!value) return {};
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function parseJsonArray(value?: string) {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 export async function savePendingDiagnosticForUser(supabase: SupabaseClient) {

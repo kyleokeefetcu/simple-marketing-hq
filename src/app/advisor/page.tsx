@@ -8,7 +8,7 @@ import { buildAdvisorNextAction } from "@/lib/command-center";
 import { brand } from "@/lib/brand";
 import { getStoredResult } from "@/lib/launchpad";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { getBusinesses, type BusinessSummary } from "@/lib/supabase/diagnostics";
+import { getBusinesses, getSavedDiagnostics, type BusinessSummary, type SavedDiagnosticSummary } from "@/lib/supabase/diagnostics";
 import { getAdvisorThreads, saveAdvisorThread, type AdvisorThreadSummary } from "@/lib/supabase/assets";
 
 export default function AdvisorPage() {
@@ -17,23 +17,14 @@ export default function AdvisorPage() {
   const [user, setUser] = useState<User | null>(null);
   const [businesses, setBusinesses] = useState<BusinessSummary[]>([]);
   const [selectedBusinessId, setSelectedBusinessId] = useState("");
+  const [latestDiagnostic, setLatestDiagnostic] = useState<SavedDiagnosticSummary | null>(null);
   const [threads, setThreads] = useState<AdvisorThreadSummary[]>([]);
   const [status, setStatus] = useState("Log in to save advisor threads.");
   const [isSaving, setIsSaving] = useState(false);
   const advice = buildAdvisorNextAction(result);
   const selectedBusiness = businesses.find((business) => business.id === selectedBusinessId) ?? null;
-  const answer = useMemo(
-    () =>
-      [
-        `Diagnosis: ${advice.diagnosis}`,
-        `Recommended action: ${advice.action}`,
-        `Why it matters: ${advice.why}`,
-        `Execution steps: ${advice.steps.join(" ")}`,
-        `Asset to create: ${advice.asset}`,
-        `Next step: ${advice.next}`,
-      ].join("\n\n"),
-    [advice],
-  );
+  const advisorResponse = useMemo(() => buildAdvisorResponse({ advice, question, selectedBusiness, latestDiagnostic, result }), [advice, latestDiagnostic, question, result, selectedBusiness]);
+  const answer = advisorResponse.answer;
 
   useEffect(() => {
     async function loadAdvisor() {
@@ -59,8 +50,9 @@ export default function AdvisorPage() {
 
         if (nextBusinessId) {
           window.localStorage.setItem("simple-marketing-hq:selected-business-id", nextBusinessId);
-          const savedThreads = await getAdvisorThreads(supabase, nextBusinessId);
+          const [savedThreads, diagnostics] = await Promise.all([getAdvisorThreads(supabase, nextBusinessId), getSavedDiagnostics(supabase, nextBusinessId)]);
           setThreads(savedThreads);
+          setLatestDiagnostic(diagnostics[0] ?? null);
           setStatus(savedThreads.length ? "Advisor history loaded for this Business / Client." : "Save this advisor response to start a thread history.");
         } else {
           setStatus("Create or select a Business / Client before saving advisor threads.");
@@ -81,8 +73,9 @@ export default function AdvisorPage() {
     if (!supabase || !businessId) return;
 
     try {
-      const savedThreads = await getAdvisorThreads(supabase, businessId);
+      const [savedThreads, diagnostics] = await Promise.all([getAdvisorThreads(supabase, businessId), getSavedDiagnostics(supabase, businessId)]);
       setThreads(savedThreads);
+      setLatestDiagnostic(diagnostics[0] ?? null);
       setStatus(savedThreads.length ? "Advisor history loaded for this Business / Client." : "No advisor threads saved yet for this Business / Client.");
     } catch (error) {
       setStatus(`Could not switch advisor history: ${(error as Error).message}`);
@@ -106,15 +99,17 @@ export default function AdvisorPage() {
         question,
         answer,
         context: {
-          businessName: result?.businessName,
-          websiteUrl: result?.websiteUrl,
-          growthScore: result?.growthScore,
-          bottleneck: result?.biggestBottleneck,
+          business: selectedBusiness,
+          latestDiagnostic,
+          businessName: selectedBusiness?.name ?? result?.businessName,
+          websiteUrl: selectedBusiness?.websiteUrl ?? result?.websiteUrl,
+          growthScore: latestDiagnostic?.growthScore ?? result?.growthScore,
+          bottleneck: latestDiagnostic?.biggestBottleneck ?? result?.biggestBottleneck,
           answers: result?.answers,
         },
         metadata: {
           source: "launchpad-advisor",
-          recommendedAction: advice.action,
+          recommendedAction: advisorResponse.recommendedAction,
         },
       });
       const savedThreads = await getAdvisorThreads(supabase, selectedBusinessId);
@@ -167,26 +162,36 @@ export default function AdvisorPage() {
               <p className="mt-3 text-sm leading-6 text-slate-600">{status}</p>
             </div>
           </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <ContextRow label="Working on" value={selectedBusiness?.name ?? result?.businessName ?? "Select a Business / Client"} />
+            <ContextRow label="Current bottleneck" value={latestDiagnostic?.biggestBottleneck ?? result?.biggestBottleneck ?? "Run the LaunchPad Diagnostic to sharpen this."} />
+            <ContextRow label="What they sell" value={selectedBusiness?.services ?? result?.answers.whatSelling ?? "Not confirmed yet"} />
+            <ContextRow label="Best-fit customer" value={selectedBusiness?.idealCustomer ?? result?.answers.targetCustomer ?? "Not confirmed yet"} />
+          </div>
         </section>
 
         <article className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold text-slate-500">Diagnosis</p>
-          <h2 className="mt-2 text-2xl font-semibold text-slate-950">{advice.diagnosis}</h2>
+          <p className="text-sm font-semibold text-slate-500">Advisor response</p>
+          <h2 className="mt-2 text-2xl font-semibold text-slate-950">{advisorResponse.title}</h2>
           <div className="mt-5 rounded-md bg-cyan-50 p-4">
-            <p className="text-sm font-semibold text-cyan-950">Recommended action</p>
-            <p className="mt-2 text-sm leading-6 text-cyan-900">{advice.action}</p>
-            <p className="mt-3 text-sm leading-6 text-cyan-900">{advice.why}</p>
+            <p className="text-sm font-semibold text-cyan-950">What matters</p>
+            <p className="mt-2 text-sm leading-6 text-cyan-900">{advisorResponse.whatMatters}</p>
+            <p className="mt-3 text-sm font-semibold text-cyan-950">Recommended action</p>
+            <p className="mt-2 text-sm leading-6 text-cyan-900">{advisorResponse.recommendedAction}</p>
           </div>
           <div className="mt-5 grid gap-3">
-            {advice.steps.map((step, index) => (
+            {advisorResponse.steps.map((step, index) => (
               <div key={step} className="rounded-md border border-slate-200 p-4">
                 <p className="text-sm font-semibold text-cyan-800">Step {index + 1}</p>
                 <p className="mt-2 text-sm leading-6 text-slate-700">{step}</p>
               </div>
             ))}
           </div>
-          <p className="mt-5 text-sm font-semibold text-slate-950">Asset to create: {advice.asset}</p>
-          <p className="mt-2 text-sm leading-6 text-slate-600">Next: {advice.next}</p>
+          <div className="mt-5 rounded-md border border-slate-200 p-4">
+            <p className="text-sm font-semibold text-slate-950">Asset to create: {advisorResponse.asset}</p>
+            <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-700">{advisorResponse.copyPaste}</p>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-slate-600">Suggested next utility: {advisorResponse.nextUtility}</p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
@@ -234,5 +239,56 @@ export default function AdvisorPage() {
         </section>
       </section>
     </main>
+  );
+}
+
+function buildAdvisorResponse({
+  advice,
+  question,
+  selectedBusiness,
+  latestDiagnostic,
+  result,
+}: {
+  advice: ReturnType<typeof buildAdvisorNextAction>;
+  question: string;
+  selectedBusiness: BusinessSummary | null;
+  latestDiagnostic: SavedDiagnosticSummary | null;
+  result: ReturnType<typeof getStoredResult>;
+}) {
+  const businessName = selectedBusiness?.name ?? result?.businessName ?? "the business";
+  const offer = selectedBusiness?.services ?? result?.answers.whatSelling ?? "the core offer";
+  const customer = selectedBusiness?.idealCustomer ?? result?.answers.targetCustomer ?? "best-fit customers";
+  const bottleneck = latestDiagnostic?.biggestBottleneck ?? result?.biggestBottleneck ?? advice.diagnosis;
+  const nextMove = latestDiagnostic?.nextMove ?? result?.nextMove ?? advice.action;
+  const askedFor = question.trim() || "what to build next";
+  const title = `${businessName}: build the next useful marketing asset`;
+  const whatMatters = `${businessName} should not try to solve every marketing problem at once. The current bottleneck is ${bottleneck.toLowerCase()}, so the next advisor move should create an asset that makes ${offer} clearer for ${customer}.`;
+  const recommendedAction = `Start with this: ${nextMove}`;
+  const steps = [
+    `Clarify the exact decision behind the question: "${askedFor}".`,
+    `Choose one asset that supports the current bottleneck: offer, ICP, message, content, strategy, schedule, or follow-up.`,
+    `Write the asset in plain buyer language, then deploy it through the outside channel you already use most.`,
+  ];
+  const asset = advice.asset || "one practical command-center asset";
+  const copyPaste = `Working note:\nFor ${customer}, ${businessName} should use ${offer} to solve the current bottleneck: ${bottleneck}.\n\nNext action:\n${nextMove}`;
+  const nextUtility = advice.next || "Open the utility that matches the asset above.";
+  const answer = [
+    `What matters: ${whatMatters}`,
+    `Recommended action: ${recommendedAction}`,
+    `Exact steps: ${steps.join(" ")}`,
+    `Asset to create/use: ${asset}`,
+    `Copy/paste working note: ${copyPaste}`,
+    `Suggested next utility: ${nextUtility}`,
+  ].join("\n\n");
+
+  return { title, whatMatters, recommendedAction, steps, asset, copyPaste, nextUtility, answer };
+}
+
+function ContextRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md bg-slate-50 p-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-sm leading-6 text-slate-800">{value}</p>
+    </div>
   );
 }

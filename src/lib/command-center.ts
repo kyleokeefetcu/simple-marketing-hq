@@ -75,7 +75,7 @@ export function buildIcpStarter(result: LaunchPadResult | null) {
   const profitable = result?.answers.profitableCustomer || "Prioritize customers with a real urgent problem, enough budget, and a clear reason to act now.";
   const badFit = result?.answers.hardestCustomer || "Avoid customers who lack budget, urgency, trust, or fit for your core offer.";
   const urgentProblem = result?.answers.urgentProblem || "Clarify the specific event or pain that makes this customer start looking for help.";
-  const outcome = result?.answers.customerResult || "a measurable outcome they care about";
+  const outcome = result?.customerDesiredOutcome || "a measurable outcome they care about";
   const alternative = result?.answers.currentAlternative || "DIY workarounds, cheaper providers, asking peers, spreadsheets, or doing nothing";
   const proof = result?.answers.trustFactor || industry.proof;
   const offer = result?.answers.whatSelling || "your core service or product";
@@ -114,7 +114,7 @@ export function buildIcpStarter(result: LaunchPadResult | null) {
 export function buildOfferStarter(result: LaunchPadResult | null) {
   const business = result?.businessName ?? "Your business";
   const target = result?.answers.targetCustomer || "the customers you want most";
-  const outcome = result?.answers.customerResult || "a clearer path to the result they want";
+  const outcome = result?.customerDesiredOutcome || "a clearer path to the result they want";
   const offer = result?.answers.whatSelling || "your core service or product";
   const bottleneck = result?.biggestBottleneck || "the current marketing bottleneck";
 
@@ -196,7 +196,7 @@ export function buildMessageStarter(result: LaunchPadResult | null) {
   const business = result?.businessName ?? "Your business";
   const target = result?.answers.targetCustomer || "best-fit customers";
   const problem = result?.answers.urgentProblem || "the urgent problem they need solved";
-  const outcome = result?.answers.customerResult || "a better result";
+  const outcome = result?.customerDesiredOutcome || "a better result";
   const proof = result?.answers.trustFactor || getIndustryProfile(result?.answers.industryCategory).proof;
 
   return {

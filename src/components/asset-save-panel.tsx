@@ -11,8 +11,10 @@ import {
   type MarketingAssetSummary,
   type MarketingAssetType,
 } from "@/lib/supabase/assets";
+import type { PromptRoleId } from "@/lib/ai/prompts/shared-output-rules";
 
 type AssetSavePanelProps = {
+  roleId: PromptRoleId;
   assetType: MarketingAssetType;
   title: string;
   summary: string;
@@ -21,7 +23,7 @@ type AssetSavePanelProps = {
   prompt?: Record<string, unknown>;
 };
 
-export function AssetSavePanel({ assetType, title, summary, output, input, prompt }: AssetSavePanelProps) {
+export function AssetSavePanel({ roleId, assetType, title, summary, output, input, prompt }: AssetSavePanelProps) {
   const [user, setUser] = useState<User | null>(null);
   const [businesses, setBusinesses] = useState<BusinessSummary[]>([]);
   const [selectedBusinessId, setSelectedBusinessId] = useState("");
@@ -57,7 +59,7 @@ export function AssetSavePanel({ assetType, title, summary, output, input, promp
         setSelectedBusinessId(nextBusinessId);
         if (nextBusinessId) {
           window.localStorage.setItem("simple-marketing-hq:selected-business-id", nextBusinessId);
-          const savedAssets = await getMarketingAssets(supabase, nextBusinessId, assetType);
+          const savedAssets = await getMarketingAssets(supabase, nextBusinessId, assetType, roleId);
           setAssets(savedAssets);
           setStatus(savedAssets.length ? "Saved history loaded for this Business / Client." : "Save this output to start history for this Business / Client.");
         } else {
@@ -69,7 +71,7 @@ export function AssetSavePanel({ assetType, title, summary, output, input, promp
     }
 
     void load();
-  }, [assetType]);
+  }, [assetType, roleId]);
 
   async function handleBusinessChange(businessId: string) {
     setSelectedBusinessId(businessId);
@@ -79,7 +81,7 @@ export function AssetSavePanel({ assetType, title, summary, output, input, promp
     if (!supabase || !businessId) return;
 
     try {
-      const savedAssets = await getMarketingAssets(supabase, businessId, assetType);
+      const savedAssets = await getMarketingAssets(supabase, businessId, assetType, roleId);
       setAssets(savedAssets);
       setStatus(savedAssets.length ? "Saved history loaded for this Business / Client." : "No saved outputs yet for this Business / Client.");
     } catch (error) {
@@ -100,6 +102,7 @@ export function AssetSavePanel({ assetType, title, summary, output, input, promp
     try {
       await saveMarketingAsset(supabase, user, {
         businessId: selectedBusinessId,
+        roleId,
         assetType,
         title,
         summary,
@@ -107,7 +110,7 @@ export function AssetSavePanel({ assetType, title, summary, output, input, promp
         input,
         prompt,
       });
-      const savedAssets = await getMarketingAssets(supabase, selectedBusinessId, assetType);
+      const savedAssets = await getMarketingAssets(supabase, selectedBusinessId, assetType, roleId);
       setAssets(savedAssets);
       setStatus("Saved. This output is now part of the selected Business / Client history.");
     } catch (error) {

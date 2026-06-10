@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { FormEvent, ReactNode } from "react";
 import {
   BarChart3,
+  Beaker,
   Bot,
   Building2,
   CalendarDays,
@@ -123,6 +124,14 @@ const navItems: Utility[] = [
     body: "Research pains, competitors, FAQs, and angles.",
     icon: <Search size={19} />,
     accent: "bg-violet-700 text-white",
+  },
+  {
+    title: "Marketing Lab",
+    shortTitle: "Lab",
+    href: "/marketing-lab",
+    body: "Run deeper buyer, demand, and messaging audits.",
+    icon: <Beaker size={19} />,
+    accent: "bg-rose-700 text-white",
   },
   {
     title: "LaunchPad Advisor",
@@ -479,8 +488,8 @@ export function DashboardHome() {
                           <p>Current bottleneck: {latestBusinessDiagnostic?.biggestBottleneck ?? "Diagnostic needed"}</p>
                           <p>Next action: {latestBusinessDiagnostic?.nextMove ?? "Start intake"}</p>
                           <p>Last diagnostic: {latestBusinessDiagnostic ? formatDate(latestBusinessDiagnostic.completedAt) : "Not completed"}</p>
-                          <p>Offer status: {latestBusinessDiagnostic ? "Starter ready" : "Needs context"}</p>
-                          <p>Content plan status: {latestBusinessDiagnostic ? "Ready for starter ideas" : "Needs offer input"}</p>
+                          <p>Offer status: {latestBusinessDiagnostic ? "Foundation ready to refine" : "Needs context"}</p>
+                          <p>Content plan status: {latestBusinessDiagnostic ? "Ready for focused ideas" : "Needs offer input"}</p>
                         </div>
                       </button>
                     );

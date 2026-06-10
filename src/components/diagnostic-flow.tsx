@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, CheckCircle2, Pencil, Sparkles } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Pencil, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { brand } from "@/lib/brand";
@@ -19,15 +19,15 @@ const analysisSteps = [
 ];
 
 const confirmationFields = [
-  { key: "businessName", label: "Business name" },
-  { key: "industryLabel", label: "Industry/category" },
-  { key: "services", label: "Services/offers" },
-  { key: "serviceArea", label: "Service area/location" },
-  { key: "primaryCustomer", label: "Primary customer" },
-  { key: "primaryCta", label: "Main website CTA" },
-  { key: "trustSignals", label: "Trust/proof found" },
-  { key: "leadCapture", label: "Lead capture found" },
-  { key: "messagingClarityNotes", label: "Messaging clarity notes" },
+  { key: "businessName", analysisKey: "business_name", label: "Business name" },
+  { key: "industryLabel", analysisKey: "industry_category", label: "Industry/category" },
+  { key: "services", analysisKey: "services_offers", label: "What you sell" },
+  { key: "serviceArea", analysisKey: "service_area", label: "Service area/location" },
+  { key: "primaryCustomer", analysisKey: "primary_customer", label: "Primary customer" },
+  { key: "primaryCta", analysisKey: "main_cta", label: "Main website CTA" },
+  { key: "trustSignals", analysisKey: "trust_proof", label: "Trust/proof found" },
+  { key: "leadCapture", analysisKey: "lead_capture", label: "Lead capture found" },
+  { key: "messagingClarityNotes", analysisKey: "messaging_summary", label: "Messaging summary" },
 ] as const;
 
 export function DiagnosticFlow() {
@@ -62,10 +62,9 @@ export function DiagnosticFlow() {
     return () => window.clearInterval(interval);
   }, [isWorking]);
 
-  const confirmationSummary = useMemo(() => {
-    if (!profile) return "";
-    const serviceArea = profile.serviceArea ? ` serving ${profile.serviceArea}` : "";
-    return `We found that you are a ${profile.industryLabel.toLowerCase()}${serviceArea}. Is that right?`;
+  const lowConfidenceCount = useMemo(() => {
+    if (!profile?.extractedFields) return 0;
+    return confirmationFields.filter((field) => profile.extractedFields?.[field.analysisKey]?.confidence === "low" || !profile.extractedFields?.[field.analysisKey]?.value).length;
   }, [profile]);
 
   function setQuestionAnswer(value: string) {
@@ -116,7 +115,7 @@ export function DiagnosticFlow() {
   function confirmProfile() {
     if (!profile) return;
     const industryCategory = resolveIndustryCategory(profile);
-    const nextProfile = { ...profile, industryCategory, industryLabel: profile.industryLabel || getIndustryProfile(industryCategory).label };
+    const nextProfile = { ...profile, industryCategory, industryLabel: profile.industryLabel || (industryCategory ? getIndustryProfile(industryCategory).label : "") };
     setProfile(nextProfile);
     setAnswers((current) => mergeProfileIntoAnswers(current, nextProfile));
     setPhase("questions");
@@ -225,25 +224,50 @@ export function DiagnosticFlow() {
           {phase === "confirm" && profile ? (
             <article className="w-full rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
               <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">AI review</p>
-              <h1 className="mt-3 text-3xl font-semibold text-slate-950 sm:text-4xl">Confirm what we found.</h1>
+              <h1 className="mt-3 text-3xl font-semibold text-slate-950 sm:text-4xl">Here is what we found from your website.</h1>
               <p className="mt-3 text-base leading-7 text-slate-600">
-                {profile.readable ? confirmationSummary : "We could not read enough from your website. We will ask a few quick questions instead."}
+                {profile.readable ? "Please confirm anything we missed. We will only prefill fields when the website evidence is strong enough." : "We could not read enough from your website. We will ask a few quick questions instead."}
               </p>
+              {profile.qualityWarning || lowConfidenceCount >= 4 ? (
+                <div className="mt-5 flex gap-3 rounded-md bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+                  <AlertTriangle className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
+                  <p>{profile.qualityWarning || "We could not confidently read everything from your website. We will ask a few quick questions to fill the gaps."}</p>
+                </div>
+              ) : null}
+              {profile.pagesAnalyzed?.length ? (
+                <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Pages analyzed: {profile.pagesAnalyzed.length}
+                </p>
+              ) : null}
 
               <div className="mt-6 grid gap-3">
-                {confirmationFields.map((field) => (
-                  <label key={field.key} className="rounded-md border border-slate-200 bg-slate-50 p-4">
-                    <span className="flex items-center gap-2 text-sm font-semibold text-slate-600">
-                      <Pencil size={15} aria-hidden="true" />
-                      {field.label}
-                    </span>
-                    <input
-                      value={profile[field.key]}
-                      onChange={(event) => updateProfileField(field.key, event.target.value)}
-                      className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100"
-                    />
-                  </label>
-                ))}
+                {confirmationFields.map((field) => {
+                  const extraction = profile.extractedFields?.[field.analysisKey];
+                  const confidence = extraction?.confidence ?? "low";
+                  const isLowConfidence = confidence === "low" || !extraction?.value;
+                  return (
+                    <label key={field.key} className="rounded-md border border-slate-200 bg-slate-50 p-4">
+                      <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-600">
+                        <Pencil size={15} aria-hidden="true" />
+                        {field.label}
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${confidence === "high" ? "bg-emerald-100 text-emerald-800" : confidence === "medium" ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-700"}`}>
+                          {confidence === "high" ? "High confidence" : confidence === "medium" ? "Please confirm" : "Could not confirm"}
+                        </span>
+                      </span>
+                      <input
+                        value={profile[field.key]}
+                        onChange={(event) => updateProfileField(field.key, event.target.value)}
+                        placeholder={isLowConfidence ? "We could not confirm this yet." : undefined}
+                        className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100"
+                      />
+                      {extraction?.source_evidence ? (
+                        <p className="mt-2 text-xs leading-5 text-slate-500">
+                          Evidence: {extraction.source_evidence}
+                        </p>
+                      ) : null}
+                    </label>
+                  );
+                })}
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -374,7 +398,7 @@ function mergeProfileIntoAnswers(current: Record<string, string>, profile: Websi
     businessName: profile.businessName,
     detectedBusinessName: profile.businessName,
     industryCategory,
-    industryLabel: profile.industryLabel || getIndustryProfile(industryCategory).label,
+    industryLabel: profile.industryLabel || (industryCategory ? getIndustryProfile(industryCategory).label : ""),
     whatSelling: current.whatSelling || profile.services,
     services: profile.services,
     serviceArea: profile.serviceArea,
@@ -385,6 +409,9 @@ function mergeProfileIntoAnswers(current: Record<string, string>, profile: Websi
     leadCaptureFound: profile.leadCapture,
     messagingClarityNotes: profile.messagingClarityNotes,
     websiteAnalysisSummary: profile.summary,
+    websiteAnalysisEvidence: JSON.stringify(profile.extractedFields ?? {}),
+    pagesAnalyzed: JSON.stringify(profile.pagesAnalyzed ?? []),
+    extractionQuality: profile.extractionQuality ?? "",
     homepageHeadline: profile.homepageHeadline,
     currentOffer: current.currentOffer || (profile.primaryCta ? "The offer is understandable but could be sharper." : "The offer needs work."),
   };
@@ -395,9 +422,9 @@ function normalizeProfile(profile: WebsiteAnalysisProfile, websiteUrl: string): 
   return {
     ...profile,
     websiteUrl,
-    businessName: profile.businessName || new URL(websiteUrl).hostname.replace(/^www\./, ""),
+    businessName: profile.businessName || "",
     industryCategory,
-    industryLabel: profile.industryLabel || getIndustryProfile(industryCategory).label,
+    industryLabel: profile.industryLabel || (industryCategory ? getIndustryProfile(industryCategory).label : ""),
   };
 }
 

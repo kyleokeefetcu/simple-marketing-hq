@@ -29,6 +29,14 @@ export default function DiagnosticResultPage() {
     );
   }
 
+  const customerDesiredOutcome = result.customerDesiredOutcome ?? "a clear answer, less risk, and a next step they can trust";
+  const recommendedFirstChannel = result.recommendedFirstChannel ?? "Run the updated diagnostic to get a channel recommendation";
+  const channelRecommendationWhy = result.channelRecommendationWhy ?? "Simple Marketing HQ recommends the first channel after reviewing your industry, current lead sources, website readiness, follow-up speed, and available time.";
+  const channelPreparationSteps = result.channelPreparationSteps?.length
+    ? result.channelPreparationSteps
+    : ["Sharpen offer language", "Define best-fit customer", "Create a clear CTA", "Build a simple follow-up script"];
+  const channelToIgnoreForNow = result.channelToIgnoreForNow ?? "Any channel that requires more time or budget than the foundation can support right now.";
+
   return (
     <main className="min-h-screen bg-slate-50">
       <AppHeader />
@@ -70,6 +78,31 @@ export default function DiagnosticResultPage() {
           <StatCard icon={<Target size={21} />} label="Messaging Clarity" value={result.messagingClarity} body="How clearly your website and offer connect to what customers want." />
           <StatCard icon={<CheckCircle2 size={21} />} label="Speed-to-Lead" value={result.speedToLeadGrade} body="How quickly your business can turn interest into a real conversation." />
         </div>
+
+        <article className="mt-5 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-2xl font-semibold text-slate-950">What Simple Marketing HQ inferred</h2>
+          <div className="mt-5 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="rounded-md bg-cyan-50 p-4">
+              <p className="text-sm font-semibold text-cyan-950">What your customers likely want most</p>
+              <p className="mt-2 text-sm leading-6 text-cyan-900">{customerDesiredOutcome}</p>
+            </div>
+            <div className="rounded-md border border-slate-200 p-4">
+              <p className="text-sm font-semibold text-slate-500">Recommended first channel to prepare for</p>
+              <h3 className="mt-2 text-xl font-semibold text-slate-950">{recommendedFirstChannel}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-700">{channelRecommendationWhy}</p>
+            </div>
+          </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {channelPreparationSteps.map((step, index) => (
+              <p key={step} className="rounded-md border border-slate-200 p-4 text-sm leading-6 text-slate-700">
+                {index + 1}. {step}
+              </p>
+            ))}
+          </div>
+          <p className="mt-4 rounded-md bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+            Ignore for now: {channelToIgnoreForNow}
+          </p>
+        </article>
 
         <article className="mt-5 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-2xl font-semibold text-slate-950">ICP and Industry Match</h2>

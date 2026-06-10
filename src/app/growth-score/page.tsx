@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { BarChart3, Compass, Target, Zap } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { StatCard } from "@/components/stat-card";
 import { getStoredResult } from "@/lib/launchpad";
+import { BarChart3, Compass, Target, Zap } from "lucide-react";
 
 export default function GrowthScorePage() {
   const result = getStoredResult();
@@ -45,6 +45,13 @@ export default function GrowthScorePage() {
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-2xl font-semibold text-slate-950">Open the next utility</h2>
             <p className="mt-3 text-sm leading-6 text-slate-600">{result?.nextMove ?? "Start with the diagnostic, then come back here for a scored direction."}</p>
+            {result ? (
+              <div className="mt-4 rounded-md bg-cyan-50 p-4">
+                <p className="text-sm font-semibold text-cyan-950">Recommended first channel</p>
+                <p className="mt-2 text-sm leading-6 text-cyan-900">{result.recommendedFirstChannel ?? "Run the updated diagnostic to get this recommendation."}</p>
+                <p className="mt-2 text-sm leading-6 text-cyan-900">{result.channelRecommendationWhy ?? "Simple Marketing HQ will infer this from your current lead sources, category, website readiness, follow-up, and time."}</p>
+              </div>
+            ) : null}
             <div className="mt-5 grid gap-3">
               <Link href="/icp-builder" className="rounded-md bg-cyan-900 px-4 py-3 text-center font-semibold text-white">
                 Define ICP

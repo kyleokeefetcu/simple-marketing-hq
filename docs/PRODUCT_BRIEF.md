@@ -23,7 +23,7 @@ Data/product hierarchy:
 
 User Account -> Workspace / Account -> Business or Client Profile -> LaunchPad Diagnostic -> Growth Score -> ICP Builder / Audience Match -> Offer Builder assets -> Content Engine assets -> Strategy Map -> Advisor threads -> Recommendations.
 
-In the current MVP, the user profile acts as the account/workspace layer. Business / Client profiles are stored as multiple `businesses` rows owned by that user. Future team collaboration can add explicit workspace and membership tables when team seats are implemented.
+In the current production architecture, the user profile acts as the account/workspace layer. Business / Client profiles are stored as multiple `businesses` rows owned by that user. Team collaboration can add explicit workspace and membership tables when team seats are implemented.
 
 ## Product Direction
 
@@ -111,7 +111,11 @@ Each utility should be action-oriented:
 
    Do not ask users to manually answer fields the website can reasonably infer, including business name, industry/category, basic services, homepage headline, primary CTA, service area if visible, basic target audience, trust signals, testimonials/reviews, and visible lead capture. Present these as confirmation/edit cards instead.
 
-   Gap questions should stay short and focused: what to sell now, best-fit customer, desired customer result, current lead source, lead drop-off, response speed, first channel focus, and biggest marketing frustration.
+   Website analysis must be confidence-gated. Do not present low-confidence guesses as facts. Each extracted field should retain value, confidence, source URL, source evidence, source text snippet, and extraction reason. If confidence is low, show that the field could not be confirmed and ask the user to fill it in.
+
+   Gap questions should stay short and focused on what a business owner already knows from real life: what they sell, what kind of customer they want more of, what customers usually need help with, what customers say when they first call or message, how customers find the business now, what marketing has been tried, where leads get stuck, response speed, whether the business sells locally/online/both, and realistic weekly marketing time.
+
+   Do not ask the user to provide strategic marketing answers during onboarding. Avoid questions like "What result do customers want most?", "What channel do you want to focus on first?", "What is your positioning?", "What is your acquisition strategy?", "What is your conversion bottleneck?", or "What is your buyer journey?" Simple Marketing HQ should infer the likely customer desired outcome, message angle, recommended first channel, why that channel fits, what foundation must be built before using it, what channel to ignore for now, and which utility to open next.
 
 2. LaunchPad Growth Score
    Scores foundational marketing readiness across ICP clarity, industry fit, buyer pain clarity, urgency/trigger clarity, offer-to-ICP fit, channel-to-ICP fit, offer clarity, message clarity, website/conversion readiness, lead capture, follow-up system, content consistency, proof/trust, and next-action clarity.
@@ -125,22 +129,25 @@ Each utility should be action-oriented:
 5. Offer Builder
    Builds the offer foundation using direct-response offer principles without naming those inspirations in the UI. It should cover dream outcome, pain/problem, target customer, value equation, speed to result, effort reduction, risk reversal, bonuses, guarantee ideas, pricing/package framing, why now, offer stack, and clear CTA.
 
-6. Content Engine
+6. Message Builder
+   Turns customer language into clearer positioning. It should ask what problem people usually come for, what customers say when they call or message, and what type of customer the business wants more of. Then Simple Marketing HQ should answer: here is what your customers likely want most, here is why, and here is how to message it.
+
+7. Content Engine
    Creates robust content strategy and content assets, not generic posts. It should support clarity, authority hooks, problem/solution framing, mini-steps, outcome language, behavioral CTAs, stop-stack hooks, tension stacking, short-form derivatives, long-form scripts, social posts, lead magnet ideas, email sequences, and content repurposing.
 
-7. Strategy Map
+8. Strategy Map
    Turns diagnosis into a practical marketing plan: current bottleneck, highest-leverage objective, next 7 days, next 30 days, channel readiness, missing assets, and recommended order of operations.
 
-8. Marketing Schedule
+9. Marketing Schedule
    A guided execution rhythm for weekly content planning, campaign prep, offer refinement, lead magnet creation, follow-up assets, and review/iterate cycles.
 
-9. Research Hub
+10. Research Hub
    AI-assisted research for audience pains, objections, competitors, positioning, offer angles, content ideas, FAQs, and proof/trust gaps.
 
-10. LaunchPad Advisor
+11. LaunchPad Advisor
    A conversational advisor that helps the user decide what to do next and generate the exact asset needed. Every output should include diagnosis/why it matters, recommended action, step-by-step execution, copy/assets when relevant, and what to do next.
 
-11. LaunchPad Recommendations
+12. LaunchPad Recommendations
    Recommends tools, channels, partners, and affiliate options only after foundation work is clear. It should not become a random marketplace.
 
 ## Industry Matching
@@ -162,13 +169,13 @@ ICP Builder output should include:
 - Offer adjustments.
 - Next action steps.
 
-## First Usable MVP Path
+## First Usable Production Path
 
 Prioritize this flow:
 
 Website URL -> AI website review -> Confirm/edit profile -> short gap questions -> Command Center -> Growth Score -> ICP Builder -> Offer Builder starter -> Strategy Map -> Content Engine starter -> Advisor next action -> Recommendations.
 
-The MVP should make the product spine obvious even when deeper persistence and AI generation are added later.
+The product should make the spine obvious while each prompt pack is added, wired, saved, tested, and differentiated.
 
 ## AI Output Requirements
 
@@ -249,17 +256,33 @@ Simple Marketing HQ is priced as a marketing foundation command center, not a ch
 
 ## Data Direction
 
-Supabase tables support the current paid MVP persistence for profiles, businesses, LaunchPad diagnostics, answers, website analyses, scores, action plans, recommendations, command-center assets, advisor threads/messages, check-ins, visitor foundations, referral foundations, subscriptions, and partner recommendations.
+Supabase tables support the current production persistence for profiles, businesses, LaunchPad diagnostics, answers, website analyses, scores, action plans, recommendations, command-center assets, advisor threads/messages, check-ins, visitor foundations, referral foundations, subscriptions, and partner recommendations.
 
 The existing `businesses.owner_id` relationship supports multiple businesses per user. The existing `launchpad_diagnostics.business_id` and related `business_id` columns support per-business scoping for diagnostics, recommendations, visitor records, referral records, generated assets, check-ins, and partner recommendations.
 
 Command-center modules persist to `marketing_assets` by `asset_type`: ICP, offer, message, content, strategy map, marketing schedule, research, and recommendations. The LaunchPad Advisor persists to `advisor_threads` and `advisor_messages`. All records are scoped to the selected Business / Client and protected by RLS ownership policies.
 
+Simple Marketing HQ uses internal role-based AI prompt packs, not external custom GPT links. Each consultant role defines a role ID, display name, category, purpose, system prompt, required context, input fields, output schema, asset type, and suggested next utility. Prompt packs live inside the app and should not expose raw internal prompt instructions to users.
+
+Required roles include ICP Builder, Offer Builder, Message Builder, Content Engine, Strategy Map, Marketing Schedule, Research Hub, Advisor, Buyer Psychology Audit, Marketing Reality Check, Market Demand Check, Problem Narrative Builder, Messaging Sequence Builder, and Buyer Messaging Engine.
+
+Marketing Lab audits are production app workflows. They load selected Business / Client context, ask short focused questions, generate structured consultant-grade output, show before/after, explain why it matters, provide next 3 actions, recommend the next utility, and save to `marketing_assets` with `role_id`.
+
+Each active marketing utility must behave like a usable workflow, not a static report. The standard is:
+
+1. Load the selected Business / Client context, latest diagnostic, website analysis, and saved asset history where available.
+2. Ask only 1-3 focused questions.
+3. Generate a practical deliverable with current-state assessment, improved version, why it is better, action steps, deployment guidance, copy/paste-ready text, and a suggested follow-up utility.
+4. Save the deliverable to Supabase for the selected Business / Client.
+5. Show saved history inside the utility.
+
+The current production utilities follow this structure for ICP Builder, Offer Builder, Message Builder, Content Engine, Strategy Map, Marketing Schedule, Research Hub, and Recommendations. The Advisor follows the same action-first structure while saving conversations to advisor threads/messages.
+
 Future team workspaces and membership roles will require additional SQL when collaborative seats are implemented.
 
 ## Acceptance Criteria
 
-The MVP direction is successful when a user can:
+The production direction is successful when a user can:
 
 1. Visit Simple Marketing HQ.
 2. Understand it is an AI marketing advisor and foundation command center.

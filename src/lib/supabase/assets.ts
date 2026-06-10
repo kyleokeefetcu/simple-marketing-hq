@@ -1,6 +1,7 @@
 "use client";
 
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import type { PromptRoleId } from "@/lib/ai/prompts/shared-output-rules";
 
 export type MarketingAssetType =
   | "icp"
@@ -10,10 +11,17 @@ export type MarketingAssetType =
   | "strategy_map"
   | "marketing_schedule"
   | "research"
-  | "recommendation";
+  | "recommendation"
+  | "buyer_psychology_audit"
+  | "marketing_reality_check"
+  | "market_demand_check"
+  | "problem_narrative_builder"
+  | "messaging_sequence_builder"
+  | "buyer_messaging_engine";
 
 export type MarketingAssetInput = {
   businessId: string;
+  roleId: PromptRoleId;
   assetType: MarketingAssetType;
   title: string;
   prompt?: Record<string, unknown>;
@@ -26,6 +34,7 @@ export type MarketingAssetInput = {
 export type MarketingAssetSummary = {
   id: string;
   businessId: string;
+  roleId: PromptRoleId;
   assetType: MarketingAssetType;
   title: string;
   summary: string;
@@ -57,6 +66,7 @@ export type AdvisorMessageSummary = {
 type MarketingAssetRow = {
   id: string;
   business_id: string;
+  role_id: PromptRoleId;
   asset_type: MarketingAssetType;
   title: string;
   summary: string | null;
@@ -92,6 +102,7 @@ export async function saveMarketingAsset(supabase: SupabaseClient, user: User, i
     .insert({
       user_id: user.id,
       business_id: input.businessId,
+      role_id: input.roleId,
       asset_type: input.assetType,
       title: input.title,
       prompt: input.prompt ?? {},
@@ -107,19 +118,29 @@ export async function saveMarketingAsset(supabase: SupabaseClient, user: User, i
   return data.id as string;
 }
 
-export async function getMarketingAssets(supabase: SupabaseClient, businessId: string, assetType: MarketingAssetType): Promise<MarketingAssetSummary[]> {
-  const { data, error } = await supabase
+export async function getMarketingAssets(
+  supabase: SupabaseClient,
+  businessId: string,
+  assetType: MarketingAssetType,
+  roleId?: PromptRoleId,
+): Promise<MarketingAssetSummary[]> {
+  let query = supabase
     .from("marketing_assets")
-    .select("id, business_id, asset_type, title, summary, status, output, created_at, updated_at")
+    .select("id, business_id, role_id, asset_type, title, summary, status, output, created_at, updated_at")
     .eq("business_id", businessId)
     .eq("asset_type", assetType)
     .order("updated_at", { ascending: false });
+
+  if (roleId) query = query.eq("role_id", roleId);
+
+  const { data, error } = await query;
 
   if (error) throw error;
 
   return ((data ?? []) as MarketingAssetRow[]).map((row) => ({
     id: row.id,
     businessId: row.business_id,
+    roleId: row.role_id,
     assetType: row.asset_type,
     title: row.title,
     summary: row.summary ?? "",

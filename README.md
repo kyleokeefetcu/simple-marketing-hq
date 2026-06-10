@@ -18,6 +18,6 @@ Copy `.env.example` to `.env.local` and add real values when you are ready to co
 Supabase setup details live in `docs/SUPABASE_CONNECTION.md`.
 RB2B setup details live in `docs/RB2B_SETUP.md`.
 
-## Product Direction
+## Next Step
 
-Use `docs/PRODUCT_BRIEF.md` as the source of truth for product direction and implementation priorities.
+Paste product direction into `docs/PRODUCT_BRIEF.md`, then continue implementation from that brief.
