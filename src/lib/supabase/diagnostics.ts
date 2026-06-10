@@ -103,7 +103,8 @@ export async function saveLaunchPadResultToSupabase(
         website_url: result.websiteUrl,
         services: result.answers.whatSelling ?? null,
         ideal_customer: result.answers.targetCustomer ?? null,
-        description: result.answers.customerResult ?? null,
+        service_area: result.answers.serviceArea ?? null,
+        description: result.answers.customerResult ?? result.answers.messagingClarityNotes ?? null,
       })
       .eq("id", businessId);
 
@@ -117,7 +118,8 @@ export async function saveLaunchPadResultToSupabase(
         website_url: result.websiteUrl,
         services: result.answers.whatSelling ?? null,
         ideal_customer: result.answers.targetCustomer ?? null,
-        description: result.answers.customerResult ?? null,
+        service_area: result.answers.serviceArea ?? null,
+        description: result.answers.customerResult ?? result.answers.messagingClarityNotes ?? null,
       })
       .select("id")
       .single();
@@ -140,6 +142,18 @@ export async function saveLaunchPadResultToSupabase(
         industryFit: result.industryFit,
         biggestBottleneck: result.biggestBottleneck,
         nextMove: result.nextMove,
+        confirmedProfile: {
+          industryCategory: result.answers.industryCategory,
+          industryLabel: result.answers.industryLabel,
+          services: result.answers.services,
+          serviceArea: result.answers.serviceArea,
+          primaryCustomer: result.answers.primaryCustomer,
+          primaryCta: result.answers.primaryCta,
+          trustSignals: result.answers.trustFactor,
+          leadCapture: result.answers.leadCaptureFound,
+          messagingClarityNotes: result.answers.messagingClarityNotes,
+          homepageHeadline: result.answers.homepageHeadline,
+        },
       },
     })
     .select("id")
@@ -164,7 +178,20 @@ export async function saveLaunchPadResultToSupabase(
       website_url: result.websiteUrl,
       analysis: {
         findings: result.websiteFindings,
-        source: "starter-analysis",
+        confirmedProfile: {
+          businessName: result.businessName,
+          industryCategory: result.answers.industryCategory,
+          industryLabel: result.answers.industryLabel,
+          services: result.answers.services,
+          serviceArea: result.answers.serviceArea,
+          primaryCustomer: result.answers.primaryCustomer,
+          primaryCta: result.answers.primaryCta,
+          trustSignals: result.answers.trustFactor,
+          leadCapture: result.answers.leadCaptureFound,
+          messagingClarityNotes: result.answers.messagingClarityNotes,
+          homepageHeadline: result.answers.homepageHeadline,
+        },
+        source: "ai-first-intake",
       },
     }),
     supabase.from("launchpad_scores").insert({
