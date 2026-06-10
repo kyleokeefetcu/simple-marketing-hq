@@ -33,7 +33,7 @@
 - Research Hub with per-business save action and saved history
 - Advisor next-action page with user question input, per-business thread/message persistence, and saved advisor history
 - Lead capture/account creation-ready panel
-- Logged-in marketing command center dashboard with desktop side navigation, mobile core navigation, top-bar Business / Client dropdown, Run New Diagnostic access, square utility launcher cards as the primary view, Next Recommended Action panel, channel deployment reminder, recent work, and saved diagnostics below the action sections.
+- Logged-in marketing command center dashboard with desktop side navigation, mobile core navigation, top-bar Business / Client dropdown, Run New Diagnostic access, compact app-style utility launcher buttons as the primary view, Next Recommended Action panel, and channel deployment reminder.
 - RB2B browser tracking for `simplemarketinghq.com` remains disabled unless `NEXT_PUBLIC_RB2B_SCRIPT_ID` is configured.
 - Customer/client website visitor tracking is disabled until RB2B partner/OEM approval and domain configuration rules are confirmed.
 - RB2B API access is prepared server-side with `RB2B_API_KEY`, without live API calls yet.
