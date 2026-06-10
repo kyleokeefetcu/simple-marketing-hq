@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { AppHeader } from "@/components/app-header";
+import { AssetSavePanel } from "@/components/asset-save-panel";
 import { buildStrategyMap } from "@/lib/command-center";
 import { getStoredResult } from "@/lib/launchpad";
+import { useState } from "react";
 
 export default function StrategyMapPage() {
   const [result] = useState(() => getStoredResult());
   const strategy = buildStrategyMap(result);
+  const assetTitle = `${result?.businessName ?? "Business"} strategy map`;
+  const assetSummary = strategy.objective;
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -35,6 +38,23 @@ export default function StrategyMapPage() {
         <Link href="/advisor" className="mt-6 inline-flex min-h-12 items-center justify-center rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
           Ask the Advisor what to build next
         </Link>
+
+        <AssetSavePanel
+          assetType="strategy_map"
+          title={assetTitle}
+          summary={assetSummary}
+          input={{
+            businessName: result?.businessName,
+            websiteUrl: result?.websiteUrl,
+            growthScore: result?.growthScore,
+            bottleneck: result?.biggestBottleneck,
+            answers: result?.answers,
+          }}
+          output={strategy}
+          prompt={{
+            purpose: "Create a practical strategy map with next 7 days, next 30 days, missing assets, channel readiness, and order of operations.",
+          }}
+        />
       </section>
     </main>
   );
