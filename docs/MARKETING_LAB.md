@@ -57,3 +57,63 @@ Output includes:
 - `recommended_next_utility`
 
 The generated output saves to Supabase as `asset_type = market_demand_check` and `role_id = market_demand_check`.
+
+## Buyer Psychology Audit
+
+Role ID: `buyer_psychology_audit`
+
+Asset type: `buyer_psychology_audit`
+
+Location: Marketing Lab.
+
+Purpose: evaluate a website, landing page, offer, or message through buyer psychology so the business can see what buyers likely notice, misunderstand, trust, doubt, want, avoid, and need before taking action.
+
+Input fields:
+
+- What page, offer, or message do you want reviewed?
+- What should this page/message help the buyer do?
+- Who is the intended buyer?
+
+Output includes:
+
+- `buyer_psychology_summary`
+- `current_state_read`
+- `psychology_findings`
+- `before_after_improvements`
+- `top_3_changes`
+- `next_3_actions`
+- `recommended_next_utility`
+
+The generated output saves to Supabase as `asset_type = buyer_psychology_audit` and `role_id = buyer_psychology_audit`.
+
+## Buyer Messaging Engine
+
+Role ID: `buyer_messaging_engine`
+
+Asset type: `buyer_messaging_output`
+
+Location: Marketing Lab and Message Builder context.
+
+Purpose: generate buyer-facing messaging that is clear, specific, practical, and ready to use across website copy, ads, emails, social posts, follow-up scripts, and sales conversations.
+
+Input fields:
+
+- What do you need messaging for?
+- What are you trying to sell or promote?
+- Who is this message for?
+- What is the current version, if any?
+
+Output includes:
+
+- `messaging_strategy`
+- `current_vs_improved`
+- `core_message_assets`
+- `channel_versions`
+- `objection_responses`
+- `copy_paste_blocks`
+- `next_3_actions`
+- `recommended_next_utility`
+
+The generated output saves to Supabase as `asset_type = buyer_messaging_output` and `role_id = buyer_messaging_engine`.
+
+Message Builder loads the latest Buyer Psychology Audit and Buyer Messaging Engine output for the selected Business / Client so saved lab work can be reused in practical website, sales, email, and follow-up copy.

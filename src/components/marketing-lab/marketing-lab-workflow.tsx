@@ -48,6 +48,73 @@ type LabDeliverable = {
     why_now_angle: string;
     cta: string;
   };
+  buyer_psychology_summary?: {
+    what_the_buyer_likely_understands: string;
+    what_the_buyer_likely_doubts: string;
+    what_the_buyer_likely_wants: string;
+    what_the_buyer_may_be_confused_by: string;
+    confidence_level: string;
+  };
+  current_state_read?: {
+    current_message: string;
+    current_promise: string;
+    current_cta: string;
+    current_trust_signals: string[];
+    current_friction_points: string[];
+  };
+  psychology_findings?: {
+    emotional_drivers: string[];
+    logical_drivers: string[];
+    risk_fear_points: string[];
+    urgency_signals: string[];
+    missing_belief_shift: string;
+    trust_gaps: string[];
+    clarity_gaps: string[];
+  };
+  before_after_improvements?: {
+    type: string;
+    before: string;
+    after: string;
+    why_the_after_is_better: string;
+    where_to_use_it: string[];
+  }[];
+  top_3_changes?: string[];
+  messaging_strategy?: {
+    target_buyer: string;
+    buyer_pain: string;
+    desired_outcome: string;
+    key_belief_to_shift: string;
+    strongest_angle: string;
+    tone_recommendation: string;
+  };
+  current_vs_improved?: {
+    current_before_message: string;
+    improved_after_message: string;
+    why_the_after_is_better: string;
+    where_to_use_it: string[];
+  };
+  core_message_assets?: {
+    positioning_statement: string;
+    homepage_headline: string;
+    subheadline: string;
+    simple_explanation: string;
+    offer_statement: string;
+    cta_options: string[];
+    elevator_pitch: string;
+  };
+  channel_versions?: {
+    website_copy: string;
+    ad_hook: string;
+    social_post: string;
+    email_opener: string;
+    follow_up_script: string;
+    short_video_hook: string;
+    sales_conversation_line: string;
+  };
+  objection_responses?: {
+    objection: string;
+    response: string;
+  }[];
   before_after: {
     before: string;
     after: string;
@@ -57,6 +124,7 @@ type LabDeliverable = {
   sections: { title: string; items: string[] }[];
   next_3_actions: string[];
   recommended_next_utility: string;
+  copy_paste_blocks?: { label: string; value: string }[];
   copy_paste_deliverables: { label: string; value: string }[];
 };
 
@@ -75,6 +143,7 @@ const assetTypes: MarketingAssetType[] = [
   "problem_narrative_builder",
   "messaging_sequence_builder",
   "buyer_messaging_engine",
+  "buyer_messaging_output",
 ];
 
 export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
@@ -272,6 +341,95 @@ export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
           </section>
         ) : null}
 
+        {generated.buyer_psychology_summary ? (
+          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Buyer Psychology Summary</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {Object.entries(generated.buyer_psychology_summary).map(([label, value]) => (
+                <div key={label} className="rounded-md bg-slate-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replace(/_/g, " ")}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {generated.before_after_improvements?.length ? (
+          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Before/After Improvements</p>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              {generated.before_after_improvements.map((improvement) => (
+                <article key={improvement.type} className="rounded-md border border-slate-200 p-4">
+                  <h2 className="text-lg font-semibold capitalize text-slate-950">{improvement.type.replace(/_/g, " ")}</h2>
+                  <div className="mt-3 grid gap-3">
+                    <InfoCard title="Before" value={improvement.before} />
+                    <InfoCard title="After" value={improvement.after} highlight />
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-700">{improvement.why_the_after_is_better}</p>
+                  <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Use it: {improvement.where_to_use_it.join(", ")}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {generated.messaging_strategy ? (
+          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Messaging Strategy</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {Object.entries(generated.messaging_strategy).map(([label, value]) => (
+                <div key={label} className="rounded-md bg-slate-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replace(/_/g, " ")}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {generated.core_message_assets ? (
+          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Core Message Assets</p>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              {Object.entries(generated.core_message_assets).map(([label, value]) => (
+                <div key={label} className="rounded-md border border-slate-200 p-4">
+                  <p className="text-sm font-semibold capitalize text-slate-500">{label.replace(/_/g, " ")}</p>
+                  <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-900">{Array.isArray(value) ? value.join("\n") : value}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {generated.channel_versions ? (
+          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Channel Versions</p>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              {Object.entries(generated.channel_versions).map(([label, value]) => (
+                <div key={label} className="rounded-md border border-slate-200 p-4">
+                  <p className="text-sm font-semibold capitalize text-slate-500">{label.replace(/_/g, " ")}</p>
+                  <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-900">{value}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {generated.objection_responses?.length ? (
+          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Objection Responses</p>
+            <div className="mt-4 grid gap-4 lg:grid-cols-3">
+              {generated.objection_responses.map((item) => (
+                <article key={item.objection} className="rounded-md border border-slate-200 p-4">
+                  <p className="text-sm font-semibold text-slate-500">{item.objection}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-900">{item.response}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         <section className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {generated.sections.map((section) => (
             <article key={section.title} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -321,6 +479,26 @@ export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
                 </Link>
                 <Link href={scopedHref("/message-builder")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 px-5 py-3 font-semibold text-slate-800">
                   Use this in Message Builder
+                </Link>
+              </div>
+            ) : null}
+            {prompt.role_id === "buyer_psychology_audit" ? (
+              <div className="mt-3 grid gap-3">
+                <Link href={scopedHref("/message-builder")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-cyan-900 px-5 py-3 font-semibold text-cyan-900">
+                  Send to Message Builder
+                </Link>
+                <Link href={scopedHref("/content-engine")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 px-5 py-3 font-semibold text-slate-800">
+                  Create content from this
+                </Link>
+              </div>
+            ) : null}
+            {prompt.role_id === "buyer_messaging_engine" ? (
+              <div className="mt-3 grid gap-3">
+                <Link href={scopedHref("/content-engine")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-cyan-900 px-5 py-3 font-semibold text-cyan-900">
+                  Send to Content Engine
+                </Link>
+                <Link href={scopedHref("/strategy-map")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 px-5 py-3 font-semibold text-slate-800">
+                  Use in Strategy Map
                 </Link>
               </div>
             ) : null}
@@ -382,6 +560,14 @@ function buildLabDeliverable(
     return buildMarketDemandDeliverable(prompt, context, { businessName, offer, customer, bottleneck, outcome, primaryInput });
   }
 
+  if (prompt.role_id === "buyer_psychology_audit") {
+    return buildBuyerPsychologyDeliverable(context, { businessName, offer, customer, bottleneck, outcome, primaryInput });
+  }
+
+  if (prompt.role_id === "buyer_messaging_engine") {
+    return buildBuyerMessagingDeliverable(context, { businessName, offer, customer, bottleneck, outcome, primaryInput });
+  }
+
   return {
     title: `${businessName} ${prompt.display_name}`,
     summary: `${prompt.display_name}: ${primaryInput}`,
@@ -430,6 +616,258 @@ function buildLabDeliverable(
         value: `Current bottleneck: ${bottleneck}\nAudit focus: ${prompt.display_name}\nNext utility: ${recommendedUtility}`,
       },
     ],
+  };
+}
+
+function buildBuyerPsychologyDeliverable(
+  context: {
+    answers: Record<string, string>;
+    result: LaunchPadResult | null;
+    business: BusinessSummary | null;
+    latestDiagnostic: SavedDiagnosticSummary | null;
+    priorAssets: Partial<Record<MarketingAssetType, MarketingAssetSummary>>;
+  },
+  base: { businessName: string; offer: string; customer: string; bottleneck: string; outcome: string; primaryInput: string },
+): LabDeliverable {
+  const reviewTarget = context.answers.review_target || context.result?.websiteUrl || "saved website analysis";
+  const buyerAction = context.answers.buyer_action || "take the next clear action";
+  const intendedBuyer = context.answers.intended_buyer || base.customer;
+  const currentMessage = context.result?.answers.homepageHeadline || context.result?.answers.messagingClarityNotes || base.primaryInput;
+  const currentPromise = context.result?.answers.primaryCta || base.offer;
+  const currentCta = context.result?.answers.primaryCta || "CTA needs review";
+  const trustSignals = context.result?.answers.trustFactor ? [context.result.answers.trustFactor] : ["Visible proof needs review"];
+  const confidence = context.result?.answers.websiteAnalysisSummary || context.answers.review_target ? "Medium" : "Low";
+  const strongerMessage = `${base.businessName} helps ${intendedBuyer} move from ${base.bottleneck.toLowerCase()} to ${base.outcome} with a clearer, safer next step.`;
+
+  return {
+    title: `${base.businessName} Buyer Psychology Audit`,
+    summary: `Buyer confidence read for ${reviewTarget}: ${strongerMessage}`,
+    current_state_assessment: `${reviewTarget} should help ${intendedBuyer} understand the offer, trust the proof, and feel clear enough to ${buyerAction}.`,
+    buyer_psychology_summary: {
+      what_the_buyer_likely_understands: `${base.businessName} offers ${base.offer}.`,
+      what_the_buyer_likely_doubts: "Whether this is specifically built for their situation, whether the proof is strong enough, and whether the next step is low-risk.",
+      what_the_buyer_likely_wants: base.outcome,
+      what_the_buyer_may_be_confused_by: "The exact promise, who it is best for, what happens after they click, or why they should act now.",
+      confidence_level: confidence,
+    },
+    current_state_read: {
+      current_message: currentMessage,
+      current_promise: currentPromise,
+      current_cta: currentCta,
+      current_trust_signals: trustSignals,
+      current_friction_points: [
+        "Buyer may not see themselves quickly enough.",
+        "The risk reducer may not be visible near the CTA.",
+        "The emotional reason to act may need to be sharper.",
+      ],
+    },
+    psychology_findings: {
+      emotional_drivers: ["Relief", "Confidence", "Avoiding a costly mistake"],
+      logical_drivers: ["Clear outcome", "Visible proof", "Specific next step"],
+      risk_fear_points: ["Choosing wrong", "Wasting money", "Not knowing what happens next"],
+      urgency_signals: [base.bottleneck, context.result?.recommendedFirstChannel || "The current opportunity may be lost if the next step stays unclear"],
+      missing_belief_shift: `The buyer needs to believe ${base.offer} is a safer, clearer path to ${base.outcome}.`,
+      trust_gaps: trustSignals[0] === "Visible proof needs review" ? ["Add specific testimonials, case examples, process proof, or credibility near the CTA."] : [`Make ${trustSignals[0]} easier to connect to the buyer's fear.`],
+      clarity_gaps: ["Clarify who this is for.", "Clarify the promise.", "Clarify what happens after the CTA."],
+    },
+    before_after_improvements: [
+      {
+        type: "headline",
+        before: currentMessage,
+        after: strongerMessage,
+        why_the_after_is_better: "It names the buyer, the stuck point, the desired outcome, and the safer path.",
+        where_to_use_it: ["Homepage hero", "Landing page opener", "Message Builder"],
+      },
+      {
+        type: "CTA",
+        before: currentCta,
+        after: "Get the recommended next step",
+        why_the_after_is_better: "It lowers pressure and tells the buyer they will get direction, not just a sales pitch.",
+        where_to_use_it: ["Hero CTA", "Service page CTA", "Follow-up email"],
+      },
+      {
+        type: "proof_trust",
+        before: trustSignals.join(", "),
+        after: `Show proof that ${intendedBuyer} can trust the path from ${base.bottleneck.toLowerCase()} to ${base.outcome}.`,
+        why_the_after_is_better: "Proof works harder when it answers the buyer's risk, not just the business's credibility.",
+        where_to_use_it: ["Near CTA", "Offer section", "Sales follow-up"],
+      },
+    ],
+    before_after: {
+      before: currentMessage,
+      after: strongerMessage,
+      why_better: "The after version reduces confusion, increases identity fit, and gives the buyer a safer reason to act.",
+      where_to_use: ["Message Builder", "Homepage", "Landing page", "Content Engine"],
+    },
+    sections: [
+      {
+        title: "Current-state read",
+        items: [
+          `Current message: ${currentMessage}`,
+          `Current promise: ${currentPromise}`,
+          `Current CTA: ${currentCta}`,
+          `Current trust signals: ${trustSignals.join(", ")}`,
+        ],
+      },
+      {
+        title: "Psychology findings",
+        items: [
+          "Emotional driver: buyer wants relief and confidence.",
+          "Logical driver: buyer needs proof, process clarity, and a specific next step.",
+          `Missing belief shift: ${base.offer} must feel like the safer path to ${base.outcome}.`,
+          "Top friction: uncertainty about fit, proof, and what happens next.",
+        ],
+      },
+      {
+        title: "Top 3 changes",
+        items: [
+          "Rewrite the opening message around the buyer's stuck point and desired outcome.",
+          "Move proof closer to the CTA and connect it to buyer risk.",
+          "Make the CTA feel like a low-risk next step.",
+        ],
+      },
+    ],
+    top_3_changes: [
+      "Rewrite the opening message around buyer pain and desired outcome.",
+      "Add risk-reducing proof near the CTA.",
+      "Clarify what happens after the buyer takes action.",
+    ],
+    next_3_actions: [
+      "Send the after message to Message Builder and turn it into homepage copy.",
+      "Create one proof block that answers the buyer's biggest doubt.",
+      "Use Content Engine to create a post or email from the buyer belief shift.",
+    ],
+    recommended_next_utility: "/message-builder",
+    copy_paste_deliverables: [
+      { label: "Buyer-facing message", value: strongerMessage },
+      { label: "Belief shift", value: `The buyer needs to believe ${base.offer} is a safer, clearer path to ${base.outcome}.` },
+      { label: "CTA", value: "Get the recommended next step" },
+    ],
+  };
+}
+
+function buildBuyerMessagingDeliverable(
+  context: {
+    answers: Record<string, string>;
+    result: LaunchPadResult | null;
+    business: BusinessSummary | null;
+    latestDiagnostic: SavedDiagnosticSummary | null;
+    priorAssets: Partial<Record<MarketingAssetType, MarketingAssetSummary>>;
+  },
+  base: { businessName: string; offer: string; customer: string; bottleneck: string; outcome: string; primaryInput: string },
+): LabDeliverable {
+  const useCase = context.answers.messaging_use || "general clarity";
+  const offerToPromote = context.answers.sell_promote || base.offer;
+  const buyer = context.answers.message_buyer || base.customer;
+  const currentVersion = context.answers.current_version || context.result?.answers.homepageHeadline || "No clear current version provided.";
+  const latestDemand = context.priorAssets.market_demand_check?.summary || "Use the latest demand read when available.";
+  const latestPsychology = context.priorAssets.buyer_psychology_audit?.summary || "Use the latest buyer psychology read when available.";
+  const pain = context.result?.answers.customerWords || base.bottleneck;
+  const beliefShift = `${offerToPromote} is a safer, clearer path to ${base.outcome}.`;
+  const improvedMessage = `${base.businessName} helps ${buyer} fix ${pain.toLowerCase()} and get ${base.outcome} without guessing what to do next.`;
+  const ctas = ["Get the recommended next step", "See what to fix first", "Start with a quick review"];
+  const copyBlocks = [
+    { label: "Homepage headline", value: improvedMessage },
+    { label: "Subheadline", value: `Get a clearer path, a safer first step, and a practical way to move forward with ${offerToPromote}.` },
+    { label: "CTA options", value: ctas.join("\n") },
+    { label: "Email opener", value: `If you are dealing with ${pain.toLowerCase()}, the next move should feel clear, not risky.` },
+    { label: "Follow-up script", value: `Based on what you shared, the safest next step is to identify the gap first. Then we can point you toward the right fix.` },
+  ];
+
+  return {
+    title: `${base.businessName} Buyer Messaging Output`,
+    summary: `Buyer-ready messaging for ${useCase}: ${improvedMessage}`,
+    current_state_assessment: `${base.businessName} needs messaging for ${useCase} that makes ${buyer} feel understood, reduces risk, and moves them toward a small next action.`,
+    messaging_strategy: {
+      target_buyer: buyer,
+      buyer_pain: pain,
+      desired_outcome: base.outcome,
+      key_belief_to_shift: beliefShift,
+      strongest_angle: `The safest next step from ${pain.toLowerCase()} to ${base.outcome}.`,
+      tone_recommendation: "Plain, specific, calm, and direct. No hype.",
+    },
+    current_vs_improved: {
+      current_before_message: currentVersion,
+      improved_after_message: improvedMessage,
+      why_the_after_is_better: "It names the buyer, the pain, the desired outcome, and the lower-risk next step.",
+      where_to_use_it: [useCase, "Message Builder", "Content Engine", "Sales follow-up"],
+    },
+    core_message_assets: {
+      positioning_statement: `${base.businessName} is for ${buyer} who need ${base.outcome} but are stuck with ${pain.toLowerCase()}.`,
+      homepage_headline: improvedMessage,
+      subheadline: `Get a clearer path, a safer first step, and a practical way to move forward with ${offerToPromote}.`,
+      simple_explanation: `We help ${buyer} understand what is causing ${pain.toLowerCase()}, choose the right next step, and move toward ${base.outcome}.`,
+      offer_statement: `${offerToPromote} for ${buyer} who want ${base.outcome} without unnecessary confusion or risk.`,
+      cta_options: ctas,
+      elevator_pitch: `We help ${buyer} who are dealing with ${pain.toLowerCase()}. The first step is simple: identify the gap, explain the next move, and make it easier to get ${base.outcome}.`,
+    },
+    channel_versions: {
+      website_copy: `${improvedMessage}\n\nStart with a clear next step and see what to fix first.`,
+      ad_hook: `${pain} is not the only problem. Not knowing the next step is what keeps it stuck.`,
+      social_post: `If ${pain.toLowerCase()} keeps showing up, the answer is not more noise. Start with one clear next step toward ${base.outcome}.`,
+      email_opener: `If you are dealing with ${pain.toLowerCase()}, the next move should feel clear, not risky.`,
+      follow_up_script: `Based on what you shared, the safest next step is to identify the gap first. Then we can point you toward the right fix.`,
+      short_video_hook: `Before you spend more time on ${pain.toLowerCase()}, check this first.`,
+      sales_conversation_line: `The goal is not to pressure you. It is to show you the safest next step toward ${base.outcome}.`,
+    },
+    objection_responses: [
+      {
+        objection: "I am not sure this is the right fit.",
+        response: "That is exactly why the first step is a quick review. You will see what is worth fixing before committing to anything bigger.",
+      },
+      {
+        objection: "I do not want to waste money.",
+        response: "The goal is to find the gap first, then choose the smallest useful next step.",
+      },
+      {
+        objection: "I need to think about it.",
+        response: "That makes sense. Start by checking whether this is the real problem or just a symptom.",
+      },
+    ],
+    before_after: {
+      before: currentVersion,
+      after: improvedMessage,
+      why_better: "It avoids vague claims and gives the buyer a specific reason to keep reading or respond.",
+      where_to_use: [useCase, "Website", "Email", "Follow-up", "Sales conversation"],
+    },
+    sections: [
+      {
+        title: "Engagement messaging",
+        items: [
+          `${pain} is usually a sign that the next step is unclear.`,
+          `Most ${buyer} do not need more noise. They need a safer first decision.`,
+          `If ${pain.toLowerCase()} keeps happening, check the foundation before adding more activity.`,
+        ],
+      },
+      {
+        title: "Interaction messaging",
+        items: [
+          "Get the recommended next step.",
+          "See what to fix first.",
+          `Find the gap between ${pain.toLowerCase()} and ${base.outcome}.`,
+        ],
+      },
+      {
+        title: "Adoption messaging",
+        items: [
+          `After the first review, ${buyer} know what is wrong, why it matters, and what to do next.`,
+          "No guessing. No oversized commitment. Just the next clear move.",
+          `The process turns ${pain.toLowerCase()} into a practical path toward ${base.outcome}.`,
+        ],
+      },
+      {
+        title: "Context used",
+        items: [latestDemand, latestPsychology, `Current offer: ${offerToPromote}`],
+      },
+    ],
+    next_3_actions: [
+      "Use the homepage headline and CTA in Message Builder.",
+      "Send the ad hook and social post to Content Engine.",
+      "Add the follow-up script to your sales or lead response process.",
+    ],
+    recommended_next_utility: "/content-engine",
+    copy_paste_blocks: copyBlocks,
+    copy_paste_deliverables: copyBlocks,
   };
 }
 

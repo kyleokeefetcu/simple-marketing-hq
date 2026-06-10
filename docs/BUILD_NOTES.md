@@ -38,6 +38,8 @@
 - Marketing Lab routes for Buyer Psychology Audit, Marketing Reality Check, Market Demand Check, Problem Narrative Builder, Messaging Sequence Builder, and Buyer Messaging Engine
 - Marketing Lab audit workflow with selected Business / Client context, short input form, structured output, before/after, next 3 actions, save action, and saved history
 - Market Demand Check prompt pack now includes offer-demand input fields, demand read JSON, demand diagnosis, buyer motivation, offer improvement, before/after, next 3 actions, and Offer Builder handoff actions
+- Buyer Psychology Audit prompt pack now includes page/message review input fields, buyer psychology summary JSON, current-state read, psychology findings, before/after improvements, top changes, next 3 actions, and Message Builder/Content Engine handoff actions
+- Buyer Messaging Engine prompt pack now includes messaging-use input fields, buyer-state messaging strategy, current/improved copy, core message assets, channel versions, objection responses, copy/paste blocks, next 3 actions, Content Engine/Strategy Map handoff actions, and `buyer_messaging_output` persistence
 - Lead capture/account creation-ready panel
 - Logged-in marketing command center dashboard with desktop side navigation, mobile core navigation, top-bar Business / Client dropdown, Run New Diagnostic access, compact app-style utility launcher buttons as the primary view, Next Recommended Action panel, and channel deployment reminder.
 - RB2B browser tracking for `simplemarketinghq.com` remains disabled unless `NEXT_PUBLIC_RB2B_SCRIPT_ID` is configured.

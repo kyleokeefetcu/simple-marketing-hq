@@ -56,7 +56,9 @@ const assetTypes: MarketingAssetType[] = [
   "marketing_schedule",
   "research",
   "recommendation",
+  "buyer_psychology_audit",
   "market_demand_check",
+  "buyer_messaging_output",
 ];
 
 const configs: Record<UtilityKind, UtilityConfig> = {
@@ -300,6 +302,12 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
               <ContextRow label="Latest recommended action" value={context.latestDiagnostic?.nextMove || result?.nextMove || "Choose one utility and generate a deliverable"} />
               {config.kind === "offer" ? (
                 <ContextRow label="Latest Market Demand Check" value={context.priorAssets.market_demand_check?.summary || "Run Market Demand Check to sharpen this offer before deployment."} />
+              ) : null}
+              {config.kind === "message" ? (
+                <>
+                  <ContextRow label="Latest Buyer Psychology Audit" value={context.priorAssets.buyer_psychology_audit?.summary || "Run Buyer Psychology Audit to understand what buyers need to believe before they act."} />
+                  <ContextRow label="Latest Buyer Messaging Output" value={context.priorAssets.buyer_messaging_output?.summary || "Run Buyer Messaging Engine to generate ready-to-use copy for this business."} />
+                </>
               ) : null}
             </div>
             <div className="mt-4">

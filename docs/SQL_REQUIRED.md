@@ -53,9 +53,44 @@ Static UI only in active command-center navigation:
 
 ## Current Requirement
 
-No additional SQL is required right now because the `marketing_assets.role_id` prompt-pack upgrade, `marketing_assets`, `advisor_threads`, and `advisor_messages` SQL was run successfully.
+No additional SQL is required right now because the `marketing_assets.role_id` prompt-pack upgrade, `marketing_assets`, `advisor_threads`, `advisor_messages`, and `buyer_messaging_output` asset-type SQL were run successfully.
 
 Future team workspaces, membership roles, Stripe checkout records, OpenAI usage logging, and activated RB2B customer-domain tracking may require additional SQL when those workflows are implemented.
+
+## Buyer Messaging Engine SQL Already Run
+
+This SQL was required for Prompt Pack 3 so Buyer Messaging Engine outputs save as `asset_type = buyer_messaging_output` while keeping `role_id = buyer_messaging_engine`.
+
+```sql
+alter table public.marketing_assets
+drop constraint if exists marketing_assets_asset_type_check;
+
+alter table public.marketing_assets
+add constraint marketing_assets_asset_type_check
+check (
+  asset_type in (
+    'icp',
+    'offer',
+    'message',
+    'content',
+    'strategy_map',
+    'marketing_schedule',
+    'research',
+    'recommendation',
+    'buyer_psychology_audit',
+    'marketing_reality_check',
+    'market_demand_check',
+    'problem_narrative_builder',
+    'messaging_sequence_builder',
+    'buyer_messaging_engine',
+    'buyer_messaging_output'
+  )
+);
+
+create index if not exists marketing_assets_buyer_messaging_output_idx
+  on public.marketing_assets (business_id, created_at desc)
+  where asset_type = 'buyer_messaging_output';
+```
 
 ## Command-Center Persistence SQL Already Run
 
@@ -101,7 +136,8 @@ create table if not exists public.marketing_assets (
       'market_demand_check',
       'problem_narrative_builder',
       'messaging_sequence_builder',
-      'buyer_messaging_engine'
+      'buyer_messaging_engine',
+      'buyer_messaging_output'
     )
   ),
   title text not null,

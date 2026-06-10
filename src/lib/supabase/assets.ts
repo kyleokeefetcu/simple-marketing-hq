@@ -17,7 +17,8 @@ export type MarketingAssetType =
   | "market_demand_check"
   | "problem_narrative_builder"
   | "messaging_sequence_builder"
-  | "buyer_messaging_engine";
+  | "buyer_messaging_engine"
+  | "buyer_messaging_output";
 
 export type MarketingAssetInput = {
   businessId: string;
