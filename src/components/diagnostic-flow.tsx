@@ -1,75 +1,138 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Pencil, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { brand } from "@/lib/brand";
-import { buildLaunchPadResult, diagnosticQuestions, saveStoredResult } from "@/lib/launchpad";
+import { buildLaunchPadResult, diagnosticQuestions, getIndustryProfile, saveStoredResult, type WebsiteAnalysisProfile } from "@/lib/launchpad";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { saveLaunchPadResultToSupabase } from "@/lib/supabase/diagnostics";
 
+type IntakePhase = "website" | "confirm" | "questions";
+
+const analysisSteps = [
+  "Reading your website...",
+  "Looking for your offer...",
+  "Checking your calls-to-action...",
+  "Finding proof and trust signals...",
+  "Building your starting marketing profile...",
+];
+
+const confirmationFields = [
+  { key: "businessName", label: "Business name" },
+  { key: "industryLabel", label: "Industry/category" },
+  { key: "services", label: "Services/offers" },
+  { key: "serviceArea", label: "Service area/location" },
+  { key: "primaryCustomer", label: "Primary customer" },
+  { key: "primaryCta", label: "Main website CTA" },
+  { key: "trustSignals", label: "Trust/proof found" },
+  { key: "leadCapture", label: "Lead capture found" },
+  { key: "messagingClarityNotes", label: "Messaging clarity notes" },
+] as const;
+
 export function DiagnosticFlow() {
   const router = useRouter();
-  const [stepIndex, setStepIndex] = useState(() => getSavedStepIndex());
-  const [answers, setAnswers] = useState<Record<string, string>>(() => getSavedAnswers());
+  const savedProgress = getSavedProgress();
+  const [phase, setPhase] = useState<IntakePhase>(savedProgress.phase);
+  const [gapIndex, setGapIndex] = useState(savedProgress.gapIndex);
+  const [answers, setAnswers] = useState<Record<string, string>>(savedProgress.answers);
+  const [websiteUrl, setWebsiteUrl] = useState(savedProgress.answers.websiteUrl ?? "");
+  const [profile, setProfile] = useState<WebsiteAnalysisProfile | null>(savedProgress.profile);
   const [isWorking, setIsWorking] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [saveStatus, setSaveStatus] = useState("");
-  const question = diagnosticQuestions[stepIndex];
-  const currentValue = answers[question.id] ?? "";
-  const progress = ((stepIndex + 1) / diagnosticQuestions.length) * 100;
-  const canContinue = currentValue.trim().length > 0;
+  const [analysisStepIndex, setAnalysisStepIndex] = useState(0);
+
+  const question = diagnosticQuestions[gapIndex];
+  const currentValue = question ? answers[question.id] ?? "" : "";
+  const totalSteps = 2 + diagnosticQuestions.length;
+  const currentStep = phase === "website" ? 1 : phase === "confirm" ? 2 : 3 + gapIndex;
+  const progress = (currentStep / totalSteps) * 100;
+  const canContinue = phase === "questions" ? currentValue.trim().length > 0 : true;
 
   useEffect(() => {
-    window.localStorage.setItem("simple-marketing-hq:diagnostic-progress", JSON.stringify({ stepIndex, answers }));
-  }, [stepIndex, answers]);
+    window.localStorage.setItem("simple-marketing-hq:diagnostic-progress", JSON.stringify({ phase, gapIndex, answers, profile }));
+  }, [phase, gapIndex, answers, profile]);
 
-  function setAnswer(value: string) {
+  useEffect(() => {
+    if (!isWorking) return;
+    const interval = window.setInterval(() => {
+      setAnalysisStepIndex((current) => (current + 1) % analysisSteps.length);
+    }, 900);
+    return () => window.clearInterval(interval);
+  }, [isWorking]);
+
+  const confirmationSummary = useMemo(() => {
+    if (!profile) return "";
+    const serviceArea = profile.serviceArea ? ` serving ${profile.serviceArea}` : "";
+    return `We found that you are a ${profile.industryLabel.toLowerCase()}${serviceArea}. Is that right?`;
+  }, [profile]);
+
+  function setQuestionAnswer(value: string) {
+    if (!question) return;
     setErrorMessage("");
     setSaveStatus("");
     setAnswers((current) => ({ ...current, [question.id]: value }));
   }
 
-  async function goNext() {
-    if (!canContinue) return;
+  function updateProfileField(key: (typeof confirmationFields)[number]["key"], value: string) {
+    setProfile((current) => (current ? { ...current, [key]: value } : current));
+  }
+
+  async function analyzeWebsite() {
+    setErrorMessage("");
+    setSaveStatus("");
+    const normalizedUrl = normalizeWebsiteUrl(websiteUrl);
+    const urlError = validateWebsiteUrl(normalizedUrl);
+    if (urlError) {
+      setErrorMessage(urlError);
+      return;
+    }
+
+    setIsWorking(true);
+    setAnalysisStepIndex(0);
+    try {
+      const response = await fetch("/api/website/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ websiteUrl: normalizedUrl }),
+      });
+      const analysis = (await response.json()) as WebsiteAnalysisProfile & { error?: string };
+      if (!response.ok) {
+        setErrorMessage(analysis.error ?? "We could not review that website URL. You can fix the URL or continue manually.");
+        return;
+      }
+
+      const nextProfile = normalizeProfile(analysis, normalizedUrl);
+      setProfile(nextProfile);
+      setAnswers((current) => mergeProfileIntoAnswers(current, nextProfile));
+      setWebsiteUrl(normalizedUrl);
+      setPhase("confirm");
+    } finally {
+      setIsWorking(false);
+    }
+  }
+
+  function confirmProfile() {
+    if (!profile) return;
+    const industryCategory = resolveIndustryCategory(profile);
+    const nextProfile = { ...profile, industryCategory, industryLabel: profile.industryLabel || getIndustryProfile(industryCategory).label };
+    setProfile(nextProfile);
+    setAnswers((current) => mergeProfileIntoAnswers(current, nextProfile));
+    setPhase("questions");
+    setGapIndex(0);
+  }
+
+  async function goNextQuestion() {
+    if (!question || !canContinue) return;
     setErrorMessage("");
     setSaveStatus("");
 
-    if (question.type === "url") {
-      const normalizedUrl = normalizeWebsiteUrl(currentValue);
-      const urlError = validateWebsiteUrl(normalizedUrl);
-      if (urlError) {
-        setErrorMessage(urlError);
-        return;
-      }
-      setAnswers((current) => ({ ...current, [question.id]: normalizedUrl }));
-
-      setIsWorking(true);
-      try {
-        const response = await fetch("/api/website/analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ websiteUrl: normalizedUrl }),
-        });
-        const analysis = (await response.json()) as { summary?: string; businessName?: string; error?: string };
-        if (!response.ok) {
-          setErrorMessage(analysis.error ?? "We could not review that website URL. You can fix the URL or continue manually.");
-          setIsWorking(false);
-          return;
-        }
-        setAnswers((current) => ({
-          ...current,
-          websiteAnalysisSummary: analysis.summary ?? "",
-          detectedBusinessName: analysis.businessName ?? "",
-        }));
-      } finally {
-        setIsWorking(false);
-      }
-    }
-
-    if (stepIndex === diagnosticQuestions.length - 1) {
-      const result = buildLaunchPadResult(answers);
+    if (gapIndex === diagnosticQuestions.length - 1) {
+      const finalAnswers = profile ? mergeProfileIntoAnswers({ ...answers, [question.id]: currentValue }, profile) : { ...answers, [question.id]: currentValue };
+      const result = buildLaunchPadResult(finalAnswers);
       saveStoredResult(result);
+
       const supabase = createBrowserSupabaseClient();
       if (supabase) {
         const { data } = await supabase.auth.getUser();
@@ -84,10 +147,26 @@ export function DiagnosticFlow() {
           }
         }
       }
-      router.push("/diagnostic/result");
+
+      router.push("/dashboard");
       return;
     }
-    setStepIndex((current) => current + 1);
+
+    setGapIndex((current) => current + 1);
+  }
+
+  function goBack() {
+    setErrorMessage("");
+    if (phase === "website") return;
+    if (phase === "confirm") {
+      setPhase("website");
+      return;
+    }
+    if (gapIndex === 0) {
+      setPhase("confirm");
+      return;
+    }
+    setGapIndex((current) => Math.max(0, current - 1));
   }
 
   return (
@@ -97,7 +176,7 @@ export function DiagnosticFlow() {
           <div className="flex items-center justify-between text-sm">
             <p className="font-semibold text-cyan-900">{brand.diagnosticName}</p>
             <p className="text-slate-500">
-              {stepIndex + 1} of {diagnosticQuestions.length}
+              {currentStep} of {totalSteps}
             </p>
           </div>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
@@ -106,89 +185,240 @@ export function DiagnosticFlow() {
         </div>
 
         <div className="flex flex-1 items-center">
-          <article className="w-full rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">{question.eyebrow}</p>
-            <h1 className="mt-3 text-3xl font-semibold text-slate-950 sm:text-4xl">{question.question}</h1>
-            <p className="mt-3 text-base leading-7 text-slate-600">{question.helper}</p>
-
-            {question.type === "choice" ? (
-              <div className="mt-6 grid gap-3">
-                {question.options?.map((option) => {
-                  const selected = currentValue === option.value;
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      onClick={() => setAnswer(option.value)}
-                      className={`flex min-h-14 items-center justify-between rounded-md border px-4 py-3 text-left font-medium transition ${
-                        selected
-                          ? "border-cyan-800 bg-cyan-50 text-cyan-950"
-                          : "border-slate-200 bg-white text-slate-700 hover:border-cyan-300 hover:bg-cyan-50"
-                      }`}
-                    >
-                      {option.label}
-                      {selected ? <CheckCircle2 size={18} className="text-emerald-600" aria-hidden="true" /> : null}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
+          {phase === "website" ? (
+            <article className="w-full rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+              <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Step 1</p>
+              <h1 className="mt-3 text-3xl font-semibold text-slate-950 sm:text-4xl">What is your website?</h1>
+              <p className="mt-3 text-base leading-7 text-slate-600">
+                We&apos;ll use this to understand your business so you don&apos;t have to type everything manually.
+              </p>
               <input
-                value={currentValue}
-                onChange={(event) => setAnswer(event.target.value)}
-                type={question.type === "url" ? "url" : "text"}
-                placeholder={question.inputHint}
+                value={websiteUrl}
+                onChange={(event) => setWebsiteUrl(event.target.value)}
+                type="url"
+                placeholder="https://yourcompany.com"
                 className="mt-6 w-full rounded-md border border-slate-300 px-4 py-4 text-lg outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100"
               />
-            )}
+              {isWorking ? (
+                <div className="mt-5 rounded-md bg-cyan-50 p-4 text-sm font-semibold text-cyan-950">
+                  <span className="inline-flex items-center gap-2">
+                    <Sparkles size={17} aria-hidden="true" />
+                    {analysisSteps[analysisStepIndex]}
+                  </span>
+                </div>
+              ) : (
+                <div className="mt-5 rounded-md bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+                  Simple Marketing HQ will read public website basics, build a starting profile, then ask you to confirm or correct it.
+                </div>
+              )}
+              {errorMessage ? <p className="mt-5 rounded-md bg-red-50 p-4 text-sm font-medium text-red-700">{errorMessage}</p> : null}
+              <FooterActions
+                backDisabled
+                nextDisabled={!websiteUrl.trim() || isWorking}
+                nextLabel={isWorking ? "Analyzing..." : "Analyze website"}
+                onBack={goBack}
+                onNext={analyzeWebsite}
+              />
+            </article>
+          ) : null}
 
-            {stepIndex === 0 && currentValue ? (
-              <div className="mt-5 rounded-md bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-                We will review public website basics and use anything we can read to shape your diagnostic.
+          {phase === "confirm" && profile ? (
+            <article className="w-full rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+              <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">AI review</p>
+              <h1 className="mt-3 text-3xl font-semibold text-slate-950 sm:text-4xl">Confirm what we found.</h1>
+              <p className="mt-3 text-base leading-7 text-slate-600">
+                {profile.readable ? confirmationSummary : "We could not read enough from your website. We will ask a few quick questions instead."}
+              </p>
+
+              <div className="mt-6 grid gap-3">
+                {confirmationFields.map((field) => (
+                  <label key={field.key} className="rounded-md border border-slate-200 bg-slate-50 p-4">
+                    <span className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+                      <Pencil size={15} aria-hidden="true" />
+                      {field.label}
+                    </span>
+                    <input
+                      value={profile[field.key]}
+                      onChange={(event) => updateProfileField(field.key, event.target.value)}
+                      className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100"
+                    />
+                  </label>
+                ))}
               </div>
-            ) : null}
-            {errorMessage ? <p className="mt-5 rounded-md bg-red-50 p-4 text-sm font-medium text-red-700">{errorMessage}</p> : null}
-            {saveStatus ? <p className="mt-5 rounded-md bg-amber-50 p-4 text-sm font-medium text-amber-800">{saveStatus}</p> : null}
 
-            <div className="mt-8 flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={() => setStepIndex((current) => Math.max(0, current - 1))}
-                disabled={stepIndex === 0}
-                className="inline-flex min-h-12 items-center gap-2 rounded-md border border-slate-300 px-4 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <ArrowLeft size={18} aria-hidden="true" />
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={goNext}
-                disabled={!canContinue || isWorking}
-                className="inline-flex min-h-12 items-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white transition hover:bg-cyan-800 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {isWorking ? "Reviewing..." : stepIndex === diagnosticQuestions.length - 1 ? "View Growth Plan" : "Continue"}
-                <ArrowRight size={18} aria-hidden="true" />
-              </button>
-            </div>
-          </article>
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <button type="button" onClick={confirmProfile} className="min-h-12 rounded-md bg-cyan-900 px-4 py-3 font-semibold text-white">
+                  Yes, continue
+                </button>
+                <button type="button" onClick={confirmProfile} className="min-h-12 rounded-md border border-slate-300 px-4 py-3 font-semibold text-slate-800">
+                  Mostly right, continue
+                </button>
+                <button type="button" onClick={confirmProfile} className="min-h-12 rounded-md border border-slate-300 px-4 py-3 font-semibold text-slate-800">
+                  I corrected it
+                </button>
+              </div>
+
+              <FooterActions backDisabled={false} nextDisabled={false} nextLabel="Continue" onBack={goBack} onNext={confirmProfile} />
+            </article>
+          ) : null}
+
+          {phase === "questions" && question ? (
+            <article className="w-full rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+              <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">{question.eyebrow}</p>
+              <h1 className="mt-3 text-3xl font-semibold text-slate-950 sm:text-4xl">{question.question}</h1>
+              <p className="mt-3 text-base leading-7 text-slate-600">{question.helper}</p>
+
+              {question.type === "choice" ? (
+                <div className="mt-6 grid gap-3">
+                  {question.options?.map((option) => {
+                    const selected = currentValue === option.value;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => setQuestionAnswer(option.value)}
+                        className={`flex min-h-14 items-center justify-between rounded-md border px-4 py-3 text-left font-medium transition ${
+                          selected
+                            ? "border-cyan-800 bg-cyan-50 text-cyan-950"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-cyan-300 hover:bg-cyan-50"
+                        }`}
+                      >
+                        {option.label}
+                        {selected ? <CheckCircle2 size={18} className="text-emerald-600" aria-hidden="true" /> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <input
+                  value={currentValue}
+                  onChange={(event) => setQuestionAnswer(event.target.value)}
+                  type="text"
+                  placeholder={question.inputHint}
+                  className="mt-6 w-full rounded-md border border-slate-300 px-4 py-4 text-lg outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100"
+                />
+              )}
+
+              {saveStatus ? <p className="mt-5 rounded-md bg-amber-50 p-4 text-sm font-medium text-amber-800">{saveStatus}</p> : null}
+              <FooterActions
+                backDisabled={false}
+                nextDisabled={!canContinue}
+                nextLabel={gapIndex === diagnosticQuestions.length - 1 ? "Build my command center" : "Continue"}
+                onBack={goBack}
+                onNext={goNextQuestion}
+              />
+            </article>
+          ) : null}
         </div>
       </section>
     </main>
   );
 }
 
-function getSavedAnswers() {
-  if (typeof window === "undefined") return {};
-  const raw = window.localStorage.getItem("simple-marketing-hq:diagnostic-progress");
-  if (!raw) return {};
-  return (JSON.parse(raw) as { answers?: Record<string, string> }).answers ?? {};
+function FooterActions({
+  backDisabled,
+  nextDisabled,
+  nextLabel,
+  onBack,
+  onNext,
+}: {
+  backDisabled: boolean;
+  nextDisabled: boolean;
+  nextLabel: string;
+  onBack: () => void;
+  onNext: () => void;
+}) {
+  return (
+    <div className="mt-8 flex items-center justify-between gap-3">
+      <button
+        type="button"
+        onClick={onBack}
+        disabled={backDisabled}
+        className="inline-flex min-h-12 items-center gap-2 rounded-md border border-slate-300 px-4 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <ArrowLeft size={18} aria-hidden="true" />
+        Back
+      </button>
+      <button
+        type="button"
+        onClick={onNext}
+        disabled={nextDisabled}
+        className="inline-flex min-h-12 items-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white transition hover:bg-cyan-800 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {nextLabel}
+        <ArrowRight size={18} aria-hidden="true" />
+      </button>
+    </div>
+  );
 }
 
-function getSavedStepIndex() {
-  if (typeof window === "undefined") return 0;
+function getSavedProgress() {
+  const fallback = { phase: "website" as IntakePhase, gapIndex: 0, answers: {} as Record<string, string>, profile: null as WebsiteAnalysisProfile | null };
+  if (typeof window === "undefined") return fallback;
   const raw = window.localStorage.getItem("simple-marketing-hq:diagnostic-progress");
-  if (!raw) return 0;
-  return (JSON.parse(raw) as { stepIndex?: number }).stepIndex ?? 0;
+  if (!raw) return fallback;
+  const parsed = JSON.parse(raw) as Partial<typeof fallback>;
+  return {
+    phase: parsed.phase ?? fallback.phase,
+    gapIndex: parsed.gapIndex ?? fallback.gapIndex,
+    answers: parsed.answers ?? fallback.answers,
+    profile: parsed.profile ?? fallback.profile,
+  };
+}
+
+function mergeProfileIntoAnswers(current: Record<string, string>, profile: WebsiteAnalysisProfile) {
+  const industryCategory = resolveIndustryCategory(profile);
+  return {
+    ...current,
+    websiteUrl: profile.websiteUrl,
+    businessName: profile.businessName,
+    detectedBusinessName: profile.businessName,
+    industryCategory,
+    industryLabel: profile.industryLabel || getIndustryProfile(industryCategory).label,
+    whatSelling: current.whatSelling || profile.services,
+    services: profile.services,
+    serviceArea: profile.serviceArea,
+    targetCustomer: current.targetCustomer || profile.primaryCustomer,
+    primaryCustomer: profile.primaryCustomer,
+    primaryCta: profile.primaryCta,
+    trustFactor: current.trustFactor || profile.trustSignals,
+    leadCaptureFound: profile.leadCapture,
+    messagingClarityNotes: profile.messagingClarityNotes,
+    websiteAnalysisSummary: profile.summary,
+    homepageHeadline: profile.homepageHeadline,
+    currentOffer: current.currentOffer || (profile.primaryCta ? "The offer is understandable but could be sharper." : "The offer needs work."),
+  };
+}
+
+function normalizeProfile(profile: WebsiteAnalysisProfile, websiteUrl: string): WebsiteAnalysisProfile {
+  const industryCategory = resolveIndustryCategory(profile);
+  return {
+    ...profile,
+    websiteUrl,
+    businessName: profile.businessName || new URL(websiteUrl).hostname.replace(/^www\./, ""),
+    industryCategory,
+    industryLabel: profile.industryLabel || getIndustryProfile(industryCategory).label,
+  };
+}
+
+function resolveIndustryCategory(profile: WebsiteAnalysisProfile) {
+  if (profile.industryCategory) return profile.industryCategory;
+  const normalizedLabel = profile.industryLabel.toLowerCase();
+  const candidates = [
+    "local_service",
+    "home_services",
+    "medical_wellness",
+    "real_estate",
+    "professional_services",
+    "restaurant_retail",
+    "b2b_services",
+    "saas_software",
+    "coaching_consulting",
+    "creator_course",
+    "agency",
+    "ecommerce",
+  ];
+  return candidates.find((candidate) => getIndustryProfile(candidate).label.toLowerCase() === normalizedLabel) ?? "";
 }
 
 function validateWebsiteUrl(value: string) {
