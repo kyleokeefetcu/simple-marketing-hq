@@ -27,7 +27,7 @@ export function AppHeader() {
           </span>
           <span>
             <span className="block text-sm font-semibold text-slate-950">{brand.appName}</span>
-            <span className="block text-xs text-slate-500">Your business growth dashboard</span>
+            <span className="block text-xs text-slate-500">Marketing command center</span>
           </span>
         </Link>
         <div className="flex items-center gap-2">
