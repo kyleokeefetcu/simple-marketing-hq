@@ -105,6 +105,12 @@ Each utility should be action-oriented:
 1. LaunchPad Diagnostic
    Initial intake and bottleneck finder across business, offer, audience, website, leads, sales process, content, follow-up, and goals.
 
+   The diagnostic should be AI-first and short. The user enters a website URL early, Simple Marketing HQ analyzes the public website, shows an editable confirmation screen for inferred business profile fields, then asks only the missing human-judgment questions needed to create the Growth Score, Action Plan, ICP starter, Offer Builder starter, Content Engine starter, and Strategy Map.
+
+   Do not ask users to manually answer fields the website can reasonably infer, including business name, industry/category, basic services, homepage headline, primary CTA, service area if visible, basic target audience, trust signals, testimonials/reviews, and visible lead capture. Present these as confirmation/edit cards instead.
+
+   Gap questions should stay short and focused: what to sell now, best-fit customer, desired customer result, current lead source, lead drop-off, response speed, first channel focus, and biggest marketing frustration.
+
 2. LaunchPad Growth Score
    Scores foundational marketing readiness across ICP clarity, industry fit, buyer pain clarity, urgency/trigger clarity, offer-to-ICP fit, channel-to-ICP fit, offer clarity, message clarity, website/conversion readiness, lead capture, follow-up system, content consistency, proof/trust, and next-action clarity.
 
@@ -158,7 +164,7 @@ ICP Builder output should include:
 
 Prioritize this flow:
 
-Diagnostic -> Growth Score -> ICP Builder -> Offer Builder starter -> Strategy Map -> Content Engine starter -> Advisor next action -> Recommendations.
+Website URL -> AI website review -> Confirm/edit profile -> short gap questions -> Command Center -> Growth Score -> ICP Builder -> Offer Builder starter -> Strategy Map -> Content Engine starter -> Advisor next action -> Recommendations.
 
 The MVP should make the product spine obvious even when deeper persistence and AI generation are added later.
 
@@ -245,7 +251,7 @@ Existing Supabase tables support the current MVP persistence for profiles, busin
 
 The existing `businesses.owner_id` relationship supports multiple businesses per user. The existing `launchpad_diagnostics.business_id` and related `business_id` columns support per-business scoping for diagnostics, recommendations, visitor records, referral records, generated assets, check-ins, and partner recommendations.
 
-No new SQL is required for the current logged-in command center and starter utility pass because the current schema already supports multiple Business / Client profiles under a user account, stores diagnostic answers in `launchpad_answers`, stores starter diagnostic summaries in `launchpad_diagnostics.summary`, and includes `generated_assets` for future saved utility outputs. Add SQL only when explicit team workspaces/memberships or first-class saved ICP, offer, message, content, strategy, schedule, research, advisor-thread, and exported asset records are implemented.
+No new SQL is required for the current logged-in command center, AI-first diagnostic intake, and starter utility pass because the current schema already supports multiple Business / Client profiles under a user account, stores confirmed and gap answers in `launchpad_answers`, stores starter diagnostic summaries in `launchpad_diagnostics.summary`, stores structured website analysis in `website_analyses.analysis`, and includes `generated_assets` for future saved utility outputs. Add SQL only when explicit team workspaces/memberships or first-class saved ICP, offer, message, content, strategy, schedule, research, advisor-thread, and exported asset records are implemented.
 
 ## Acceptance Criteria
 
