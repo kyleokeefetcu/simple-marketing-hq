@@ -5,12 +5,15 @@ import type { ReactNode } from "react";
 import { AlertTriangle, ArrowRight, Magnet, MessageSquare, Target, Users } from "lucide-react";
 import { useState } from "react";
 import { AppHeader } from "@/components/app-header";
+import { AssetSavePanel } from "@/components/asset-save-panel";
 import { buildIcpStarter } from "@/lib/command-center";
 import { getStoredResult } from "@/lib/launchpad";
 
 export default function IcpBuilderPage() {
   const [result] = useState(() => getStoredResult());
   const icp = buildIcpStarter(result);
+  const assetTitle = `${result?.businessName ?? "Business"} ICP profile`;
+  const assetSummary = `Best-fit customer: ${icp.bestFitSummary}`;
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -75,6 +78,21 @@ export default function IcpBuilderPage() {
             ))}
           </div>
         </article>
+
+        <AssetSavePanel
+          assetType="icp"
+          title={assetTitle}
+          summary={assetSummary}
+          input={{
+            businessName: result?.businessName,
+            websiteUrl: result?.websiteUrl,
+            answers: result?.answers,
+          }}
+          output={icp}
+          prompt={{
+            purpose: "Define best-fit customer, buying triggers, objections, message angles, lead magnets, channels, and offer adjustments.",
+          }}
+        />
       </section>
     </main>
   );
