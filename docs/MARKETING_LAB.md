@@ -58,6 +58,38 @@ Output includes:
 
 The generated output saves to Supabase as `asset_type = market_demand_check` and `role_id = market_demand_check`.
 
+## Marketing Reality Check
+
+Role ID: `marketing_reality_check`
+
+Asset type: `marketing_reality_check`
+
+Location: Marketing Lab.
+
+Purpose: give the business owner a direct, constructive, practical audit of what is clear, confusing, missing, too generic, and worth fixing first in the marketing foundation.
+
+Input fields:
+
+- What do you want checked?
+- What are you trying to improve?
+- What have you tried so far?
+
+Output includes:
+
+- `reality_check_summary`
+- `what_is_working`
+- `what_is_confusing`
+- `what_is_missing`
+- `what_to_ignore_for_now`
+- `highest_leverage_fix`
+- `before_after`
+- `next_3_actions`
+- `recommended_next_utility`
+
+The generated output saves to Supabase as `asset_type = marketing_reality_check` and `role_id = marketing_reality_check`.
+
+Marketing Reality Check stays inside Marketing Lab. It points the user to the next utility, but does not clutter the command center dashboard directly.
+
 ## Buyer Psychology Audit
 
 Role ID: `buyer_psychology_audit`

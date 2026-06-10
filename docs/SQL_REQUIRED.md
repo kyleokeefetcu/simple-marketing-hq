@@ -53,13 +53,13 @@ Static UI only in active command-center navigation:
 
 ## Current Requirement
 
-SQL is required for Prompt Pack 5 before Messaging Sequence Builder saves can succeed in Supabase. Run the `Messaging Sequence Builder SQL Required` block below.
+No additional SQL is required for Prompt Pack 6 because `marketing_reality_check` already exists in the `marketing_assets.asset_type` constraint and `marketing_reality_check` already exists in the `marketing_assets.role_id` constraint.
 
 Future team workspaces, membership roles, Stripe checkout records, OpenAI usage logging, and activated RB2B customer-domain tracking may require additional SQL when those workflows are implemented.
 
-## Messaging Sequence Builder SQL Required
+## Messaging Sequence Builder SQL Already Run
 
-Run this in Supabase SQL Editor before saving Messaging Sequence Builder outputs:
+This SQL was required for Prompt Pack 5 before saving Messaging Sequence Builder outputs:
 
 ```sql
 alter table public.marketing_assets

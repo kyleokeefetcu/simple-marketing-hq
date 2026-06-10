@@ -188,6 +188,44 @@ type LabDeliverable = {
     response: string;
     where_it_belongs_in_sequence: string;
   }[];
+  reality_check_summary?: {
+    overall_read: string;
+    strongest_part: string;
+    weakest_part: string;
+    biggest_bottleneck: string;
+    confidence_level: string;
+  };
+  what_is_working?: {
+    clear_items: string[];
+    usable_assets: string[];
+    strengths_to_keep: string[];
+  };
+  what_is_confusing?: {
+    unclear_message: string;
+    weak_offer: string;
+    vague_audience: string;
+    missing_proof: string;
+    weak_cta: string;
+    channel_foundation_mismatch: string;
+  };
+  what_is_missing?: {
+    missing_icp_clarity: string;
+    missing_offer_clarity: string;
+    missing_proof: string;
+    missing_follow_up: string;
+    missing_content_angle: string;
+    missing_next_step: string;
+  };
+  what_to_ignore_for_now?: {
+    low_priority_distractions: string[];
+    channels_tools_not_ready_yet: string[];
+    tasks_that_should_wait: string[];
+  };
+  highest_leverage_fix?: {
+    recommended_fix: string;
+    why_it_matters: string;
+    what_changes_if_fixed: string;
+  };
   before_after: {
     before: string;
     after: string;
@@ -654,6 +692,108 @@ export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
           </section>
         ) : null}
 
+        {generated.reality_check_summary ? (
+          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Reality Check Summary</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {Object.entries(generated.reality_check_summary).map(([label, value]) => (
+                <div key={label} className="rounded-md bg-slate-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replace(/_/g, " ")}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {generated.what_is_working || generated.what_to_ignore_for_now ? (
+          <section className="mt-5 grid gap-5 lg:grid-cols-2">
+            {generated.what_is_working ? (
+              <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">What Is Working</p>
+                <div className="mt-4 grid gap-4">
+                  {Object.entries(generated.what_is_working).map(([label, values]) => (
+                    <div key={label} className="rounded-md border border-slate-200 p-4">
+                      <p className="text-sm font-semibold capitalize text-slate-500">{label.replace(/_/g, " ")}</p>
+                      <div className="mt-3 grid gap-2">
+                        {values.map((value) => (
+                          <p key={value} className="rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-800">
+                            {value}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ) : null}
+            {generated.what_to_ignore_for_now ? (
+              <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Ignore For Now</p>
+                <div className="mt-4 grid gap-4">
+                  {Object.entries(generated.what_to_ignore_for_now).map(([label, values]) => (
+                    <div key={label} className="rounded-md border border-slate-200 p-4">
+                      <p className="text-sm font-semibold capitalize text-slate-500">{label.replace(/_/g, " ")}</p>
+                      <div className="mt-3 grid gap-2">
+                        {values.map((value) => (
+                          <p key={value} className="rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-800">
+                            {value}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ) : null}
+          </section>
+        ) : null}
+
+        {generated.what_is_confusing || generated.what_is_missing ? (
+          <section className="mt-5 grid gap-5 lg:grid-cols-2">
+            {generated.what_is_confusing ? (
+              <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">What Is Confusing</p>
+                <div className="mt-4 grid gap-3">
+                  {Object.entries(generated.what_is_confusing).map(([label, value]) => (
+                    <div key={label} className="rounded-md bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replace(/_/g, " ")}</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ) : null}
+            {generated.what_is_missing ? (
+              <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">What Is Missing</p>
+                <div className="mt-4 grid gap-3">
+                  {Object.entries(generated.what_is_missing).map(([label, value]) => (
+                    <div key={label} className="rounded-md bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replace(/_/g, " ")}</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ) : null}
+          </section>
+        ) : null}
+
+        {generated.highest_leverage_fix ? (
+          <section className="mt-5 rounded-lg border border-cyan-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Highest-Leverage Fix</p>
+            <div className="mt-4 grid gap-4 lg:grid-cols-3">
+              {Object.entries(generated.highest_leverage_fix).map(([label, value]) => (
+                <div key={label} className="rounded-md bg-cyan-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-cyan-900">{label.replace(/_/g, " ")}</p>
+                  <p className="mt-2 text-sm leading-6 text-cyan-950">{value}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         <section className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {generated.sections.map((section) => (
             <article key={section.title} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -746,6 +886,16 @@ export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
                 </Link>
               </div>
             ) : null}
+            {prompt.role_id === "marketing_reality_check" ? (
+              <div className="mt-3 grid gap-3">
+                <Link href={scopedHref(generated.recommended_next_utility)} className="inline-flex min-h-12 items-center justify-center rounded-md border border-cyan-900 px-5 py-3 font-semibold text-cyan-900">
+                  Open the fix-first utility
+                </Link>
+                <Link href={scopedHref("/advisor")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 px-5 py-3 font-semibold text-slate-800">
+                  Ask Advisor what to ignore
+                </Link>
+              </div>
+            ) : null}
           </article>
         </section>
 
@@ -818,6 +968,10 @@ function buildLabDeliverable(
 
   if (prompt.role_id === "messaging_sequence_builder") {
     return buildMessagingSequenceDeliverable(context, { businessName, offer, customer, bottleneck, outcome, primaryInput });
+  }
+
+  if (prompt.role_id === "marketing_reality_check") {
+    return buildMarketingRealityCheckDeliverable(context, { businessName, offer, customer, bottleneck, outcome, primaryInput });
   }
 
   return {
@@ -1425,6 +1579,150 @@ function buildMessagingSequenceDeliverable(
   };
 }
 
+function buildMarketingRealityCheckDeliverable(
+  context: {
+    answers: Record<string, string>;
+    result: LaunchPadResult | null;
+    business: BusinessSummary | null;
+    latestDiagnostic: SavedDiagnosticSummary | null;
+    priorAssets: Partial<Record<MarketingAssetType, MarketingAssetSummary>>;
+  },
+  base: { businessName: string; offer: string; customer: string; bottleneck: string; outcome: string; primaryInput: string },
+): LabDeliverable {
+  const checkFocus = context.answers.check_focus || "overall marketing foundation";
+  const improvementGoal = context.answers.improvement_goal || base.outcome;
+  const triedSoFar = context.answers.tried_so_far || "marketing activity is not clearly documented yet";
+  const latestIcp = context.priorAssets.icp?.summary || "ICP asset not saved yet.";
+  const latestOffer = context.priorAssets.offer?.summary || "Offer asset not saved yet.";
+  const latestMessage = context.priorAssets.message?.summary || "Message asset not saved yet.";
+  const latestStrategy = context.priorAssets.strategy_map?.summary || "Strategy Map not saved yet.";
+  const cta = context.result?.answers.primaryCta || "CTA needs confirmation";
+  const proof = context.result?.answers.trustFactor || "proof needs confirmation";
+  const audience = context.result?.answers.targetCustomer || base.customer;
+  const recommendedFix = `Clarify the path from ${audience} to ${improvementGoal} before adding more marketing activity.`;
+  const sharperVersion = `${base.businessName} should focus ${checkFocus} around one buyer, one problem, one offer, one proof point, and one next step.`;
+  const nextUtility = chooseRealityCheckUtility(checkFocus, base.bottleneck);
+  const copyBlocks = [
+    { label: "Reality check", value: `${base.businessName} is not blocked by needing more activity first. The clearer first fix is: ${recommendedFix}` },
+    { label: "Fix-first brief", value: `Focus: ${checkFocus}\nGoal: ${improvementGoal}\nTried so far: ${triedSoFar}\nFix first: ${recommendedFix}` },
+    { label: "What to ignore", value: "Ignore new channels, new tools, and bigger campaigns until the buyer, offer, proof, CTA, and next action are clear enough to support them." },
+  ];
+
+  return {
+    title: `${base.businessName} Marketing Reality Check`,
+    summary: `Reality check for ${checkFocus}: fix ${base.bottleneck.toLowerCase()} before adding more activity.`,
+    current_state_assessment: `${base.businessName} should use this audit to separate useful foundation work from noisy activity. The current focus is ${checkFocus}, and the improvement goal is ${improvementGoal}.`,
+    reality_check_summary: {
+      overall_read: `The foundation has useful pieces, but ${base.bottleneck.toLowerCase()} is likely making the marketing harder to understand or act on.`,
+      strongest_part: context.result?.answers.whatSelling || context.business?.services || `There is at least a starting offer: ${base.offer}.`,
+      weakest_part: `The clearest weak point is the path from ${audience} to ${improvementGoal}.`,
+      biggest_bottleneck: base.bottleneck,
+      confidence_level: context.result || context.latestDiagnostic || Object.values(context.priorAssets).some(Boolean) ? "Medium" : "Low",
+    },
+    what_is_working: {
+      clear_items: [
+        `Business context: ${base.businessName}`,
+        `Core offer context: ${base.offer}`,
+        `Current focus: ${checkFocus}`,
+      ],
+      usable_assets: [latestIcp, latestOffer, latestMessage, latestStrategy],
+      strengths_to_keep: [
+        "Keep any proof that directly reduces buyer doubt.",
+        "Keep marketing activity that already creates conversations or qualified leads.",
+        "Keep simple language that buyers can repeat back.",
+      ],
+    },
+    what_is_confusing: {
+      unclear_message: latestMessage === "Message asset not saved yet." ? "The core message may not be saved or sharpened yet." : `Message context exists, but it should be checked against the current goal: ${improvementGoal}.`,
+      weak_offer: latestOffer === "Offer asset not saved yet." ? "The offer may still be too broad or not packaged around one buyer outcome." : `Offer context exists, but it should be checked against ${audience}.`,
+      vague_audience: latestIcp === "ICP asset not saved yet." ? "The best-fit customer may still be too broad." : `ICP context exists, but the message should still name the buyer clearly.`,
+      missing_proof: proof,
+      weak_cta: cta,
+      channel_foundation_mismatch: `If ${triedSoFar} is happening before the offer, message, proof, and CTA are clear, channel activity may be carrying too much weight.`,
+    },
+    what_is_missing: {
+      missing_icp_clarity: latestIcp === "ICP asset not saved yet." ? "Define the best-fit buyer and the buying trigger." : "Review whether the ICP is specific enough for this campaign or page.",
+      missing_offer_clarity: latestOffer === "Offer asset not saved yet." ? "Create a sharper offer tied to one problem and one outcome." : "Check whether the offer has a clear first step and risk reducer.",
+      missing_proof: proof === "proof needs confirmation" ? "Add proof that answers the buyer's real hesitation." : `Make ${proof} more visible near the CTA.`,
+      missing_follow_up: "The follow-up path should make the next step easy after the first click, reply, or call.",
+      missing_content_angle: `Content should explain why ${base.bottleneck.toLowerCase()} matters and what to fix first.`,
+      missing_next_step: `The next step should be obvious: ${recommendedFix}`,
+    },
+    what_to_ignore_for_now: {
+      low_priority_distractions: [
+        "Polishing every page before the main offer and CTA are clear.",
+        "Creating broad content that does not support the current bottleneck.",
+        "Tracking too many metrics before the next action is defined.",
+      ],
+      channels_tools_not_ready_yet: [
+        "Paid ads before the offer, message, proof, and landing page sequence are clear.",
+        "New automation tools before the follow-up message is written.",
+        "New social channels before the core content angle is clear.",
+      ],
+      tasks_that_should_wait: [
+        "Complex dashboards.",
+        "Large campaign launches.",
+        "New software decisions that do not fix the foundation.",
+      ],
+    },
+    highest_leverage_fix: {
+      recommended_fix: recommendedFix,
+      why_it_matters: "A clearer foundation makes every channel easier to judge, write, schedule, and improve.",
+      what_changes_if_fixed: `${base.businessName} can turn ${checkFocus} into a clearer offer, message, content plan, and next action instead of adding more disconnected activity.`,
+    },
+    before_after: {
+      before: `${checkFocus}: ${triedSoFar}. Current bottleneck: ${base.bottleneck}.`,
+      after: sharperVersion,
+      why_better: "The after version narrows the work to the marketing foundation pieces that make action easier for the buyer.",
+      where_to_use: ["Strategy Map", "Offer Builder", "Message Builder", "Content Engine", "Advisor"],
+    },
+    sections: [
+      {
+        title: "Result reality check",
+        items: [
+          `Current outcome: ${improvementGoal} needs a clearer path.`,
+          `Cause: ${base.bottleneck}.`,
+          "Effect: activity may create motion without enough buyer clarity.",
+        ],
+      },
+      {
+        title: "Root cause matrix",
+        items: [
+          "Clarity gap: buyer, offer, proof, or CTA may not be simple enough yet.",
+          "System gap: follow-up and content may not be connected to the same next action.",
+          "Strategic gap: channels should wait until the foundation can support them.",
+        ],
+      },
+      {
+        title: "Parallel path strategy",
+        items: [
+          "Continue: anything already producing qualified conversations.",
+          `Adjust: ${checkFocus} around one buyer, one problem, one offer, and one CTA.`,
+          "Retire: tasks that create more activity without improving buyer clarity.",
+        ],
+      },
+    ],
+    next_3_actions: [
+      "Open the recommended utility and fix the highest-leverage foundation gap.",
+      "Save one improved asset for the selected Business / Client.",
+      "Use Strategy Map or Advisor to decide what to ignore until the foundation is clearer.",
+    ],
+    recommended_next_utility: nextUtility,
+    copy_paste_blocks: copyBlocks,
+    copy_paste_deliverables: copyBlocks,
+  };
+}
+
+function chooseRealityCheckUtility(checkFocus: string, bottleneck: string) {
+  const combined = `${checkFocus} ${bottleneck}`.toLowerCase();
+  if (combined.includes("audience") || combined.includes("icp") || combined.includes("customer")) return "/icp-builder";
+  if (combined.includes("offer")) return "/offer-builder";
+  if (combined.includes("message") || combined.includes("website") || combined.includes("cta")) return "/message-builder";
+  if (combined.includes("content")) return "/content-engine";
+  if (combined.includes("campaign") || combined.includes("strategy") || combined.includes("foundation")) return "/strategy-map";
+  return "/strategy-map";
+}
+
 function buildMarketDemandDeliverable(
   prompt: PromptPack,
   context: {
@@ -1562,7 +1860,9 @@ function buildRoleSpecificItems(roleId: PromptRoleId, answers: Record<string, st
       ];
     case "marketing_reality_check":
       return [
-        `Current activity: ${answers.current_activity || "scattered marketing activity"}.`,
+        `Audit focus: ${answers.check_focus || "overall marketing foundation"}.`,
+        `Improvement goal: ${answers.improvement_goal || context.outcome}.`,
+        `Tried so far: ${answers.tried_so_far || "marketing activity not documented yet"}.`,
         `Reality check: fix ${context.bottleneck.toLowerCase()} before adding more channels.`,
         "Stop doing activity that does not support the next buyer action.",
       ];
