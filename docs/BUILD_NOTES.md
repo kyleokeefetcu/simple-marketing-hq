@@ -20,9 +20,8 @@
 
 ## Current Foundation
 
-- Quiz-style onboarding funnel
-- Website URL input
-- LaunchPad Diagnostic flow
+- AI-first LaunchPad Diagnostic intake with early website URL input, visible website analysis, editable confirmation cards, and short gap-question flow
+- Structured website analysis endpoint for inferred business profile fields
 - LaunchPad Growth Score
 - LaunchPad Action Plan
 - ICP Builder / Audience Match starter with industry-aware recommendations
