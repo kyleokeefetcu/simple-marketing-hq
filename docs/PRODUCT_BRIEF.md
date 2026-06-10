@@ -247,11 +247,13 @@ Simple Marketing HQ is priced as a marketing foundation command center, not a ch
 
 ## Data Direction
 
-Existing Supabase tables support the current MVP persistence for profiles, businesses, LaunchPad diagnostics, answers, website analyses, scores, action plans, recommendations, check-ins, visitor foundations, referral foundations, subscriptions, and partner recommendations.
+Supabase tables support the current paid MVP persistence for profiles, businesses, LaunchPad diagnostics, answers, website analyses, scores, action plans, recommendations, command-center assets, advisor threads/messages, check-ins, visitor foundations, referral foundations, subscriptions, and partner recommendations.
 
 The existing `businesses.owner_id` relationship supports multiple businesses per user. The existing `launchpad_diagnostics.business_id` and related `business_id` columns support per-business scoping for diagnostics, recommendations, visitor records, referral records, generated assets, check-ins, and partner recommendations.
 
-No new SQL is required for the current logged-in command center, AI-first diagnostic intake, and starter utility pass because the current schema already supports multiple Business / Client profiles under a user account, stores confirmed and gap answers in `launchpad_answers`, stores starter diagnostic summaries in `launchpad_diagnostics.summary`, stores structured website analysis in `website_analyses.analysis`, and includes `generated_assets` for future saved utility outputs. Add SQL only when explicit team workspaces/memberships or first-class saved ICP, offer, message, content, strategy, schedule, research, advisor-thread, and exported asset records are implemented.
+Command-center modules persist to `marketing_assets` by `asset_type`: ICP, offer, message, content, strategy map, marketing schedule, research, and recommendations. The LaunchPad Advisor persists to `advisor_threads` and `advisor_messages`. All records are scoped to the selected Business / Client and protected by RLS ownership policies.
+
+Future team workspaces and membership roles will require additional SQL when collaborative seats are implemented.
 
 ## Acceptance Criteria
 
@@ -267,8 +269,9 @@ The MVP direction is successful when a user can:
 8. See a Strategy Map.
 9. Ask the LaunchPad Advisor what to build next.
 10. View focused Recommendations for takeoff channels/tools.
-11. Save diagnostics and return to the dashboard.
-12. Add/select multiple Business / Client profiles under one account.
-13. View per-business status summaries and scoped module links.
+11. Save diagnostics, generated command-center assets, and advisor threads to the selected Business / Client.
+12. Return to the dashboard and see saved asset status.
+13. Add/select multiple Business / Client profiles under one account.
+14. View per-business status summaries and scoped module links.
 
 Final instruction: Simple Marketing HQ is the public product. LaunchPad is the internal diagnostic/advisor framework. The app should feel like a calm command center that prepares a small business for better marketing launch decisions.
