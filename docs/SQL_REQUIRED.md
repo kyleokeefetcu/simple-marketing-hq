@@ -1,439 +1,240 @@
 # SQL Required
 
-SQL is required for the production SaaS because Simple Marketing HQ uses user accounts, multiple Business / Client profiles, saved LaunchPad Diagnostics, LaunchPad Growth Scores, LaunchPad Action Plans, check-ins, visitor intelligence, referral foundations, and subscription-ready records.
+SQL is required for the production SaaS because Simple Marketing HQ uses user accounts, multiple Business / Client profiles, saved LaunchPad Diagnostics, LaunchPad Growth Scores, LaunchPad Action Plans, command-center assets, advisor threads, check-ins, visitor intelligence, referral foundations, and subscription-ready records.
 
-No additional SQL is required for the current logged-in command center, multi-business/client, and starter utility update if you already ran the SQL below. The existing schema supports:
+## Current SQL State
+
+The Supabase project now supports the current paid MVP persistence layer:
 
 - Multiple businesses per user through `public.businesses.owner_id`.
 - Per-business diagnostics through `public.launchpad_diagnostics.business_id`.
 - Starter ICP inputs through `public.launchpad_answers`.
 - Starter ICP and industry-match summary values through `public.launchpad_diagnostics.summary`.
-- Per-business website analyses, recommendations, check-ins, generated assets, visitor records, referral records, and partner recommendations through existing `business_id` columns.
+- Confirmed website profile data through `public.website_analyses.analysis` and `public.businesses` profile fields.
+- Per-business recommendations, check-ins, generated assets, visitor records, referral records, and partner recommendations through existing `business_id` columns.
+- Paid MVP command-center outputs through `public.marketing_assets`.
+- Advisor conversation persistence through `public.advisor_threads` and `public.advisor_messages`.
 - RLS ownership by user and by owned business records.
 
-Future team workspaces and first-class saved ICP, offer, message, content, strategy, schedule, research, advisor-thread, and exported asset tables will require new workspace/membership and asset tables, but the current command center requirement is supported by the existing user account as the account/workspace layer.
+## Module Persistence Classification
 
-Run the full SQL below in the Supabase SQL Editor before depending on production persistence. The app can still preserve local diagnostic progress in the browser if Supabase environment variables are not configured.
+Fully persisted now:
+
+- Businesses / Clients
+- LaunchPad Diagnostics
+- Growth Scores
+- Action Plans
+- ICP Builder assets
+- Offer Builder assets
+- Message Builder assets
+- Content Engine assets
+- Strategy Maps
+- Marketing Schedules
+- Research records
+- Advisor threads/messages
+- Recommendations
+- Check-ins
+- Referral profiles
+
+Partially persisted:
+
+- Billing/subscription status
+- Visitor intelligence records
+- Referral partner/event workflows
+
+Disabled until partner approval:
+
+- Live customer/client RB2B tracking
+
+Static UI only in active command-center navigation:
+
+- None after the command-center persistence update.
+
+## Current Requirement
+
+No additional SQL is required right now because the `marketing_assets`, `advisor_threads`, and `advisor_messages` SQL was run successfully.
+
+Future team workspaces, membership roles, Stripe checkout records, and activated RB2B customer-domain tracking may require additional SQL when those workflows are implemented.
+
+## Command-Center Persistence SQL Already Run
+
+This is the SQL that was required for the current command-center persistence pass. It is kept here as the current reference and is idempotent around policies/triggers.
 
 ```sql
--- Simple Marketing HQ production schema
--- Run this in the Supabase SQL Editor before relying on production persistence.
-
 create extension if not exists pgcrypto;
 
-create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  email text,
-  full_name text,
-  avatar_url text,
-  plan text not null default 'free',
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create table if not exists public.businesses (
-  id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references public.profiles(id) on delete cascade,
-  name text not null,
-  website_url text,
-  description text,
-  services text,
-  service_area text,
-  ideal_customer text,
-  booking_link text,
-  logo_url text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create table if not exists public.launchpad_diagnostics (
+create table if not exists public.marketing_assets (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
-  business_id uuid references public.businesses(id) on delete set null,
-  status text not null default 'completed',
-  website_url text,
-  summary jsonb not null default '{}'::jsonb,
-  completed_at timestamptz,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.launchpad_answers (
-  id uuid primary key default gen_random_uuid(),
-  diagnostic_id uuid not null references public.launchpad_diagnostics(id) on delete cascade,
-  question_key text not null,
-  answer_text text,
-  answer_json jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.website_analyses (
-  id uuid primary key default gen_random_uuid(),
-  diagnostic_id uuid references public.launchpad_diagnostics(id) on delete cascade,
-  business_id uuid references public.businesses(id) on delete cascade,
-  website_url text not null,
-  analysis jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.launchpad_scores (
-  id uuid primary key default gen_random_uuid(),
-  diagnostic_id uuid not null references public.launchpad_diagnostics(id) on delete cascade,
-  growth_score integer not null check (growth_score between 0 and 100),
-  offer_strength integer,
-  messaging_clarity_grade text,
-  lead_flow_grade text,
-  speed_to_lead_grade text,
-  appointment_conversion_risk text,
-  traffic_dependency_risk text,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.launchpad_action_plans (
-  id uuid primary key default gen_random_uuid(),
-  diagnostic_id uuid not null references public.launchpad_diagnostics(id) on delete cascade,
-  biggest_bottleneck text not null,
-  highest_leverage_next_move text not null,
-  recommended_growth_path text,
-  action_items jsonb not null default '[]'::jsonb,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.launchpad_recommendations (
-  id uuid primary key default gen_random_uuid(),
-  diagnostic_id uuid references public.launchpad_diagnostics(id) on delete cascade,
-  business_id uuid references public.businesses(id) on delete cascade,
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  asset_type text not null check (
+    asset_type in (
+      'icp',
+      'offer',
+      'message',
+      'content',
+      'strategy_map',
+      'marketing_schedule',
+      'research',
+      'recommendation'
+    )
+  ),
   title text not null,
-  description text,
-  category text,
-  priority integer not null default 1,
-  status text not null default 'open',
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.check_ins (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.profiles(id) on delete cascade,
-  business_id uuid references public.businesses(id) on delete cascade,
-  leads_count integer,
-  booked_calls_count integer,
-  referrals_count integer,
-  notes jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.generated_assets (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.profiles(id) on delete cascade,
-  business_id uuid references public.businesses(id) on delete cascade,
-  asset_type text not null,
-  prompt text,
-  content jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.visitor_companies (
-  id uuid primary key default gen_random_uuid(),
-  business_id uuid references public.businesses(id) on delete cascade,
-  company_name text,
-  domain text,
-  source text,
-  metadata jsonb not null default '{}'::jsonb,
+  prompt jsonb not null default '{}'::jsonb,
+  input jsonb not null default '{}'::jsonb,
+  output jsonb not null default '{}'::jsonb,
+  summary text,
+  status text not null default 'active' check (
+    status in ('draft', 'active', 'archived')
+  ),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
-create table if not exists public.visitor_events (
-  id uuid primary key default gen_random_uuid(),
-  business_id uuid references public.businesses(id) on delete cascade,
-  visitor_company_id uuid references public.visitor_companies(id) on delete set null,
-  event_type text not null,
-  page_url text,
-  source text,
-  utm jsonb not null default '{}'::jsonb,
-  metadata jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.referral_profiles (
-  id uuid primary key default gen_random_uuid(),
-  business_id uuid not null references public.businesses(id) on delete cascade,
-  short_description text,
-  best_referral_types text,
-  referral_reward text,
-  contact_method text,
-  social_links jsonb not null default '{}'::jsonb,
-  proof jsonb not null default '[]'::jsonb,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create table if not exists public.referral_partners (
-  id uuid primary key default gen_random_uuid(),
-  business_id uuid not null references public.businesses(id) on delete cascade,
-  partner_business_id uuid references public.businesses(id) on delete set null,
-  partner_name text not null,
-  status text not null default 'invited',
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.referral_events (
-  id uuid primary key default gen_random_uuid(),
-  business_id uuid not null references public.businesses(id) on delete cascade,
-  referral_partner_id uuid references public.referral_partners(id) on delete set null,
-  event_type text not null,
-  contact_name text,
-  value numeric,
-  metadata jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.subscriptions (
+create table if not exists public.advisor_threads (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
-  stripe_customer_id text,
-  stripe_subscription_id text,
-  plan text not null default 'free',
-  status text not null default 'inactive',
-  current_period_end timestamptz,
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  title text not null default 'Advisor thread',
+  status text not null default 'active' check (
+    status in ('active', 'archived')
+  ),
+  context jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
-create table if not exists public.partner_recommendations (
+create table if not exists public.advisor_messages (
   id uuid primary key default gen_random_uuid(),
-  business_id uuid references public.businesses(id) on delete cascade,
-  diagnostic_id uuid references public.launchpad_diagnostics(id) on delete cascade,
-  partner_type text not null,
-  title text not null,
-  reason text,
-  url text,
-  priority integer not null default 1,
+  thread_id uuid not null references public.advisor_threads(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  role text not null check (
+    role in ('user', 'assistant', 'system')
+  ),
+  content text not null,
+  metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
 
-alter table public.profiles enable row level security;
-alter table public.businesses enable row level security;
-alter table public.launchpad_diagnostics enable row level security;
-alter table public.launchpad_answers enable row level security;
-alter table public.website_analyses enable row level security;
-alter table public.launchpad_scores enable row level security;
-alter table public.launchpad_action_plans enable row level security;
-alter table public.launchpad_recommendations enable row level security;
-alter table public.check_ins enable row level security;
-alter table public.generated_assets enable row level security;
-alter table public.visitor_companies enable row level security;
-alter table public.visitor_events enable row level security;
-alter table public.referral_profiles enable row level security;
-alter table public.referral_partners enable row level security;
-alter table public.referral_events enable row level security;
-alter table public.subscriptions enable row level security;
-alter table public.partner_recommendations enable row level security;
+create index if not exists marketing_assets_user_business_type_created_idx
+  on public.marketing_assets (user_id, business_id, asset_type, created_at desc);
 
-create policy "Profiles are viewable by owner" on public.profiles
-  for select using (auth.uid() = id);
-create policy "Profiles are insertable by owner" on public.profiles
-  for insert with check (auth.uid() = id);
-create policy "Profiles are updatable by owner" on public.profiles
-  for update using (auth.uid() = id);
+create index if not exists marketing_assets_business_updated_idx
+  on public.marketing_assets (business_id, updated_at desc);
 
-create policy "Businesses owned by user" on public.businesses
-  for all using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
+create index if not exists advisor_threads_user_business_updated_idx
+  on public.advisor_threads (user_id, business_id, updated_at desc);
 
-create policy "Diagnostics owned by user" on public.launchpad_diagnostics
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create index if not exists advisor_messages_thread_created_idx
+  on public.advisor_messages (thread_id, created_at);
 
-create policy "Answers through owned diagnostics" on public.launchpad_answers
-  for all using (
-    exists (
-      select 1 from public.launchpad_diagnostics d
-      where d.id = diagnostic_id and d.user_id = auth.uid()
-    )
-  ) with check (
-    exists (
-      select 1 from public.launchpad_diagnostics d
-      where d.id = diagnostic_id and d.user_id = auth.uid()
-    )
-  );
+create index if not exists advisor_messages_user_business_created_idx
+  on public.advisor_messages (user_id, business_id, created_at desc);
 
-create policy "Website analyses through owned records" on public.website_analyses
-  for all using (
-    exists (
-      select 1 from public.launchpad_diagnostics d
-      where d.id = diagnostic_id and d.user_id = auth.uid()
-    )
-    or exists (
-      select 1 from public.businesses b
-      where b.id = business_id and b.owner_id = auth.uid()
-    )
-  ) with check (
-    exists (
-      select 1 from public.launchpad_diagnostics d
-      where d.id = diagnostic_id and d.user_id = auth.uid()
-    )
-    or exists (
-      select 1 from public.businesses b
-      where b.id = business_id and b.owner_id = auth.uid()
-    )
-  );
-
-create policy "Scores through owned diagnostics" on public.launchpad_scores
-  for all using (
-    exists (
-      select 1 from public.launchpad_diagnostics d
-      where d.id = diagnostic_id and d.user_id = auth.uid()
-    )
-  ) with check (
-    exists (
-      select 1 from public.launchpad_diagnostics d
-      where d.id = diagnostic_id and d.user_id = auth.uid()
-    )
-  );
-
-create policy "Action plans through owned diagnostics" on public.launchpad_action_plans
-  for all using (
-    exists (
-      select 1 from public.launchpad_diagnostics d
-      where d.id = diagnostic_id and d.user_id = auth.uid()
-    )
-  ) with check (
-    exists (
-      select 1 from public.launchpad_diagnostics d
-      where d.id = diagnostic_id and d.user_id = auth.uid()
-    )
-  );
-
-create policy "Business-linked records owned by business owner" on public.launchpad_recommendations
-  for all using (
-    exists (
-      select 1 from public.businesses b
-      where b.id = business_id and b.owner_id = auth.uid()
-    )
-    or exists (
-      select 1 from public.launchpad_diagnostics d
-      where d.id = diagnostic_id and d.user_id = auth.uid()
-    )
-  ) with check (
-    exists (
-      select 1 from public.businesses b
-      where b.id = business_id and b.owner_id = auth.uid()
-    )
-    or exists (
-      select 1 from public.launchpad_diagnostics d
-      where d.id = diagnostic_id and d.user_id = auth.uid()
-    )
-  );
-
-create policy "Check-ins owned by user" on public.check_ins
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
-create policy "Generated assets owned by user" on public.generated_assets
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
-create policy "Visitor companies through owned business" on public.visitor_companies
-  for all using (
-    exists (
-      select 1 from public.businesses b
-      where b.id = business_id and b.owner_id = auth.uid()
-    )
-  ) with check (
-    exists (
-      select 1 from public.businesses b
-      where b.id = business_id and b.owner_id = auth.uid()
-    )
-  );
-
-create policy "Visitor events through owned business" on public.visitor_events
-  for all using (
-    exists (
-      select 1 from public.businesses b
-      where b.id = business_id and b.owner_id = auth.uid()
-    )
-  ) with check (
-    exists (
-      select 1 from public.businesses b
-      where b.id = business_id and b.owner_id = auth.uid()
-    )
-  );
-
-create policy "Referral profiles through owned business" on public.referral_profiles
-  for all using (
-    exists (
-      select 1 from public.businesses b
-      where b.id = business_id and b.owner_id = auth.uid()
-    )
-  ) with check (
-    exists (
-      select 1 from public.businesses b
-      where b.id = business_id and b.owner_id = auth.uid()
-    )
-  );
-
-create policy "Referral partners through owned business" on public.referral_partners
-  for all using (
-    exists (
-      select 1 from public.businesses b
-      where b.id = business_id and b.owner_id = auth.uid()
-    )
-  ) with check (
-    exists (
-      select 1 from public.businesses b
-      where b.id = business_id and b.owner_id = auth.uid()
-    )
-  );
-
-create policy "Referral events through owned business" on public.referral_events
-  for all using (
-    exists (
-      select 1 from public.businesses b
-      where b.id = business_id and b.owner_id = auth.uid()
-    )
-  ) with check (
-    exists (
-      select 1 from public.businesses b
-      where b.id = business_id and b.owner_id = auth.uid()
-    )
-  );
-
-create policy "Subscriptions owned by user" on public.subscriptions
-  for select using (auth.uid() = user_id);
-
-create policy "Partner recommendations through owned business" on public.partner_recommendations
-  for all using (
-    exists (
-      select 1 from public.businesses b
-      where b.id = business_id and b.owner_id = auth.uid()
-    )
-    or exists (
-      select 1 from public.launchpad_diagnostics d
-      where d.id = diagnostic_id and d.user_id = auth.uid()
-    )
-  ) with check (
-    exists (
-      select 1 from public.businesses b
-      where b.id = business_id and b.owner_id = auth.uid()
-    )
-    or exists (
-      select 1 from public.launchpad_diagnostics d
-      where d.id = diagnostic_id and d.user_id = auth.uid()
-    )
-  );
-
-create or replace function public.handle_new_user()
+create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
-security definer
-set search_path = public
 as $$
 begin
-  insert into public.profiles (id, email, full_name)
-  values (new.id, new.email, new.raw_user_meta_data ->> 'full_name')
-  on conflict (id) do nothing;
+  new.updated_at = now();
   return new;
 end;
 $$;
 
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute procedure public.handle_new_user();
+drop trigger if exists set_marketing_assets_updated_at on public.marketing_assets;
+
+create trigger set_marketing_assets_updated_at
+before update on public.marketing_assets
+for each row
+execute function public.set_updated_at();
+
+drop trigger if exists set_advisor_threads_updated_at on public.advisor_threads;
+
+create trigger set_advisor_threads_updated_at
+before update on public.advisor_threads
+for each row
+execute function public.set_updated_at();
+
+alter table public.marketing_assets enable row level security;
+alter table public.advisor_threads enable row level security;
+alter table public.advisor_messages enable row level security;
+
+grant select, insert, update, delete on public.marketing_assets to authenticated;
+grant select, insert, update, delete on public.advisor_threads to authenticated;
+grant select, insert, update, delete on public.advisor_messages to authenticated;
+
+drop policy if exists "Marketing assets are owned by business owner" on public.marketing_assets;
+
+create policy "Marketing assets are owned by business owner"
+on public.marketing_assets
+for all
+using (
+  auth.uid() = user_id
+  and exists (
+    select 1
+    from public.businesses b
+    where b.id = marketing_assets.business_id
+      and b.owner_id = auth.uid()
+  )
+)
+with check (
+  auth.uid() = user_id
+  and exists (
+    select 1
+    from public.businesses b
+    where b.id = marketing_assets.business_id
+      and b.owner_id = auth.uid()
+  )
+);
+
+drop policy if exists "Advisor threads are owned by business owner" on public.advisor_threads;
+
+create policy "Advisor threads are owned by business owner"
+on public.advisor_threads
+for all
+using (
+  auth.uid() = user_id
+  and exists (
+    select 1
+    from public.businesses b
+    where b.id = advisor_threads.business_id
+      and b.owner_id = auth.uid()
+  )
+)
+with check (
+  auth.uid() = user_id
+  and exists (
+    select 1
+    from public.businesses b
+    where b.id = advisor_threads.business_id
+      and b.owner_id = auth.uid()
+  )
+);
+
+drop policy if exists "Advisor messages are owned by business owner" on public.advisor_messages;
+
+create policy "Advisor messages are owned by business owner"
+on public.advisor_messages
+for all
+using (
+  auth.uid() = user_id
+  and exists (
+    select 1
+    from public.advisor_threads t
+    where t.id = advisor_messages.thread_id
+      and t.user_id = auth.uid()
+      and t.business_id = advisor_messages.business_id
+  )
+)
+with check (
+  auth.uid() = user_id
+  and exists (
+    select 1
+    from public.advisor_threads t
+    where t.id = advisor_messages.thread_id
+      and t.user_id = auth.uid()
+      and t.business_id = advisor_messages.business_id
+  )
+);
 ```
