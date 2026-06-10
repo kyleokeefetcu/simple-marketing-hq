@@ -116,6 +116,13 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
               placeholder="At least 6 characters"
             />
           </label>
+          {!isSignup ? (
+            <div className="mt-3 text-right">
+              <Link className="text-sm font-semibold text-cyan-800" href="/forgot-password">
+                Forgot password?
+              </Link>
+            </div>
+          ) : null}
           <button className="mt-6 w-full rounded-md bg-cyan-900 px-4 py-3 font-semibold text-white transition hover:bg-cyan-800">
             {isSignup ? "Create account" : "Login"}
           </button>
