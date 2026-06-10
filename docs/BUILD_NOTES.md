@@ -25,6 +25,7 @@
 - LaunchPad Diagnostic flow
 - LaunchPad Growth Score
 - LaunchPad Action Plan
+- ICP Builder / Audience Match starter with industry-aware recommendations
 - LaunchPad Recommendations output
 - Offer Builder starter
 - Strategy Map starter
