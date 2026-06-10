@@ -149,3 +149,34 @@ Output includes:
 The generated output saves to Supabase as `asset_type = problem_narrative` and `role_id = problem_narrative_builder`.
 
 Message Builder and Content Engine load the latest Problem Narrative for the selected Business / Client so the saved problem framing can power copy, hooks, emails, ads, landing pages, and sales conversations.
+
+## Messaging Sequence Builder
+
+Role ID: `messaging_sequence_builder`
+
+Asset type: `messaging_sequence`
+
+Location: Marketing Lab, Message Builder context, Content Engine context, and Marketing Schedule context.
+
+Purpose: create a structured message sequence that moves a buyer from attention to understanding to trust to action.
+
+Input fields:
+
+- What sequence do you want to build?
+- What are you trying to move the buyer toward?
+- Who is this sequence for?
+- What channel will you use?
+
+Output includes:
+
+- `sequence_strategy`
+- `sequence_map`
+- `copy_blocks`
+- `before_after_sequence`
+- `objection_handling`
+- `next_3_actions`
+- `recommended_next_utility`
+
+The generated output saves to Supabase as `asset_type = messaging_sequence` and `role_id = messaging_sequence_builder`.
+
+Content Engine can use the latest Messaging Sequence for campaign creation. Marketing Schedule can use it to turn the ordered messages into execution tasks.

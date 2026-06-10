@@ -18,6 +18,7 @@ export type MarketingAssetType =
   | "problem_narrative_builder"
   | "problem_narrative"
   | "messaging_sequence_builder"
+  | "messaging_sequence"
   | "buyer_messaging_engine"
   | "buyer_messaging_output";
 

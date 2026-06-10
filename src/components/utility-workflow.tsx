@@ -60,6 +60,7 @@ const assetTypes: MarketingAssetType[] = [
   "market_demand_check",
   "problem_narrative",
   "buyer_messaging_output",
+  "messaging_sequence",
 ];
 
 const configs: Record<UtilityKind, UtilityConfig> = {
@@ -312,7 +313,13 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
                 </>
               ) : null}
               {config.kind === "content" ? (
-                <ContextRow label="Latest Problem Narrative" value={context.priorAssets.problem_narrative?.summary || "Run Problem Narrative Builder to create stronger content angles from the customer's real problem."} />
+                <>
+                  <ContextRow label="Latest Problem Narrative" value={context.priorAssets.problem_narrative?.summary || "Run Problem Narrative Builder to create stronger content angles from the customer's real problem."} />
+                  <ContextRow label="Latest Messaging Sequence" value={context.priorAssets.messaging_sequence?.summary || "Run Messaging Sequence Builder to turn campaign ideas into a logical message order."} />
+                </>
+              ) : null}
+              {config.kind === "marketing_schedule" ? (
+                <ContextRow label="Latest Messaging Sequence" value={context.priorAssets.messaging_sequence?.summary || "Run Messaging Sequence Builder to turn the schedule into ordered campaign steps."} />
               ) : null}
             </div>
             <div className="mt-4">

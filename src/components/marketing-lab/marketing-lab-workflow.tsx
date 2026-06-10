@@ -154,6 +154,40 @@ type LabDeliverable = {
     ad_angles: string[];
     faq_angles: string[];
   };
+  sequence_strategy?: {
+    buyer_stage: string;
+    goal_of_sequence: string;
+    primary_message_angle: string;
+    proof_needed: string;
+    objection_to_handle: string;
+    cta: string;
+  };
+  sequence_map?: {
+    step_number: number;
+    purpose: string;
+    message: string;
+    why_this_step_matters: string;
+    cta_or_next_move: string;
+  }[];
+  copy_blocks?: {
+    email_subject_lines: string[];
+    email_body_sections: string[];
+    ad_hooks: string[];
+    landing_page_sections: string[];
+    follow_up_messages: string[];
+    social_captions: string[];
+    video_script_beats: string[];
+  };
+  before_after_sequence?: {
+    current_before_sequence: string;
+    improved_after_sequence: string;
+    why_the_after_is_better: string;
+  };
+  objection_handling?: {
+    likely_objection: string;
+    response: string;
+    where_it_belongs_in_sequence: string;
+  }[];
   before_after: {
     before: string;
     after: string;
@@ -182,6 +216,7 @@ const assetTypes: MarketingAssetType[] = [
   "problem_narrative_builder",
   "problem_narrative",
   "messaging_sequence_builder",
+  "messaging_sequence",
   "buyer_messaging_engine",
   "buyer_messaging_output",
 ];
@@ -549,6 +584,76 @@ export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
           </section>
         ) : null}
 
+        {generated.sequence_strategy ? (
+          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Sequence Strategy</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {Object.entries(generated.sequence_strategy).map(([label, value]) => (
+                <div key={label} className="rounded-md bg-slate-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replace(/_/g, " ")}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {generated.sequence_map?.length ? (
+          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Sequence Map</p>
+            <div className="mt-4 grid gap-4">
+              {generated.sequence_map.map((step) => (
+                <article key={step.step_number} className="rounded-md border border-slate-200 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-md bg-cyan-900 text-sm font-semibold text-white">{step.step_number}</span>
+                    <div>
+                      <h2 className="text-lg font-semibold text-slate-950">{step.purpose}</h2>
+                      <p className="mt-2 text-sm leading-6 text-slate-900">{step.message}</p>
+                      <p className="mt-3 text-sm leading-6 text-slate-600">{step.why_this_step_matters}</p>
+                      <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-cyan-800">Next move: {step.cta_or_next_move}</p>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {generated.copy_blocks ? (
+          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Sequence Copy Blocks</p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {Object.entries(generated.copy_blocks).map(([label, values]) => (
+                <article key={label} className="rounded-md border border-slate-200 p-4">
+                  <p className="text-sm font-semibold capitalize text-slate-500">{label.replace(/_/g, " ")}</p>
+                  <div className="mt-3 grid gap-2">
+                    {values.map((value) => (
+                      <p key={value} className="rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-800">
+                        {value}
+                      </p>
+                    ))}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {generated.objection_handling?.length ? (
+          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Sequence Objection Handling</p>
+            <div className="mt-4 grid gap-4 lg:grid-cols-3">
+              {generated.objection_handling.map((item) => (
+                <article key={item.likely_objection} className="rounded-md border border-slate-200 p-4">
+                  <p className="text-sm font-semibold text-slate-500">{item.likely_objection}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-900">{item.response}</p>
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-cyan-800">Use in: {item.where_it_belongs_in_sequence}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         <section className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {generated.sections.map((section) => (
             <article key={section.title} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -631,6 +736,16 @@ export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
                 </Link>
               </div>
             ) : null}
+            {prompt.role_id === "messaging_sequence_builder" ? (
+              <div className="mt-3 grid gap-3">
+                <Link href={scopedHref("/marketing-schedule")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-cyan-900 px-5 py-3 font-semibold text-cyan-900">
+                  Send to Marketing Schedule
+                </Link>
+                <Link href={scopedHref("/content-engine")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 px-5 py-3 font-semibold text-slate-800">
+                  Build content from this
+                </Link>
+              </div>
+            ) : null}
           </article>
         </section>
 
@@ -699,6 +814,10 @@ function buildLabDeliverable(
 
   if (prompt.role_id === "problem_narrative_builder") {
     return buildProblemNarrativeDeliverable(context, { businessName, offer, customer, bottleneck, outcome, primaryInput });
+  }
+
+  if (prompt.role_id === "messaging_sequence_builder") {
+    return buildMessagingSequenceDeliverable(context, { businessName, offer, customer, bottleneck, outcome, primaryInput });
   }
 
   return {
@@ -1139,6 +1258,173 @@ function buildProblemNarrativeDeliverable(
   };
 }
 
+function buildMessagingSequenceDeliverable(
+  context: {
+    answers: Record<string, string>;
+    result: LaunchPadResult | null;
+    business: BusinessSummary | null;
+    latestDiagnostic: SavedDiagnosticSummary | null;
+    priorAssets: Partial<Record<MarketingAssetType, MarketingAssetSummary>>;
+  },
+  base: { businessName: string; offer: string; customer: string; bottleneck: string; outcome: string; primaryInput: string },
+): LabDeliverable {
+  const sequenceType = context.answers.sequence_type || "follow-up sequence";
+  const goal = context.answers.sequence_goal || "take the next clear step";
+  const buyer = context.answers.sequence_buyer || base.customer;
+  const channel = context.answers.sequence_channel || "email and follow-up";
+  const problemNarrative = context.priorAssets.problem_narrative?.summary || `Problem to frame: ${base.bottleneck}.`;
+  const latestMessage = context.priorAssets.message?.summary || context.priorAssets.buyer_messaging_output?.summary || `Current message focus: ${base.offer}.`;
+  const latestContent = context.priorAssets.content?.summary || "No saved content asset yet; use this sequence to create the first campaign set.";
+  const primaryAngle = `${buyer} need to recognize ${base.bottleneck.toLowerCase()} before they can trust the next action.`;
+  const cta = goal;
+  const sequenceMap = [
+    {
+      step_number: 1,
+      purpose: "Engagement - recognition",
+      message: `If ${base.bottleneck.toLowerCase()} keeps showing up, the first issue may be that the real problem has not been made clear yet.`,
+      why_this_step_matters: "This earns attention without asking for commitment. The buyer only needs to recognize the problem.",
+      cta_or_next_move: "Keep reading or watch the next message.",
+    },
+    {
+      step_number: 2,
+      purpose: "Interaction - safe next move",
+      message: `The next useful step is to identify the gap between where ${buyer} are now and ${base.outcome}.`,
+      why_this_step_matters: "This lowers risk by inviting a small diagnostic move before any larger decision.",
+      cta_or_next_move: "See what to check first.",
+    },
+    {
+      step_number: 3,
+      purpose: "Adoption - proof and relief",
+      message: `${base.businessName} helps make the next step clearer by connecting the problem, the offer, and the action that reduces uncertainty.`,
+      why_this_step_matters: "This introduces trust after the buyer has recognized the problem and accepted a low-friction next step.",
+      cta_or_next_move: cta,
+    },
+    {
+      step_number: 4,
+      purpose: "Action - clear decision",
+      message: `Start with the smallest useful next step: ${goal}.`,
+      why_this_step_matters: "The sequence ends with one clear action instead of several competing choices.",
+      cta_or_next_move: cta,
+    },
+  ];
+  const improvedSequence = sequenceMap.map((step) => `${step.step_number}. ${step.message}`).join("\n");
+  const copyBlocks = [
+    { label: "Email subject lines", value: [`The gap behind ${base.bottleneck}`, "Before you choose the fix, check this", "The next step should feel clearer"].join("\n") },
+    { label: "Follow-up message", value: `Based on what you shared, I would start by checking the gap between ${base.bottleneck.toLowerCase()} and ${base.outcome}. Then the next step becomes much easier to choose.` },
+    { label: "Social caption", value: `Most ${buyer} do not need more noise. They need the next step to feel clear and safe. Start by naming the real problem behind ${base.bottleneck.toLowerCase()}.` },
+    { label: "Landing page sequence", value: `1. Name the problem.\n2. Show why common fixes miss it.\n3. Explain the safer next step.\n4. Add proof.\n5. Ask for ${goal}.` },
+  ];
+
+  return {
+    title: `${base.businessName} Messaging Sequence`,
+    summary: `${sequenceType} for ${channel}: move ${buyer} toward ${goal}.`,
+    current_state_assessment: `${base.businessName} needs a ${sequenceType} that moves ${buyer} from recognition to safe interaction to trust before asking them to ${goal}.`,
+    sequence_strategy: {
+      buyer_stage: "Engagement -> Interaction -> Adoption",
+      goal_of_sequence: goal,
+      primary_message_angle: primaryAngle,
+      proof_needed: `Proof that ${base.businessName} understands ${base.bottleneck.toLowerCase()} and can guide the next step toward ${base.outcome}.`,
+      objection_to_handle: "I am not sure this is the right next move.",
+      cta,
+    },
+    sequence_map: sequenceMap,
+    copy_blocks: {
+      email_subject_lines: [`The gap behind ${base.bottleneck}`, "Before you choose the fix, check this", "The next step should feel clearer"],
+      email_body_sections: [
+        `If ${base.bottleneck.toLowerCase()} keeps showing up, the useful first move is to name the real issue.`,
+        `For ${buyer}, the goal is not more information. It is a clearer path toward ${base.outcome}.`,
+        `The next step is simple: ${goal}.`,
+      ],
+      ad_hooks: [
+        `Still dealing with ${base.bottleneck.toLowerCase()}? Start with the gap.`,
+        `The next step gets easier when the problem is clear.`,
+        `Before adding more activity, check what is actually blocking ${base.outcome}.`,
+      ],
+      landing_page_sections: [
+        `Hero: ${base.businessName} helps ${buyer} move from ${base.bottleneck.toLowerCase()} to ${base.outcome}.`,
+        `Problem: common fixes can miss the real gap.`,
+        `Proof: show a process, example, or result that reduces uncertainty.`,
+        `CTA: ${goal}.`,
+      ],
+      follow_up_messages: [
+        `The safest next move is to identify the gap first, then choose the right fix.`,
+        `If it helps, we can start by looking at what is causing ${base.bottleneck.toLowerCase()}.`,
+        `You do not need to decide everything now. Start with ${goal}.`,
+      ],
+      social_captions: [
+        `The problem is not always effort. Sometimes ${buyer} just need the next step to be clearer.`,
+        `If ${base.bottleneck.toLowerCase()} keeps happening, pause before adding another channel. Check the foundation first.`,
+        `A better sequence: recognize the problem, lower the risk, show proof, then ask for action.`,
+      ],
+      video_script_beats: [
+        `Open with the visible problem: ${base.bottleneck}.`,
+        `Explain why the obvious fix may not solve it.`,
+        `Show the safer next step toward ${base.outcome}.`,
+        `End with one action: ${goal}.`,
+      ],
+    },
+    before_after_sequence: {
+      current_before_sequence: base.primaryInput,
+      improved_after_sequence: improvedSequence,
+      why_the_after_is_better: "It separates recognition, safe interaction, proof, and action so the buyer is not asked to decide before they understand.",
+    },
+    objection_handling: [
+      {
+        likely_objection: "I am not ready to commit.",
+        response: `That is why the first move is small: ${goal}.`,
+        where_it_belongs_in_sequence: "Step 2 or first follow-up",
+      },
+      {
+        likely_objection: "I am not sure this applies to me.",
+        response: `Start by checking whether ${base.bottleneck.toLowerCase()} is the real gap or just a symptom.`,
+        where_it_belongs_in_sequence: "Engagement or FAQ section",
+      },
+      {
+        likely_objection: "I have tried something like this before.",
+        response: "That effort makes sense. This sequence starts by defining the problem before recommending the fix.",
+        where_it_belongs_in_sequence: "Proof or follow-up message",
+      },
+    ],
+    before_after: {
+      before: base.primaryInput,
+      after: improvedSequence,
+      why_better: "The after sequence builds from attention to action in a clean order instead of mixing problem, proof, and CTA too early.",
+      where_to_use: [sequenceType, channel, "Content Engine", "Marketing Schedule", "Follow-up"],
+    },
+    sections: [
+      {
+        title: "Context used",
+        items: [problemNarrative, latestMessage, latestContent],
+      },
+      {
+        title: "Sequence logic",
+        items: [
+          "Engagement: make the buyer recognize the problem.",
+          "Interaction: invite one safe next step.",
+          "Adoption: reduce uncertainty with proof and clarity.",
+          "Action: ask for one clear move.",
+        ],
+      },
+      {
+        title: "Deployment guidance",
+        items: [
+          `Use this in ${channel}.`,
+          "Keep each message focused on one job.",
+          "Turn the ordered steps into tasks in Marketing Schedule.",
+        ],
+      },
+    ],
+    next_3_actions: [
+      "Send this to Marketing Schedule and assign dates for each sequence step.",
+      "Use Content Engine to expand the copy blocks into the selected channel format.",
+      "Ask Advisor to review the sequence after you add real proof or objections.",
+    ],
+    recommended_next_utility: "/marketing-schedule",
+    copy_paste_blocks: copyBlocks,
+    copy_paste_deliverables: copyBlocks,
+  };
+}
+
 function buildMarketDemandDeliverable(
   prompt: PromptPack,
   context: {
@@ -1295,9 +1581,10 @@ function buildRoleSpecificItems(roleId: PromptRoleId, answers: Record<string, st
       ];
     case "messaging_sequence_builder":
       return [
+        `Sequence type: ${answers.sequence_type || "email, landing page, social, follow-up, video, or sales conversation"}.`,
         `Sequence goal: ${answers.sequence_goal || "move the buyer to the next small action"}.`,
-        `Channel: ${answers.channel || "email, SMS, social, or follow-up"}.`,
-        "Sequence order: pain, proof, objection, urgency, CTA.",
+        `Channel: ${answers.sequence_channel || "email, landing page, social, follow-up, video, or sales conversation"}.`,
+        "Sequence order: recognition, safe interaction, proof, action.",
       ];
     case "buyer_messaging_engine":
       return [
