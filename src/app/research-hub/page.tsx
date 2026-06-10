@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
+import { AssetSavePanel } from "@/components/asset-save-panel";
 import { buildResearchHub } from "@/lib/command-center";
 import { getStoredResult } from "@/lib/launchpad";
 
 export default function ResearchHubPage() {
   const result = getStoredResult();
   const research = buildResearchHub(result);
+  const assetTitle = `${result?.businessName ?? "Business"} research brief`;
+  const assetSummary = research.audiencePains[0] ?? "Audience research brief";
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -44,6 +47,21 @@ export default function ResearchHubPage() {
             Turn research into message
           </Link>
         </article>
+
+        <AssetSavePanel
+          assetType="research"
+          title={assetTitle}
+          summary={assetSummary}
+          input={{
+            businessName: result?.businessName,
+            websiteUrl: result?.websiteUrl,
+            answers: result?.answers,
+          }}
+          output={research}
+          prompt={{
+            purpose: "Save audience pains, competitor questions, positioning angles, FAQ seeds, and next research actions.",
+          }}
+        />
       </section>
     </main>
   );
