@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
+import { AssetSavePanel } from "@/components/asset-save-panel";
 import { buildMarketingSchedule } from "@/lib/command-center";
 import { getStoredResult } from "@/lib/launchpad";
 
 export default function MarketingSchedulePage() {
   const result = getStoredResult();
   const schedule = buildMarketingSchedule(result);
+  const assetTitle = `${result?.businessName ?? "Business"} weekly marketing schedule`;
+  const assetSummary = schedule.weeklyFocus;
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -48,6 +51,22 @@ export default function MarketingSchedulePage() {
           <ListCard title="Campaign prep assets" items={schedule.campaignPrep} />
           <ListCard title="Review questions" items={schedule.reviewQuestions} />
         </section>
+
+        <AssetSavePanel
+          assetType="marketing_schedule"
+          title={assetTitle}
+          summary={assetSummary}
+          input={{
+            businessName: result?.businessName,
+            websiteUrl: result?.websiteUrl,
+            nextMove: result?.nextMove,
+            answers: result?.answers,
+          }}
+          output={schedule}
+          prompt={{
+            purpose: "Turn strategy and content into a weekly action rhythm for offer refinement, campaign prep, follow-up, and review.",
+          }}
+        />
       </section>
     </main>
   );
