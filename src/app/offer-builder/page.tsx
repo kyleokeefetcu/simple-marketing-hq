@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { AppHeader } from "@/components/app-header";
+import { AssetSavePanel } from "@/components/asset-save-panel";
 import { buildOfferStarter } from "@/lib/command-center";
 import { getStoredResult } from "@/lib/launchpad";
+import { useState } from "react";
 
 export default function OfferBuilderPage() {
   const [result] = useState(() => getStoredResult());
   const offer = buildOfferStarter(result);
+  const assetTitle = `${result?.businessName ?? "Business"} offer stack`;
+  const assetSummary = `${offer.dreamOutcome} Clear CTA: ${offer.cta}`;
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -46,6 +49,22 @@ export default function OfferBuilderPage() {
             </Link>
           </aside>
         </div>
+
+        <AssetSavePanel
+          assetType="offer"
+          title={assetTitle}
+          summary={assetSummary}
+          input={{
+            businessName: result?.businessName,
+            websiteUrl: result?.websiteUrl,
+            bottleneck: result?.biggestBottleneck,
+            answers: result?.answers,
+          }}
+          output={offer}
+          prompt={{
+            purpose: "Create a practical offer stack with outcome, pain, proof, risk reducer, package framing, CTA, and next steps.",
+          }}
+        />
       </section>
     </main>
   );
