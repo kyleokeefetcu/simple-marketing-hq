@@ -64,6 +64,8 @@ type DiagnosticRow = {
   summary: {
     businessName?: string;
     growthScore?: number;
+    icpClarity?: number;
+    industryFit?: string;
     biggestBottleneck?: string;
     nextMove?: string;
   } | null;
@@ -134,6 +136,8 @@ export async function saveLaunchPadResultToSupabase(
       summary: {
         businessName: result.businessName,
         growthScore: result.growthScore,
+        icpClarity: result.icpClarity,
+        industryFit: result.industryFit,
         biggestBottleneck: result.biggestBottleneck,
         nextMove: result.nextMove,
       },
