@@ -115,6 +115,45 @@ type LabDeliverable = {
     objection: string;
     response: string;
   }[];
+  problem_summary?: {
+    plain_language_problem: string;
+    buyer_before_state: string;
+    buyer_desired_after_state: string;
+    why_this_matters_now: string;
+    confidence_level: string;
+  };
+  problem_narrative?: {
+    short_version: string;
+    medium_version: string;
+    story_style_version: string;
+    direct_response_version: string;
+  };
+  tension_points?: {
+    what_is_frustrating: string;
+    what_is_costly: string;
+    what_is_confusing: string;
+    what_is_being_delayed: string;
+    what_buyers_may_not_realize_yet: string;
+  };
+  belief_shift?: {
+    current_belief: string;
+    new_belief: string;
+    reason_to_believe: string;
+    proof_needed: string;
+  };
+  before_after_message?: {
+    before: string;
+    after: string;
+    why_the_after_is_better: string;
+    where_to_use_it: string[];
+  };
+  content_angles?: {
+    social_post_angles: string[];
+    video_hooks: string[];
+    email_angles: string[];
+    ad_angles: string[];
+    faq_angles: string[];
+  };
   before_after: {
     before: string;
     after: string;
@@ -141,6 +180,7 @@ const assetTypes: MarketingAssetType[] = [
   "marketing_reality_check",
   "market_demand_check",
   "problem_narrative_builder",
+  "problem_narrative",
   "messaging_sequence_builder",
   "buyer_messaging_engine",
   "buyer_messaging_output",
@@ -430,6 +470,85 @@ export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
           </section>
         ) : null}
 
+        {generated.problem_summary ? (
+          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Problem Summary</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {Object.entries(generated.problem_summary).map(([label, value]) => (
+                <div key={label} className="rounded-md bg-slate-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replace(/_/g, " ")}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {generated.problem_narrative ? (
+          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Problem Narrative</p>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              {Object.entries(generated.problem_narrative).map(([label, value]) => (
+                <div key={label} className="rounded-md border border-slate-200 p-4">
+                  <p className="text-sm font-semibold capitalize text-slate-500">{label.replace(/_/g, " ")}</p>
+                  <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-900">{value}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {generated.tension_points || generated.belief_shift ? (
+          <section className="mt-5 grid gap-5 lg:grid-cols-2">
+            {generated.tension_points ? (
+              <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Tension Points</p>
+                <div className="mt-4 grid gap-3">
+                  {Object.entries(generated.tension_points).map(([label, value]) => (
+                    <div key={label} className="rounded-md bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replace(/_/g, " ")}</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ) : null}
+            {generated.belief_shift ? (
+              <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Belief Shift</p>
+                <div className="mt-4 grid gap-3">
+                  {Object.entries(generated.belief_shift).map(([label, value]) => (
+                    <div key={label} className="rounded-md bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replace(/_/g, " ")}</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ) : null}
+          </section>
+        ) : null}
+
+        {generated.content_angles ? (
+          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Content Angles</p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {Object.entries(generated.content_angles).map(([label, values]) => (
+                <article key={label} className="rounded-md border border-slate-200 p-4">
+                  <p className="text-sm font-semibold capitalize text-slate-500">{label.replace(/_/g, " ")}</p>
+                  <div className="mt-3 grid gap-2">
+                    {values.map((value) => (
+                      <p key={value} className="rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-800">
+                        {value}
+                      </p>
+                    ))}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         <section className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {generated.sections.map((section) => (
             <article key={section.title} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -502,6 +621,16 @@ export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
                 </Link>
               </div>
             ) : null}
+            {prompt.role_id === "problem_narrative_builder" ? (
+              <div className="mt-3 grid gap-3">
+                <Link href={scopedHref("/content-engine")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-cyan-900 px-5 py-3 font-semibold text-cyan-900">
+                  Send to Content Engine
+                </Link>
+                <Link href={scopedHref("/message-builder")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 px-5 py-3 font-semibold text-slate-800">
+                  Use in Message Builder
+                </Link>
+              </div>
+            ) : null}
           </article>
         </section>
 
@@ -566,6 +695,10 @@ function buildLabDeliverable(
 
   if (prompt.role_id === "buyer_messaging_engine") {
     return buildBuyerMessagingDeliverable(context, { businessName, offer, customer, bottleneck, outcome, primaryInput });
+  }
+
+  if (prompt.role_id === "problem_narrative_builder") {
+    return buildProblemNarrativeDeliverable(context, { businessName, offer, customer, bottleneck, outcome, primaryInput });
   }
 
   return {
@@ -871,6 +1004,141 @@ function buildBuyerMessagingDeliverable(
   };
 }
 
+function buildProblemNarrativeDeliverable(
+  context: {
+    answers: Record<string, string>;
+    result: LaunchPadResult | null;
+    business: BusinessSummary | null;
+    latestDiagnostic: SavedDiagnosticSummary | null;
+    priorAssets: Partial<Record<MarketingAssetType, MarketingAssetSummary>>;
+  },
+  base: { businessName: string; offer: string; customer: string; bottleneck: string; outcome: string; primaryInput: string },
+): LabDeliverable {
+  const problem = context.answers.customer_problem || context.result?.answers.customerWords || base.bottleneck;
+  const audience = context.answers.problem_audience || base.customer;
+  const useCase = context.answers.narrative_use || "content";
+  const latestPsychology = context.priorAssets.buyer_psychology_audit?.summary || "Buyer psychology context should be confirmed with a saved audit when available.";
+  const latestMessaging = context.priorAssets.buyer_messaging_output?.summary || "Buyer messaging context should be confirmed with a saved messaging output when available.";
+  const beforeState = `${audience} are dealing with ${problem.toLowerCase()} and may be trying to solve it with scattered fixes, waiting, or a familiar but weak workaround.`;
+  const afterState = `${audience} can see the real issue clearly, understand what needs to change, and take the next step toward ${base.outcome}.`;
+  const shortNarrative = `The real problem is not effort. It is that ${problem.toLowerCase()} keeps the next decision unclear.`;
+  const mediumNarrative = `${audience} usually do not get stuck because they are careless. They get stuck because ${problem.toLowerCase()} creates confusion, delay, and second-guessing. The longer it stays undefined, the harder it becomes to choose the right next step.`;
+  const storyNarrative = `${audience} often start by trying the obvious fixes. They wait, search, ask around, compare options, or add more activity. Those moves make sense, but they do not fix the deeper issue: ${problem.toLowerCase()} has not been clearly defined. Once the problem is named, the path toward ${base.outcome} becomes easier to evaluate.`;
+  const directNarrative = `If ${problem.toLowerCase()} keeps showing up, the next move is not more noise. Define the real problem first, then choose the fix that moves ${audience} toward ${base.outcome}.`;
+  const copyBlocks = [
+    { label: "Short problem statement", value: shortNarrative },
+    { label: "Website opener", value: `${mediumNarrative}\n\nThat is why ${base.businessName} starts by making the real problem clear before recommending the next step.` },
+    { label: "Email opener", value: `If ${problem.toLowerCase()} keeps coming up, it may not be the only issue. It may be the sign that the real problem has not been named clearly enough yet.` },
+    { label: "Video hook", value: `The problem is not that ${audience} are not trying. The problem is that ${problem.toLowerCase()} makes the next move hard to trust.` },
+  ];
+
+  return {
+    title: `${base.businessName} Problem Narrative`,
+    summary: `Problem narrative for ${useCase}: ${shortNarrative}`,
+    current_state_assessment: `${base.businessName} needs a calm problem narrative that helps ${audience} recognize ${problem.toLowerCase()} without making the message feel exaggerated.`,
+    problem_summary: {
+      plain_language_problem: problem,
+      buyer_before_state: beforeState,
+      buyer_desired_after_state: afterState,
+      why_this_matters_now: `If the problem stays vague, ${audience} may keep comparing options or delaying action instead of moving toward ${base.outcome}.`,
+      confidence_level: context.result || context.priorAssets.buyer_psychology_audit || context.priorAssets.buyer_messaging_output ? "Medium" : "Low",
+    },
+    problem_narrative: {
+      short_version: shortNarrative,
+      medium_version: mediumNarrative,
+      story_style_version: storyNarrative,
+      direct_response_version: directNarrative,
+    },
+    tension_points: {
+      what_is_frustrating: `${problem} keeps showing up even when ${audience} try reasonable fixes.`,
+      what_is_costly: "Time, attention, trust, and decision momentum get spent on symptoms instead of the root issue.",
+      what_is_confusing: `The buyer may not know whether they need ${base.offer}, a different approach, or simply a clearer first step.`,
+      what_is_being_delayed: `Progress toward ${base.outcome}.`,
+      what_buyers_may_not_realize_yet: `The issue may not be lack of effort. It may be that ${problem.toLowerCase()} has not been clearly owned and evaluated.`,
+    },
+    belief_shift: {
+      current_belief: `I need to keep searching, comparing, or trying more things until ${problem.toLowerCase()} improves.`,
+      new_belief: `I need to define the real problem first so the next step is easier to trust.`,
+      reason_to_believe: `When ${problem.toLowerCase()} is clearly named, the right criteria become easier to see.`,
+      proof_needed: `Show examples, buyer language, process proof, or specific outcomes that prove ${base.businessName} understands this problem deeply.`,
+    },
+    before_after_message: {
+      before: base.primaryInput,
+      after: directNarrative,
+      why_the_after_is_better: "It respects the buyer's effort, names the stuck point, and creates urgency through clarity instead of hype.",
+      where_to_use_it: [useCase, "Message Builder", "Content Engine", "Landing page", "Sales conversation"],
+    },
+    before_after: {
+      before: base.primaryInput,
+      after: directNarrative,
+      why_better: "It turns a broad complaint into a believable problem narrative that buyers can recognize.",
+      where_to_use: [useCase, "Website", "Email", "Social content", "Sales script"],
+    },
+    content_angles: {
+      social_post_angles: [
+        `The hidden reason ${problem.toLowerCase()} keeps coming back.`,
+        `What ${audience} try before they realize the real problem is different.`,
+        `Why more activity does not always solve ${problem.toLowerCase()}.`,
+      ],
+      video_hooks: [
+        `The real enemy is not effort. It is an unclear problem.`,
+        `Before you try to fix ${problem.toLowerCase()}, check this first.`,
+        `Most ${audience} are solving the symptom, not the problem.`,
+      ],
+      email_angles: [
+        `Subject: The problem behind ${problem}`,
+        `Subject: Why the obvious fix may not be working`,
+        `Subject: Name the problem before choosing the fix`,
+      ],
+      ad_angles: [
+        `Still dealing with ${problem.toLowerCase()}? Start by finding the real gap.`,
+        `The next step gets easier when the problem is clear.`,
+        `Fix the decision problem before adding more activity.`,
+      ],
+      faq_angles: [
+        `Why does ${problem.toLowerCase()} keep happening?`,
+        `What should ${audience} check before choosing help?`,
+        `How do you know if this is the real problem or just a symptom?`,
+      ],
+    },
+    sections: [
+      {
+        title: "Problem discovery",
+        items: [
+          `Observed pain: ${problem}`,
+          `Who feels it: ${audience}`,
+          `Relevant context: ${latestPsychology}`,
+          `Messaging context: ${latestMessaging}`,
+        ],
+      },
+      {
+        title: "Narrative backbone",
+        items: [
+          `The real enemy is not the buyer's effort. It is the unclear structure around ${problem.toLowerCase()}.`,
+          `The cost is quiet erosion: time, trust, focus, and decision confidence.`,
+          "The false solution is adding more activity before the problem is clearly defined.",
+        ],
+      },
+      {
+        title: "Where to use it",
+        items: [
+          `Use the short version in ${useCase}.`,
+          "Use the story-style version in content or sales conversations.",
+          "Use the direct-response version in ads, emails, and landing page openers.",
+        ],
+      },
+    ],
+    next_3_actions: [
+      "Send the narrative to Content Engine and create one post, one email, and one video hook.",
+      "Use Message Builder to turn the direct-response version into website copy.",
+      "Use Offer Builder to make sure the offer clearly resolves the named problem.",
+    ],
+    recommended_next_utility: "/content-engine",
+    copy_paste_blocks: copyBlocks,
+    copy_paste_deliverables: copyBlocks,
+  };
+}
+
 function buildMarketDemandDeliverable(
   prompt: PromptPack,
   context: {
@@ -1020,8 +1288,9 @@ function buildRoleSpecificItems(roleId: PromptRoleId, answers: Record<string, st
       ];
     case "problem_narrative_builder":
       return [
-        `Problem narrative: ${answers.problem || context.bottleneck}.`,
-        `Failed alternative: ${answers.failed_alternative || "waiting, DIY, cheaper option, or doing nothing"}.`,
+        `Problem narrative: ${answers.customer_problem || context.bottleneck}.`,
+        `Audience: ${answers.problem_audience || context.customer}.`,
+        `Use case: ${answers.narrative_use || "content, website, email, or sales script"}.`,
         "Show the cost of delay before introducing the solution.",
       ];
     case "messaging_sequence_builder":

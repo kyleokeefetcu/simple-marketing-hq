@@ -40,6 +40,7 @@
 - Market Demand Check prompt pack now includes offer-demand input fields, demand read JSON, demand diagnosis, buyer motivation, offer improvement, before/after, next 3 actions, and Offer Builder handoff actions
 - Buyer Psychology Audit prompt pack now includes page/message review input fields, buyer psychology summary JSON, current-state read, psychology findings, before/after improvements, top changes, next 3 actions, and Message Builder/Content Engine handoff actions
 - Buyer Messaging Engine prompt pack now includes messaging-use input fields, buyer-state messaging strategy, current/improved copy, core message assets, channel versions, objection responses, copy/paste blocks, next 3 actions, Content Engine/Strategy Map handoff actions, and `buyer_messaging_output` persistence
+- Problem Narrative Builder prompt pack now includes customer-problem input fields, problem summary, short/medium/story/direct-response narratives, tension points, belief shift, content angles, copy/paste blocks, Content Engine/Message Builder handoff actions, and `problem_narrative` persistence
 - Lead capture/account creation-ready panel
 - Logged-in marketing command center dashboard with desktop side navigation, mobile core navigation, top-bar Business / Client dropdown, Run New Diagnostic access, compact app-style utility launcher buttons as the primary view, Next Recommended Action panel, and channel deployment reminder.
 - RB2B browser tracking for `simplemarketinghq.com` remains disabled unless `NEXT_PUBLIC_RB2B_SCRIPT_ID` is configured.

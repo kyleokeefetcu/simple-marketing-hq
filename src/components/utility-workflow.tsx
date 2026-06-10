@@ -58,6 +58,7 @@ const assetTypes: MarketingAssetType[] = [
   "recommendation",
   "buyer_psychology_audit",
   "market_demand_check",
+  "problem_narrative",
   "buyer_messaging_output",
 ];
 
@@ -306,8 +307,12 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
               {config.kind === "message" ? (
                 <>
                   <ContextRow label="Latest Buyer Psychology Audit" value={context.priorAssets.buyer_psychology_audit?.summary || "Run Buyer Psychology Audit to understand what buyers need to believe before they act."} />
+                  <ContextRow label="Latest Problem Narrative" value={context.priorAssets.problem_narrative?.summary || "Run Problem Narrative Builder to clarify the customer problem before writing copy."} />
                   <ContextRow label="Latest Buyer Messaging Output" value={context.priorAssets.buyer_messaging_output?.summary || "Run Buyer Messaging Engine to generate ready-to-use copy for this business."} />
                 </>
+              ) : null}
+              {config.kind === "content" ? (
+                <ContextRow label="Latest Problem Narrative" value={context.priorAssets.problem_narrative?.summary || "Run Problem Narrative Builder to create stronger content angles from the customer's real problem."} />
               ) : null}
             </div>
             <div className="mt-4">

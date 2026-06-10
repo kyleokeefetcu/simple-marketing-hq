@@ -53,9 +53,45 @@ Static UI only in active command-center navigation:
 
 ## Current Requirement
 
-No additional SQL is required right now because the `marketing_assets.role_id` prompt-pack upgrade, `marketing_assets`, `advisor_threads`, `advisor_messages`, and `buyer_messaging_output` asset-type SQL were run successfully.
+SQL is required for Prompt Pack 4 before Problem Narrative Builder saves can succeed in Supabase. Run the `Problem Narrative Builder SQL Required` block below.
 
 Future team workspaces, membership roles, Stripe checkout records, OpenAI usage logging, and activated RB2B customer-domain tracking may require additional SQL when those workflows are implemented.
+
+## Problem Narrative Builder SQL Required
+
+Run this in Supabase SQL Editor before saving Problem Narrative Builder outputs:
+
+```sql
+alter table public.marketing_assets
+drop constraint if exists marketing_assets_asset_type_check;
+
+alter table public.marketing_assets
+add constraint marketing_assets_asset_type_check
+check (
+  asset_type in (
+    'icp',
+    'offer',
+    'message',
+    'content',
+    'strategy_map',
+    'marketing_schedule',
+    'research',
+    'recommendation',
+    'buyer_psychology_audit',
+    'marketing_reality_check',
+    'market_demand_check',
+    'problem_narrative_builder',
+    'problem_narrative',
+    'messaging_sequence_builder',
+    'buyer_messaging_engine',
+    'buyer_messaging_output'
+  )
+);
+
+create index if not exists marketing_assets_problem_narrative_idx
+  on public.marketing_assets (business_id, created_at desc)
+  where asset_type = 'problem_narrative';
+```
 
 ## Buyer Messaging Engine SQL Already Run
 
@@ -81,6 +117,7 @@ check (
     'marketing_reality_check',
     'market_demand_check',
     'problem_narrative_builder',
+    'problem_narrative',
     'messaging_sequence_builder',
     'buyer_messaging_engine',
     'buyer_messaging_output'
@@ -135,6 +172,7 @@ create table if not exists public.marketing_assets (
       'marketing_reality_check',
       'market_demand_check',
       'problem_narrative_builder',
+      'problem_narrative',
       'messaging_sequence_builder',
       'buyer_messaging_engine',
       'buyer_messaging_output'

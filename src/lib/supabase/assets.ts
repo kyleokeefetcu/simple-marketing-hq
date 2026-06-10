@@ -16,6 +16,7 @@ export type MarketingAssetType =
   | "marketing_reality_check"
   | "market_demand_check"
   | "problem_narrative_builder"
+  | "problem_narrative"
   | "messaging_sequence_builder"
   | "buyer_messaging_engine"
   | "buyer_messaging_output";

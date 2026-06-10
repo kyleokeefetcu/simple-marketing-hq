@@ -117,3 +117,35 @@ Output includes:
 The generated output saves to Supabase as `asset_type = buyer_messaging_output` and `role_id = buyer_messaging_engine`.
 
 Message Builder loads the latest Buyer Psychology Audit and Buyer Messaging Engine output for the selected Business / Client so saved lab work can be reused in practical website, sales, email, and follow-up copy.
+
+## Problem Narrative Builder
+
+Role ID: `problem_narrative_builder`
+
+Asset type: `problem_narrative`
+
+Location: Marketing Lab, Message Builder context, and Content Engine context.
+
+Purpose: turn the customer's problem into a clear narrative that creates recognition, urgency, and trust without hype.
+
+Input fields:
+
+- What customer problem do you want to explain?
+- Who experiences this problem?
+- Where will this narrative be used?
+
+Output includes:
+
+- `problem_summary`
+- `problem_narrative`
+- `tension_points`
+- `belief_shift`
+- `before_after_message`
+- `content_angles`
+- `copy_paste_blocks`
+- `next_3_actions`
+- `recommended_next_utility`
+
+The generated output saves to Supabase as `asset_type = problem_narrative` and `role_id = problem_narrative_builder`.
+
+Message Builder and Content Engine load the latest Problem Narrative for the selected Business / Client so the saved problem framing can power copy, hooks, emails, ads, landing pages, and sales conversations.
