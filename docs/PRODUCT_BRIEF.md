@@ -46,6 +46,60 @@ Users should always know:
 5. What asset or output was created.
 6. What step comes after that.
 
+## Logged-In Command Center Direction
+
+The logged-in dashboard should be the user's marketing home base. It should not feel like a quiz result page, website scanner report, Growth Score report, passive checklist, or generic software dashboard.
+
+The LaunchPad Diagnostic remains the starting point and intake layer. Once logged in, the user should be able to choose the marketing utility they need right now:
+
+- I need help with my offer.
+- I need help defining my customer.
+- I need content ideas.
+- I need a strategy.
+- I need a schedule.
+- I need research.
+- I need to know what to do next.
+- I need recommendations for tools or channels.
+
+Dashboard layout requirements:
+
+- Left-hand navigation on desktop.
+- Mobile-friendly navigation for core actions.
+- Business / Client switcher near the top.
+- KPI tiles across the main area for Growth Score, current bottleneck, next action, assets created, content plan status, and offer status.
+- A clear Next Recommended Action panel with what to do next, why it matters, and a button to open the correct utility.
+- Square app-style utility cards for Build My Offer, Define My ICP, Create Content, Build Strategy, Plan This Week, Research My Audience, Ask Advisor, and View Recommendations.
+- Recent work area for latest diagnostic, latest offer asset, latest content output, and latest strategy map.
+- A channel deployment reminder: Simple Marketing HQ prepares the foundation; external tools deploy.
+
+Growth Score is one dashboard utility and one KPI tile. It should not dominate the logged-in home screen.
+
+Core logged-in navigation:
+
+- Home / Command Center
+- LaunchPad Diagnostic
+- Growth Score & Suggestions
+- ICP Builder / Audience Match
+- Offer Builder
+- Message Builder
+- Content Engine
+- Strategy Map
+- Marketing Schedule
+- Research Hub
+- LaunchPad Advisor
+- Recommendations
+- Visitor Intelligence
+- Referrals
+- Settings / Billing
+
+Each utility should be action-oriented:
+
+1. User opens the utility.
+2. User enters a small amount of context or uses saved business context.
+3. The system returns a useful deliverable.
+4. The deliverable includes clear next steps.
+5. The user can save, export, or use it in the chosen deployment channel when persistence/export flows are added.
+
 ## Core Product Modules
 
 1. LaunchPad Diagnostic
@@ -191,7 +245,7 @@ Existing Supabase tables support the current MVP persistence for profiles, busin
 
 The existing `businesses.owner_id` relationship supports multiple businesses per user. The existing `launchpad_diagnostics.business_id` and related `business_id` columns support per-business scoping for diagnostics, recommendations, visitor records, referral records, generated assets, check-ins, and partner recommendations.
 
-No new SQL is required for the current multi-business and ICP starter generator pass because the current schema already supports multiple Business / Client profiles under a user account, stores diagnostic answers in `launchpad_answers`, and stores starter diagnostic summaries in `launchpad_diagnostics.summary`. Add SQL only when explicit team workspaces/memberships or first-class saved ICP, offer, strategy, content, research, advisor, and schedule records are implemented.
+No new SQL is required for the current logged-in command center and starter utility pass because the current schema already supports multiple Business / Client profiles under a user account, stores diagnostic answers in `launchpad_answers`, stores starter diagnostic summaries in `launchpad_diagnostics.summary`, and includes `generated_assets` for future saved utility outputs. Add SQL only when explicit team workspaces/memberships or first-class saved ICP, offer, message, content, strategy, schedule, research, advisor-thread, and exported asset records are implemented.
 
 ## Acceptance Criteria
 
