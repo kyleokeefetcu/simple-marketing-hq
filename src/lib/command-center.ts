@@ -9,8 +9,8 @@ export const commandCenterModules = [
   },
   {
     slug: "growth-score",
-    title: "Growth Score",
-    href: "/diagnostic/result",
+    title: "Growth Score & Suggestions",
+    href: "/growth-score",
     body: "Score the marketing foundation across ICP clarity, industry fit, offer clarity, message clarity, conversion readiness, proof, follow-up, and channel readiness.",
   },
   {
@@ -26,10 +26,28 @@ export const commandCenterModules = [
     body: "Shape the dream outcome, customer pain, value stack, speed-to-result, effort reduction, risk reversal, package frame, and CTA.",
   },
   {
+    slug: "message-builder",
+    title: "Message Builder",
+    href: "/message-builder",
+    body: "Turn the offer and ICP into a sharper homepage headline, elevator pitch, proof points, and follow-up scripts.",
+  },
+  {
     slug: "strategy-map",
     title: "Strategy Map",
     href: "/strategy-map",
     body: "Plan the next 7 days, next 30 days, missing assets, channel readiness, and review rhythm.",
+  },
+  {
+    slug: "marketing-schedule",
+    title: "Marketing Schedule",
+    href: "/marketing-schedule",
+    body: "Convert strategy and content into a simple weekly rhythm for creation, campaign prep, follow-up, and review.",
+  },
+  {
+    slug: "research-hub",
+    title: "Research Hub",
+    href: "/research-hub",
+    body: "Research audience pains, objections, competitors, FAQs, positioning angles, proof gaps, and content ideas.",
   },
   {
     slug: "content-engine",
@@ -172,4 +190,63 @@ export function buildToolRecommendations(result: LaunchPadResult | null) {
   }
 
   return [industry.channels[0], `Lead magnet: ${industry.leadMagnets[0]}`, "Referral partner profile"];
+}
+
+export function buildMessageStarter(result: LaunchPadResult | null) {
+  const business = result?.businessName ?? "Your business";
+  const target = result?.answers.targetCustomer || "best-fit customers";
+  const problem = result?.answers.urgentProblem || "the urgent problem they need solved";
+  const outcome = result?.answers.customerResult || "a better result";
+  const proof = result?.answers.trustFactor || getIndustryProfile(result?.answers.industryCategory).proof;
+
+  return {
+    headline: `${business} helps ${target} solve ${problem} and move toward ${outcome}.`,
+    elevatorPitch: `We help ${target} who are dealing with ${problem}. The first step is simple: clarify the situation, recommend the next move, and make it easier to take action with confidence.`,
+    proofPoints: [proof, "Clear next step", "Simple explanation of who the offer is best for"],
+    scripts: [
+      `Opening line: If ${problem.toLowerCase()} is slowing you down, here is the first thing to fix.`,
+      `CTA line: Start with a quick fit conversation so we can recommend the right next step.`,
+      `Follow-up line: The reason I am reaching back out is that the next step is still small, but the delay can get expensive.`,
+    ],
+    nextSteps: ["Replace vague homepage copy with the headline.", "Put one proof point near the CTA.", "Use the follow-up line for leads who do not respond."],
+  };
+}
+
+export function buildMarketingSchedule(result: LaunchPadResult | null) {
+  const action = result?.nextMove ?? "Complete the LaunchPad Diagnostic and choose the first foundation asset to build.";
+
+  return {
+    weeklyFocus: action,
+    rhythm: [
+      "Monday: choose one customer pain and one offer angle.",
+      "Tuesday: draft one authority post, one short-form hook, and one email angle.",
+      "Wednesday: refine the CTA, proof point, and follow-up script.",
+      "Thursday: publish or prepare the highest-confidence asset for the chosen channel.",
+      "Friday: review leads, objections, replies, and what to improve next week.",
+    ],
+    campaignPrep: ["Offer headline", "ICP pain statement", "Proof point", "Lead magnet or CTA", "Follow-up script"],
+    reviewQuestions: ["What created conversations?", "What objections repeated?", "Where did people hesitate?", "What asset should be improved before more traffic?"],
+  };
+}
+
+export function buildResearchHub(result: LaunchPadResult | null) {
+  const industry = getIndustryProfile(result?.answers.industryCategory);
+  const target = result?.answers.targetCustomer || "your best-fit customers";
+  const problem = result?.answers.urgentProblem || "their urgent problem";
+
+  return {
+    audiencePains: [
+      `${target} are trying to solve ${problem}.`,
+      `They need enough confidence to act despite ${industry.objections[0]}.`,
+      `The trigger usually starts around ${industry.triggers[0]}, which should shape the first message angle.`,
+    ],
+    competitorQuestions: ["What promise do competitors make first?", "What proof do they use?", "Where is their CTA confusing or weak?", "What objections do they ignore?"],
+    positioningAngles: [
+      `Position around the trigger: ${industry.triggers[0]}.`,
+      `Show why the current alternative is slower or riskier.`,
+      `Make the first step feel easier than switching providers or doing nothing.`,
+    ],
+    faqSeeds: ["How quickly can this help?", "What does it cost?", "Who is this best for?", "What happens after I inquire?", "What proof can I review first?"],
+    nextSteps: ["Collect 5 customer phrases.", "Review 3 competitor pages.", "Turn repeated objections into content and sales copy."],
+  };
 }
