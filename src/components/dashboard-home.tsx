@@ -371,6 +371,7 @@ export function DashboardHome() {
 
         <div className="mt-5 grid gap-4 lg:grid-cols-3">
           <QuickLink href={scopedHref("/offer-builder", selectedBusinessId)} icon={<Rocket size={21} />} title="Offer Builder" body="Shape outcome, pain, proof, risk reducer, package framing, and CTA before launch." />
+          <QuickLink href={scopedHref("/icp-builder", selectedBusinessId)} icon={<Target size={21} />} title="ICP Builder" body="Define best-fit customers, bad-fit traits, triggers, objections, proof, lead magnets, and channel fit." />
           <QuickLink href={scopedHref("/strategy-map", selectedBusinessId)} icon={<Compass size={21} />} title="Strategy Map" body="Turn the diagnosis into next 7 days, next 30 days, missing assets, and launch order." />
           <QuickLink href={scopedHref("/advisor", selectedBusinessId)} icon={<Lightbulb size={21} />} title={brand.advisorName} body="Get the next action, why it matters, execution steps, and the asset to build." />
           <QuickLink href={scopedHref("/content-engine", selectedBusinessId)} icon={<MessageSquare size={21} />} title="Content Engine" body="Generate hooks, scripts, posts, sequences, lead magnets, and campaign ideas." />
