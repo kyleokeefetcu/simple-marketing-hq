@@ -2,11 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { AppHeader } from "@/components/app-header";
+import { AssetSavePanel } from "@/components/asset-save-panel";
 import { getStopStackIdeas, getStoredResult, type LaunchPadResult } from "@/lib/launchpad";
 
 export default function ContentEnginePage() {
   const [result] = useState<LaunchPadResult | null>(() => getStoredResult());
   const ideas = useMemo(() => getStopStackIdeas(result), [result]);
+  const assetTitle = `${result?.businessName ?? "Business"} content ideas`;
+  const assetSummary = ideas.map((idea) => idea.title).join(", ");
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -33,6 +36,22 @@ export default function ContentEnginePage() {
             </article>
           ))}
         </div>
+
+        <AssetSavePanel
+          assetType="content"
+          title={assetTitle}
+          summary={assetSummary}
+          input={{
+            businessName: result?.businessName,
+            websiteUrl: result?.websiteUrl,
+            bottleneck: result?.biggestBottleneck,
+            answers: result?.answers,
+          }}
+          output={{ ideas }}
+          prompt={{
+            purpose: "Generate attention-first content ideas, Stop Stack hooks, execution steps, and campaign starters.",
+          }}
+        />
       </section>
     </main>
   );
