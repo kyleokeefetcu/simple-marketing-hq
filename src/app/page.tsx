@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowRight, BarChart3, CheckCircle2, ClipboardList, Compass, LineChart, MessageSquare, Rocket, Target } from "lucide-react";
+import { ArrowRight, BarChart3, CheckCircle2, ClipboardList, Compass, LineChart, MessageSquare, Rocket, Target, Users } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { SiteHeader } from "@/components/site-header";
 import { brand } from "@/lib/brand";
@@ -25,7 +25,7 @@ export default function Home() {
               Build your marketing foundation before takeoff.
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-              Simple Marketing HQ is an AI marketing advisor and foundation command center for small businesses. Diagnose what is missing, build the offer and assets, then choose the right channel to launch.
+              Simple Marketing HQ is an AI marketing advisor and foundation command center for small businesses. Diagnose what is missing, define your best-fit customer, build the offer and assets, then choose the right channel to launch.
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Link
@@ -61,13 +61,13 @@ export default function Home() {
               <div className="mt-5 rounded-md border border-slate-200 p-4">
                 <p className="text-sm font-semibold text-slate-950">Biggest bottleneck</p>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  The offer is promising, but the message, proof, content plan, and follow-up assets need to be tightened before launch.
+                  The offer is promising, but the ICP, message, proof, content plan, and follow-up assets need to be tightened before launch.
                 </p>
               </div>
               <div className="mt-3 rounded-md bg-cyan-50 p-4">
                 <p className="text-sm font-semibold text-cyan-950">Next move</p>
                 <p className="mt-2 text-sm leading-6 text-cyan-900">
-                  Build the offer stack, create one authority content asset, then map the first campaign.
+                  Define the best-fit customer, build the offer stack, create one authority content asset, then map the first campaign.
                 </p>
               </div>
             </div>
@@ -79,7 +79,7 @@ export default function Home() {
         <SectionHeading
           eyebrow="How it works"
           title="A calm command center for foundational marketing work."
-          body="Simple Marketing HQ prepares the rocket ship: offer, message, audience, strategy, content, schedule, research, assets, recommendations, and next actions."
+          body="Simple Marketing HQ prepares the rocket ship: ICP, offer, message, strategy, content, schedule, research, assets, recommendations, and next actions."
         />
         <div className="mx-auto mt-8 grid w-full max-w-6xl gap-4 md:grid-cols-3">
           {steps.map(([title, body], index) => (
@@ -95,8 +95,9 @@ export default function Home() {
       <section className="px-5 py-12">
         <div className="mx-auto grid w-full max-w-6xl gap-4 md:grid-cols-3">
           <Feature icon={<ClipboardList />} title={brand.diagnosticName} body="The intake and first assessment layer, not the whole product." />
-          <Feature icon={<LineChart />} title={brand.growthScoreName} body="A foundation score across offer, audience, message, conversion readiness, follow-up, content, proof, and channel readiness." />
+          <Feature icon={<LineChart />} title={brand.growthScoreName} body="A foundation score across ICP clarity, industry fit, offer, message, conversion readiness, follow-up, content, proof, and channel readiness." />
           <Feature icon={<Target />} title={brand.actionPlanName} body="A practical plan that tells you what to build first, why it matters, and what comes next." />
+          <Feature icon={<Users />} title="ICP Builder" body="Define best-fit customers, bad-fit traits, buying triggers, objections, proof needed, lead magnets, and channel fit." />
           <Feature icon={<Rocket />} title="Offer Builder" body="Shape the outcome, value stack, risk reducer, package frame, why-now angle, and CTA." />
           <Feature icon={<MessageSquare />} title="Content Engine" body="Create hooks, authority content, short-form derivatives, scripts, lead magnets, emails, and campaign assets." />
           <Feature icon={<Compass />} title="Strategy Map" body="Plan the next 7 days, next 30 days, missing assets, channel readiness, and order of operations." />
