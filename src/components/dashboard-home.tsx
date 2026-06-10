@@ -24,9 +24,10 @@ import {
   Target,
   Users,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { brand } from "@/lib/brand";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { getMarketingAssets, type MarketingAssetSummary, type MarketingAssetType } from "@/lib/supabase/assets";
 import {
   createBusiness,
   getBusinesses,
@@ -189,15 +190,40 @@ const utilityMap: Record<(typeof utilityCards)[number], Utility> = {
   "View Recommendations": navItems.find((item) => item.href === "/recommendations")!,
 };
 
+const trackedAssetTypes: MarketingAssetType[] = ["icp", "offer", "message", "content", "strategy_map", "marketing_schedule", "research", "recommendation"];
+
 export function DashboardHome() {
   const [diagnostics, setDiagnostics] = useState<SavedDiagnosticSummary[]>([]);
   const [businesses, setBusinesses] = useState<BusinessSummary[]>([]);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string>(() => getSelectedBusinessId());
+  const [assetCount, setAssetCount] = useState(0);
+  const [latestAssets, setLatestAssets] = useState<Partial<Record<MarketingAssetType, MarketingAssetSummary>>>({});
   const [newBusinessName, setNewBusinessName] = useState("");
   const [status, setStatus] = useState("Connect Supabase to load your saved command center.");
   const [businessStatus, setBusinessStatus] = useState("");
   const [isAddingBusiness, setIsAddingBusiness] = useState(false);
   const [requiresLogin, setRequiresLogin] = useState(false);
+
+  const refreshAssetStatus = useCallback(async (businessId: string) => {
+    const supabase = createBrowserSupabaseClient();
+    if (!supabase || !businessId) {
+      setAssetCount(0);
+      setLatestAssets({});
+      return;
+    }
+
+    const assetGroups = await Promise.all(trackedAssetTypes.map((assetType) => getMarketingAssets(supabase, businessId, assetType)));
+    const nextLatestAssets: Partial<Record<MarketingAssetType, MarketingAssetSummary>> = {};
+    let nextAssetCount = 0;
+
+    assetGroups.forEach((assets, index) => {
+      nextAssetCount += assets.length;
+      if (assets[0]) nextLatestAssets[trackedAssetTypes[index]] = assets[0];
+    });
+
+    setAssetCount(nextAssetCount);
+    setLatestAssets(nextLatestAssets);
+  }, []);
 
   useEffect(() => {
     async function loadWorkspace() {
@@ -224,6 +250,9 @@ export function DashboardHome() {
         setBusinesses(savedBusinesses);
         setSelectedBusinessId(nextSelectedBusinessId);
         setDiagnostics(savedDiagnostics);
+        if (nextSelectedBusinessId) {
+          await refreshAssetStatus(nextSelectedBusinessId);
+        }
         setStatus(savedDiagnostics.length ? "Your latest saved work is loaded." : "Start with a diagnostic or choose a utility to build your foundation.");
       } catch (error) {
         setStatus(`Could not load your saved command center: ${(error as Error).message}`);
@@ -231,7 +260,7 @@ export function DashboardHome() {
     }
 
     void loadWorkspace();
-  }, []);
+  }, [refreshAssetStatus]);
 
   const selectedBusiness = businesses.find((business) => business.id === selectedBusinessId) ?? null;
   const scopedDiagnostics = selectedBusinessId ? diagnostics.filter((diagnostic) => diagnostic.businessId === selectedBusinessId) : diagnostics;
@@ -249,31 +278,34 @@ export function DashboardHome() {
       },
       {
         title: "Latest offer asset",
-        value: latestDiagnostic ? "Offer starter is ready to shape from diagnostic inputs" : "Build this after your diagnostic",
+        value: latestAssets.offer?.summary || (latestDiagnostic ? "Offer starter is ready to save from diagnostic inputs" : "Build this after your diagnostic"),
         href: "/offer-builder",
       },
       {
         title: "Latest content output",
-        value: latestDiagnostic ? "Content Engine can generate hooks from your bottleneck" : "Create content once offer and ICP are clearer",
+        value: latestAssets.content?.summary || (latestDiagnostic ? "Content Engine can generate and save hooks from your bottleneck" : "Create content once offer and ICP are clearer"),
         href: "/content-engine",
       },
       {
         title: "Latest strategy map",
-        value: latestDiagnostic ? "Strategy Map can turn this into 7 and 30 day moves" : "Strategy appears after your first diagnostic",
+        value: latestAssets.strategy_map?.summary || (latestDiagnostic ? "Strategy Map can save 7 and 30 day moves" : "Strategy appears after your first diagnostic"),
         href: "/strategy-map",
       },
     ],
-    [latestDiagnostic],
+    [latestAssets.content?.summary, latestAssets.offer?.summary, latestAssets.strategy_map?.summary, latestDiagnostic],
   );
 
   function selectBusiness(businessId: string) {
     setSelectedBusinessId(businessId);
     window.localStorage.setItem("simple-marketing-hq:selected-business-id", businessId);
+    void refreshAssetStatus(businessId);
   }
 
   function clearBusinessSelection() {
     setSelectedBusinessId("");
     window.localStorage.removeItem("simple-marketing-hq:selected-business-id");
+    setAssetCount(0);
+    setLatestAssets({});
   }
 
   async function logOut() {
@@ -465,9 +497,9 @@ export function DashboardHome() {
               <KpiTile label="Growth Score" value={latestDiagnostic?.growthScore ? String(latestDiagnostic.growthScore) : "--"} body="One signal, not the whole product." />
               <KpiTile label="Current Bottleneck" value={latestDiagnostic?.biggestBottleneck ?? "Needs diagnostic"} body="The first constraint to remove." />
               <KpiTile label="Next Action" value={latestDiagnostic ? "Ready" : "Start"} body={latestDiagnostic?.nextMove ?? "Run the diagnostic."} />
-              <KpiTile label="Assets Created" value={String(scopedDiagnostics.length)} body="Saved diagnostics and starter outputs." />
-              <KpiTile label="Content Plan" value={latestDiagnostic ? "Starter" : "Needs input"} body="Generate from offer and ICP." />
-              <KpiTile label="Offer Status" value={latestDiagnostic ? "Ready" : "Unscored"} body="Build or sharpen the offer." />
+              <KpiTile label="Assets Created" value={String(assetCount)} body="Saved command-center outputs." />
+              <KpiTile label="Content Plan" value={latestAssets.content ? "Saved" : latestDiagnostic ? "Ready" : "Needs input"} body="Generate from offer and ICP." />
+              <KpiTile label="Offer Status" value={latestAssets.offer ? "Saved" : latestDiagnostic ? "Ready" : "Unscored"} body="Build or sharpen the offer." />
             </section>
 
             <section className="mt-5 grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
