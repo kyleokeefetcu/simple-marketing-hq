@@ -195,7 +195,7 @@ const trackedAssetTypes: MarketingAssetType[] = ["icp", "offer", "message", "con
 export function DashboardHome() {
   const [diagnostics, setDiagnostics] = useState<SavedDiagnosticSummary[]>([]);
   const [businesses, setBusinesses] = useState<BusinessSummary[]>([]);
-  const [selectedBusinessId, setSelectedBusinessId] = useState<string>(() => getSelectedBusinessId());
+  const [selectedBusinessId, setSelectedBusinessId] = useState("");
   const [assetCount, setAssetCount] = useState(0);
   const [latestAssets, setLatestAssets] = useState<Partial<Record<MarketingAssetType, MarketingAssetSummary>>>({});
   const [newBusinessName, setNewBusinessName] = useState("");
