@@ -9,7 +9,7 @@
 - LaunchPad is reserved for the internal diagnostic/advisor system inside the app.
 - Chosen stack: Next.js, TypeScript, Tailwind CSS, App Router, Supabase-ready helpers, and Vercel-ready defaults.
 - PWA-first foundation includes manifest metadata, app icons, mobile viewport support, and installable app naming.
-- Current build target is a sellable SaaS product foundation with public website, account-ready flows, saved diagnostic fallback, command-center dashboard, persisted ICP/offer/message/content/strategy/schedule/research/recommendation assets, persisted advisor threads/messages, visitor/referral workflows, and subscription-ready structure.
+- Current build target is a sellable SaaS product foundation with public website, account-ready flows, saved diagnostic fallback, action-first command-center dashboard, persisted ICP/offer/message/content/strategy/schedule/research/recommendation assets, persisted advisor threads/messages, visitor/referral workflows, and subscription-ready structure.
 
 ## Installed Packages
 
@@ -33,7 +33,7 @@
 - Research Hub with per-business save action and saved history
 - Advisor next-action page with user question input, per-business thread/message persistence, and saved advisor history
 - Lead capture/account creation-ready panel
-- Logged-in marketing command center dashboard with desktop side navigation, mobile core navigation, Business / Client switcher, KPI tiles, Next Action panel, square utility launcher cards, recent work, and channel deployment reminder.
+- Logged-in marketing command center dashboard with desktop side navigation, mobile core navigation, top-bar Business / Client dropdown, Run New Diagnostic access, square utility launcher cards as the primary view, Next Recommended Action panel, channel deployment reminder, recent work, and saved diagnostics below the action sections.
 - RB2B browser tracking for `simplemarketinghq.com` remains disabled unless `NEXT_PUBLIC_RB2B_SCRIPT_ID` is configured.
 - Customer/client website visitor tracking is disabled until RB2B partner/OEM approval and domain configuration rules are confirmed.
 - RB2B API access is prepared server-side with `RB2B_API_KEY`, without live API calls yet.
