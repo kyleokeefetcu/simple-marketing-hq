@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
+import { AssetSavePanel } from "@/components/asset-save-panel";
 import { buildMessageStarter } from "@/lib/command-center";
 import { getStoredResult } from "@/lib/launchpad";
 
 export default function MessageBuilderPage() {
   const result = getStoredResult();
   const message = buildMessageStarter(result);
+  const assetTitle = `${result?.businessName ?? "Business"} message starter`;
+  const assetSummary = message.headline;
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -55,6 +58,21 @@ export default function MessageBuilderPage() {
             </article>
           ))}
         </section>
+
+        <AssetSavePanel
+          assetType="message"
+          title={assetTitle}
+          summary={assetSummary}
+          input={{
+            businessName: result?.businessName,
+            websiteUrl: result?.websiteUrl,
+            answers: result?.answers,
+          }}
+          output={message}
+          prompt={{
+            purpose: "Create homepage headline, elevator pitch, proof points, scripts, and next message steps.",
+          }}
+        />
       </section>
     </main>
   );
