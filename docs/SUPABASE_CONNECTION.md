@@ -32,3 +32,13 @@ Security rules:
 - Customer/client website visitor tracking remains disabled until RB2B confirms the correct API Partner or OEM Partner integration flow and customer domain configuration process.
 
 The app can use the tables created by `docs/SQL_REQUIRED.md` once these values are present and Supabase Auth is enabled.
+
+Password reset uses these app routes:
+
+- `/forgot-password`
+- `/reset-password`
+
+Add the reset URL to Supabase Auth redirect URLs for each environment:
+
+- Local: `http://localhost:3000/reset-password`
+- Production: `https://simplemarketinghq.com/reset-password`
