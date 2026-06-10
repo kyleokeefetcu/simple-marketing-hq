@@ -65,14 +65,17 @@ Dashboard layout requirements:
 
 - Left-hand navigation on desktop.
 - Mobile-friendly navigation for core actions.
-- Business / Client switcher near the top.
-- KPI tiles across the main area for Growth Score, current bottleneck, next action, assets created, content plan status, and offer status.
-- A clear Next Recommended Action panel with what to do next, why it matters, and a button to open the correct utility.
-- Square app-style utility cards for Build My Offer, Define My ICP, Create Content, Build Strategy, Plan This Week, Research My Audience, Ask Advisor, and View Recommendations.
-- Recent work area for latest diagnostic, latest offer asset, latest content output, and latest strategy map.
+- Top bar with Simple Marketing HQ branding, Run New Diagnostic access, and active Business / Client selector.
+- Business / Client selector dropdown with current businesses/clients, View all businesses / clients, and Add Business / Client.
+- Square app-style utility cards as the first and primary dashboard section for Build My Offer, Define My ICP, Message Builder, Create Content, Build Strategy, Plan This Week, Research My Audience, Ask Advisor, and View Recommendations.
+- A clear Next Recommended Action panel below the utility grid with what to do next, why it matters, 1-2-3 steps, and a button to open the correct utility.
 - A channel deployment reminder: Simple Marketing HQ prepares the foundation; external tools deploy.
+- Recent work area for latest diagnostic, latest offer asset, latest ICP asset, latest content output, latest strategy map, and latest advisor thread.
+- Saved diagnostics below Recent Work.
 
-Growth Score is one dashboard utility and one KPI tile. It should not dominate the logged-in home screen.
+Growth Score is one dashboard utility and can appear inside saved diagnostic context. It should not dominate the logged-in home screen.
+
+KPI-style status cards should not dominate the dashboard homepage. Growth Score and diagnostic status can appear inside the Growth Score utility, saved diagnostic cards, and diagnostic detail views.
 
 Core logged-in navigation:
 
