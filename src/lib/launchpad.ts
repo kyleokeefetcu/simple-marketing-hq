@@ -20,6 +20,12 @@ export type LaunchPadResult = {
   completedAt: string;
   growthScore: number;
   offerStrength: number;
+  icpClarity: number;
+  industryFit: string;
+  buyerPainClarity: string;
+  urgencyTriggerClarity: string;
+  offerToIcpFit: string;
+  channelToIcpFit: string;
   messagingClarity: string;
   leadFlowGrade: string;
   speedToLeadGrade: string;
@@ -50,12 +56,49 @@ export const diagnosticQuestions: DiagnosticQuestion[] = [
     inputHint: "Roof repair, bookkeeping, coaching, design services...",
   },
   {
+    id: "industryCategory",
+    eyebrow: "Industry match",
+    question: "What industry or category best fits your business?",
+    helper: "This helps Simple Marketing HQ adapt pains, objections, proof, channels, and next actions to your market.",
+    type: "choice",
+    options: [
+      { id: "local-service", label: "Local service business", value: "local_service" },
+      { id: "home-services", label: "Contractor / home services", value: "home_services" },
+      { id: "medical", label: "Medical / wellness", value: "medical_wellness" },
+      { id: "real-estate", label: "Real estate", value: "real_estate" },
+      { id: "professional", label: "Legal / professional services", value: "professional_services" },
+      { id: "restaurant", label: "Restaurant / retail", value: "restaurant_retail" },
+      { id: "b2b", label: "B2B services", value: "b2b_services" },
+      { id: "saas", label: "SaaS / software", value: "saas_software" },
+      { id: "coaching", label: "Coaching / consulting", value: "coaching_consulting" },
+      { id: "creator", label: "Creator / course business", value: "creator_course" },
+      { id: "agency", label: "Agency", value: "agency" },
+      { id: "ecommerce", label: "Ecommerce", value: "ecommerce" },
+    ],
+  },
+  {
     id: "targetCustomer",
-    eyebrow: "Your customer",
-    question: "Who are you selling to?",
-    helper: "Choose the group you most want more of right now.",
+    eyebrow: "ICP Builder",
+    question: "Who is the best-fit customer you want more of?",
+    helper: "Name the customer segment, buyer type, company size, budget level, and location or service area if relevant.",
     type: "text",
-    inputHint: "Homeowners, local businesses, founders, families...",
+    inputHint: "Homeowners in Dallas with storm damage, 10-50 employee law firms, early-stage SaaS founders...",
+  },
+  {
+    id: "profitableCustomer",
+    eyebrow: "ICP Builder",
+    question: "Which customers are most profitable or easiest to help?",
+    helper: "This separates best-fit customers from people who only look similar on the surface.",
+    type: "text",
+    inputHint: "Customers with urgent repairs, funded teams, businesses with an existing website...",
+  },
+  {
+    id: "hardestCustomer",
+    eyebrow: "ICP Builder",
+    question: "Which customers are hardest to serve or usually a bad fit?",
+    helper: "Bad-fit traits help protect your offer, content, and recommendations from chasing the wrong demand.",
+    type: "text",
+    inputHint: "Price-only shoppers, unclear budgets, people outside our service area...",
   },
   {
     id: "customerResult",
@@ -64,6 +107,30 @@ export const diagnosticQuestions: DiagnosticQuestion[] = [
     helper: "This helps your LaunchPad Action Plan focus on what buyers actually care about.",
     type: "text",
     inputHint: "More leads, less stress, faster repairs, more booked calls...",
+  },
+  {
+    id: "urgentProblem",
+    eyebrow: "Buyer pain",
+    question: "What problem makes your best-fit customer look for help now?",
+    helper: "The strongest ICPs have a trigger: something changed, broke, expired, got expensive, or became urgent.",
+    type: "text",
+    inputHint: "A roof leak after a storm, missed appointments, slow sales pipeline, rising ad costs...",
+  },
+  {
+    id: "currentAlternative",
+    eyebrow: "Current alternative",
+    question: "What do they usually try before buying from you?",
+    helper: "This helps your message beat the workaround, competitor, DIY path, or delay.",
+    type: "text",
+    inputHint: "DIY fixes, asking friends, hiring a cheaper provider, using spreadsheets...",
+  },
+  {
+    id: "trustFactor",
+    eyebrow: "Proof and trust",
+    question: "What makes them trust you enough to take the next step?",
+    helper: "Proof needs vary by industry: reviews, credentials, case studies, before/after, guarantees, demos, or social proof.",
+    type: "text",
+    inputHint: "Reviews, certifications, before/after photos, case studies, clear pricing...",
   },
   {
     id: "currentOffer",
@@ -148,12 +215,32 @@ export function buildLaunchPadResult(answers: Record<string, string>): LaunchPad
   const host = websiteUrl.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0];
   const businessName = answers.detectedBusinessName || (host ? titleCase(host.split(".")[0].replace(/[-_]/g, " ")) : "Your business");
   const clearOffer = answers.currentOffer?.includes("clear") && !answers.currentOffer?.includes("needs");
+  const hasTarget = Boolean(answers.targetCustomer?.trim());
+  const hasProfitableCustomer = Boolean(answers.profitableCustomer?.trim());
+  const hasBadFit = Boolean(answers.hardestCustomer?.trim());
+  const hasUrgentProblem = Boolean(answers.urgentProblem?.trim());
+  const hasAlternative = Boolean(answers.currentAlternative?.trim());
+  const hasTrust = Boolean(answers.trustFactor?.trim());
   const slowFollowUp = ["nextDay", "inconsistent"].includes(answers.responseSpeed || "");
   const dropoff = answers.leadDropoff || "unknown";
   const trafficRisk = ["referrals", "unknown"].includes(answers.leadSource || "");
+  const industryProfile = getIndustryProfile(answers.industryCategory);
+  const icpClarity = clampScore(
+    42 +
+      (hasTarget ? 10 : 0) +
+      (hasProfitableCustomer ? 10 : 0) +
+      (hasBadFit ? 8 : 0) +
+      (hasUrgentProblem ? 12 : 0) +
+      (hasAlternative ? 8 : 0) +
+      (hasTrust ? 8 : 0) +
+      (answers.industryCategory ? 8 : 0),
+  );
 
   let growthScore = 72;
   if (clearOffer) growthScore += 6;
+  if (icpClarity >= 80) growthScore += 5;
+  if (icpClarity < 60) growthScore -= 8;
+  if (!hasUrgentProblem) growthScore -= 5;
   if (slowFollowUp) growthScore -= 12;
   if (dropoff === "website") growthScore -= 8;
   if (dropoff === "traffic") growthScore -= 6;
@@ -170,6 +257,12 @@ export function buildLaunchPadResult(answers: Record<string, string>): LaunchPad
     completedAt: new Date().toISOString(),
     growthScore,
     offerStrength: clearOffer ? 82 : answers.currentOffer?.includes("somewhat") ? 68 : 54,
+    icpClarity,
+    industryFit: industryProfile.label,
+    buyerPainClarity: hasUrgentProblem ? "Strong" : "Needs focus",
+    urgencyTriggerClarity: hasUrgentProblem && hasAlternative ? "Clear" : "Needs trigger",
+    offerToIcpFit: clearOffer && icpClarity >= 70 ? "Aligned" : "Needs sharper ICP fit",
+    channelToIcpFit: getChannelToIcpFit(answers.leadSource, answers.industryCategory),
     messagingClarity: clearOffer ? "B+" : "C",
     leadFlowGrade: dropoff === "traffic" ? "C-" : dropoff === "website" ? "C" : "B-",
     speedToLeadGrade: slowFollowUp ? "C-" : "A-",
@@ -179,13 +272,15 @@ export function buildLaunchPadResult(answers: Record<string, string>): LaunchPad
     nextMove,
     actionItems: [
       nextMove,
+      "Tighten your ICP: best-fit customer, bad-fit warning, buying trigger, proof needed, and channel fit.",
       "Build a starter offer stack: outcome, pain, proof, risk reducer, and clear CTA.",
       "Create one authority content asset that explains the customer problem and the next step.",
     ],
     websiteFindings: [
       `Foundation review detected ${businessName} from the website URL.`,
       answers.websiteAnalysisSummary || "Website input will be combined with your diagnostic answers to shape the command center plan.",
-      "Review offer clarity, audience clarity, message clarity, proof, lead capture, follow-up, content consistency, and channel readiness.",
+      `Industry match: ${industryProfile.label}. Use this to adapt buyer pains, objections, proof, channels, and next actions.`,
+      "Review ICP clarity, industry fit, buyer pain, trigger urgency, offer fit, channel fit, proof, lead capture, follow-up, and content consistency.",
     ],
     answers,
   };
@@ -240,4 +335,128 @@ function getNextMove(dropoff: string, slowFollowUp: boolean) {
 
 function titleCase(value: string) {
   return value.replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function clampScore(value: number) {
+  return Math.max(35, Math.min(95, value));
+}
+
+export function getIndustryProfile(industry?: string) {
+  const profiles: Record<string, { label: string; channels: string[]; proof: string; objections: string[]; triggers: string[]; leadMagnets: string[] }> = {
+    local_service: {
+      label: "Local service business",
+      channels: ["Google Business Profile", "local SEO", "reviews", "referrals"],
+      proof: "reviews, service-area clarity, response speed, and simple booking steps",
+      objections: ["price uncertainty", "availability", "trust", "response time"],
+      triggers: ["seasonal need", "service failure", "move or life event", "urgent convenience problem"],
+      leadMagnets: ["local buyer checklist", "service cost guide", "quick readiness quiz"],
+    },
+    home_services: {
+      label: "Contractor / home services",
+      channels: ["Google Business Profile", "local SEO", "before/after content", "referral partners"],
+      proof: "before/after photos, reviews, license/insurance notes, and project process clarity",
+      objections: ["quality risk", "timeline", "hidden costs", "cleanup or disruption"],
+      triggers: ["storm or damage event", "inspection issue", "renovation timeline", "safety concern"],
+      leadMagnets: ["repair cost checklist", "storm damage photo guide", "project planning worksheet"],
+    },
+    medical_wellness: {
+      label: "Medical / wellness",
+      channels: ["local SEO", "educational content", "reviews", "referrals"],
+      proof: "credentials, testimonials, safety/process details, and patient outcomes",
+      objections: ["safety", "insurance or cost", "time commitment", "uncertainty about results"],
+      triggers: ["new symptom", "life change", "failed previous treatment", "wellness goal deadline"],
+      leadMagnets: ["symptom checklist", "treatment options guide", "first-visit prep guide"],
+    },
+    real_estate: {
+      label: "Real estate",
+      channels: ["local content", "referrals", "email follow-up", "community visibility"],
+      proof: "recent deals, market knowledge, testimonials, and clear process",
+      objections: ["timing", "commission/value", "trust", "market uncertainty"],
+      triggers: ["moving timeline", "rate change", "family change", "investment opportunity"],
+      leadMagnets: ["neighborhood pricing guide", "seller prep checklist", "buyer readiness worksheet"],
+    },
+    professional_services: {
+      label: "Legal / professional services",
+      channels: ["SEO", "authority content", "referrals", "consultation funnels"],
+      proof: "credentials, case examples, expertise, and clear consultation expectations",
+      objections: ["cost", "complexity", "trust", "fear of process"],
+      triggers: ["legal deadline", "business risk", "financial event", "compliance concern"],
+      leadMagnets: ["risk checklist", "consultation prep guide", "plain-English process map"],
+    },
+    restaurant_retail: {
+      label: "Restaurant / retail",
+      channels: ["local social", "Google profile", "offers", "community partnerships"],
+      proof: "reviews, photos, availability, experience, and repeat-customer signals",
+      objections: ["convenience", "price", "quality consistency", "location"],
+      triggers: ["event planning", "gift need", "seasonal offer", "local discovery"],
+      leadMagnets: ["local offer", "event/menu guide", "first-visit incentive"],
+    },
+    b2b_services: {
+      label: "B2B services",
+      channels: ["authority content", "LinkedIn", "cold email", "partner referrals"],
+      proof: "case studies, ROI examples, process clarity, and buyer-specific outcomes",
+      objections: ["ROI", "implementation burden", "switching cost", "priority"],
+      triggers: ["missed target", "new initiative", "tool/process failure", "budget planning"],
+      leadMagnets: ["ROI calculator", "benchmark checklist", "buyer problem teardown"],
+    },
+    saas_software: {
+      label: "SaaS / software",
+      channels: ["product-led content", "demos", "email nurture", "paid search"],
+      proof: "use cases, integrations, demos, security notes, and customer outcomes",
+      objections: ["adoption", "integration", "cost", "switching friction"],
+      triggers: ["manual process pain", "team growth", "tool replacement", "reporting gap"],
+      leadMagnets: ["workflow audit", "demo checklist", "integration guide"],
+    },
+    coaching_consulting: {
+      label: "Coaching / consulting",
+      channels: ["authority content", "webinars", "email", "referrals"],
+      proof: "framework clarity, client outcomes, testimonials, and process fit",
+      objections: ["credibility", "time", "implementation", "personal fit"],
+      triggers: ["stalled progress", "new goal", "accountability need", "role or business transition"],
+      leadMagnets: ["self-assessment", "framework worksheet", "90-day plan template"],
+    },
+    creator_course: {
+      label: "Creator / course business",
+      channels: ["short-form content", "email list", "webinars", "community"],
+      proof: "student wins, curriculum clarity, creator credibility, and previews",
+      objections: ["will I use it", "is it relevant", "time", "trust"],
+      triggers: ["skill gap", "career goal", "creative project", "deadline or cohort"],
+      leadMagnets: ["starter lesson", "resource pack", "challenge or mini-course"],
+    },
+    agency: {
+      label: "Agency",
+      channels: ["case studies", "LinkedIn", "cold email", "partner referrals"],
+      proof: "portfolio, client outcomes, process, specialization, and reporting clarity",
+      objections: ["ROI", "communication", "cost", "fit with internal team"],
+      triggers: ["campaign underperformance", "new growth target", "internal capacity gap", "rebrand or launch"],
+      leadMagnets: ["audit teardown", "campaign checklist", "growth opportunity report"],
+    },
+    ecommerce: {
+      label: "Ecommerce",
+      channels: ["paid social", "SEO", "email/SMS", "creator partnerships"],
+      proof: "reviews, product photos, guarantees, shipping/return clarity, and UGC",
+      objections: ["quality", "shipping", "returns", "fit or usage"],
+      triggers: ["gift need", "replacement need", "seasonal event", "problem with current product"],
+      leadMagnets: ["buyer guide", "comparison checklist", "first-order offer"],
+    },
+  };
+
+  return profiles[industry ?? ""] ?? {
+    label: "General small business",
+    channels: ["SEO", "referrals", "content", "email follow-up"],
+    proof: "reviews, clear process, strong CTA, and specific customer outcomes",
+    objections: ["price", "trust", "timing", "unclear next step"],
+    triggers: ["urgent pain", "missed opportunity", "life or business change", "deadline"],
+    leadMagnets: ["buyer checklist", "problem audit", "quick-start guide"],
+  };
+}
+
+function getChannelToIcpFit(leadSource?: string, industry?: string) {
+  const profile = getIndustryProfile(industry);
+  if (!leadSource || leadSource === "unknown" || leadSource === "none") return `Needs channel focus: start with ${profile.channels[0]}.`;
+  if (leadSource === "referrals") return "Referral-led fit, but needs a clearer repeatable channel.";
+  if (leadSource === "search") return "Search-led fit: strengthen proof, CTA, and local/category intent.";
+  if (leadSource === "social") return "Content-led fit: sharpen hooks around buyer pain and trigger events.";
+  if (leadSource === "ads") return "Paid-channel fit depends on offer clarity, proof, and follow-up speed.";
+  return "Moderate fit: choose one channel based on ICP urgency and proof readiness.";
 }
