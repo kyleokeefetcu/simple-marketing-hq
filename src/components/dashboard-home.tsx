@@ -4,13 +4,12 @@ import Link from "next/link";
 import type { FormEvent, ReactNode } from "react";
 import {
   BarChart3,
-  BookOpenText,
   Bot,
   Building2,
   CalendarDays,
+  ChevronDown,
   ClipboardList,
   Compass,
-  FileText,
   Home,
   Lightbulb,
   LogOut,
@@ -24,16 +23,9 @@ import {
   Target,
   Users,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { brand } from "@/lib/brand";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import {
-  getAdvisorThreads,
-  getMarketingAssets,
-  type AdvisorThreadSummary,
-  type MarketingAssetSummary,
-  type MarketingAssetType,
-} from "@/lib/supabase/assets";
 import {
   createBusiness,
   getBusinesses,
@@ -210,41 +202,15 @@ const utilityLabels: Record<(typeof utilityCards)[number], string> = {
   "View Recommendations": "Choose tools when ready.",
 };
 
-const trackedAssetTypes: MarketingAssetType[] = ["icp", "offer", "message", "content", "strategy_map", "marketing_schedule", "research", "recommendation"];
-
 export function DashboardHome() {
   const [diagnostics, setDiagnostics] = useState<SavedDiagnosticSummary[]>([]);
   const [businesses, setBusinesses] = useState<BusinessSummary[]>([]);
   const [selectedBusinessId, setSelectedBusinessId] = useState("");
-  const [latestAssets, setLatestAssets] = useState<Partial<Record<MarketingAssetType, MarketingAssetSummary>>>({});
-  const [latestAdvisorThread, setLatestAdvisorThread] = useState<AdvisorThreadSummary | null>(null);
   const [newBusinessName, setNewBusinessName] = useState("");
   const [status, setStatus] = useState("Connect Supabase to load your saved command center.");
   const [businessStatus, setBusinessStatus] = useState("");
   const [isAddingBusiness, setIsAddingBusiness] = useState(false);
   const [requiresLogin, setRequiresLogin] = useState(false);
-
-  const refreshAssetStatus = useCallback(async (businessId: string) => {
-    const supabase = createBrowserSupabaseClient();
-    if (!supabase || !businessId) {
-      setLatestAssets({});
-      setLatestAdvisorThread(null);
-      return;
-    }
-
-    const [assetGroups, advisorThreads] = await Promise.all([
-      Promise.all(trackedAssetTypes.map((assetType) => getMarketingAssets(supabase, businessId, assetType))),
-      getAdvisorThreads(supabase, businessId),
-    ]);
-    const nextLatestAssets: Partial<Record<MarketingAssetType, MarketingAssetSummary>> = {};
-
-    assetGroups.forEach((assets, index) => {
-      if (assets[0]) nextLatestAssets[trackedAssetTypes[index]] = assets[0];
-    });
-
-    setLatestAssets(nextLatestAssets);
-    setLatestAdvisorThread(advisorThreads[0] ?? null);
-  }, []);
 
   useEffect(() => {
     async function loadWorkspace() {
@@ -271,9 +237,6 @@ export function DashboardHome() {
         setBusinesses(savedBusinesses);
         setSelectedBusinessId(nextSelectedBusinessId);
         setDiagnostics(savedDiagnostics);
-        if (nextSelectedBusinessId) {
-          await refreshAssetStatus(nextSelectedBusinessId);
-        }
         setStatus(savedDiagnostics.length ? "Your latest saved work is loaded." : "Start with a diagnostic or choose a utility to build your foundation.");
       } catch (error) {
         setStatus(`Could not load your saved command center: ${(error as Error).message}`);
@@ -281,7 +244,7 @@ export function DashboardHome() {
     }
 
     void loadWorkspace();
-  }, [refreshAssetStatus]);
+  }, []);
 
   const selectedBusiness = businesses.find((business) => business.id === selectedBusinessId) ?? null;
   const scopedDiagnostics = selectedBusinessId ? diagnostics.filter((diagnostic) => diagnostic.businessId === selectedBusinessId) : diagnostics;
@@ -303,53 +266,14 @@ export function DashboardHome() {
       };
   const portfolioMode = !selectedBusinessId && businesses.length > 1;
 
-  const recentWork = useMemo(
-    () => [
-      {
-        title: "Latest diagnostic",
-        value: latestDiagnostic ? `${latestDiagnostic.businessName} scored ${latestDiagnostic.growthScore ?? "--"}` : "No saved diagnostic yet",
-        href: "/growth-score",
-      },
-      {
-        title: "Latest offer asset",
-        value: latestAssets.offer?.summary || (latestDiagnostic ? "Offer starter is ready to save from diagnostic inputs" : "Build this after your diagnostic"),
-        href: "/offer-builder",
-      },
-      {
-        title: "Latest ICP asset",
-        value: latestAssets.icp?.summary || (latestDiagnostic ? "Define the customer your marketing should speak to" : "Run the diagnostic to create an ICP starter"),
-        href: "/icp-builder",
-      },
-      {
-        title: "Latest content output",
-        value: latestAssets.content?.summary || (latestDiagnostic ? "Content Engine can generate and save hooks from your bottleneck" : "Create content once offer and ICP are clearer"),
-        href: "/content-engine",
-      },
-      {
-        title: "Latest strategy map",
-        value: latestAssets.strategy_map?.summary || (latestDiagnostic ? "Strategy Map can save 7 and 30 day moves" : "Strategy appears after your first diagnostic"),
-        href: "/strategy-map",
-      },
-      {
-        title: "Latest advisor thread",
-        value: latestAdvisorThread?.title || "Ask the Advisor for the next best marketing move",
-        href: "/advisor",
-      },
-    ],
-    [latestAdvisorThread?.title, latestAssets.content?.summary, latestAssets.icp?.summary, latestAssets.offer?.summary, latestAssets.strategy_map?.summary, latestDiagnostic],
-  );
-
   function selectBusiness(businessId: string) {
     setSelectedBusinessId(businessId);
     window.localStorage.setItem("simple-marketing-hq:selected-business-id", businessId);
-    void refreshAssetStatus(businessId);
   }
 
   function clearBusinessSelection() {
     setSelectedBusinessId("");
     window.localStorage.removeItem("simple-marketing-hq:selected-business-id");
-    setLatestAssets({});
-    setLatestAdvisorThread(null);
   }
 
   async function logOut() {
@@ -499,12 +423,12 @@ export function DashboardHome() {
               </div>
             </section>
 
-            <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <section className="mt-5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Marketing utilities</p>
-                  <h2 className="mt-2 text-3xl font-semibold text-slate-950">Choose the work you need to do now.</h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                  <h2 className="mt-1 text-2xl font-semibold text-slate-950 sm:text-3xl">Choose the work you need to do now.</h2>
+                  <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
                     Pick a utility. Simple Marketing HQ will guide the steps and generate the asset.
                   </p>
                 </div>
@@ -512,16 +436,14 @@ export function DashboardHome() {
                   Ask the Advisor
                 </Link>
               </div>
-              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                 {utilityCards.map((label) => {
                   const utility = utilityMap[label];
                   return (
-                    <Link key={label} href={scopedHref(utility.href, selectedBusinessId)} className="group flex aspect-square min-h-36 flex-col justify-between rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md">
-                      <span className={`grid size-12 place-items-center rounded-md ${utility.accent}`}>{utility.icon}</span>
-                      <span>
-                        <span className="block text-base font-semibold leading-5 text-slate-950">{label}</span>
-                        <span className="mt-2 block text-xs leading-5 text-slate-500">{utilityLabels[label]}</span>
-                      </span>
+                    <Link key={label} href={scopedHref(utility.href, selectedBusinessId)} className="group flex min-h-[126px] flex-col rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md sm:min-h-[136px]">
+                      <span className={`grid size-10 place-items-center rounded-md ${utility.accent}`}>{utility.icon}</span>
+                      <span className="mt-3 block text-sm font-semibold leading-5 text-slate-950 sm:text-[15px]">{label}</span>
+                      <span className="mt-1 block text-xs leading-5 text-slate-500">{utilityLabels[label]}</span>
                     </Link>
                   );
                 })}
@@ -598,53 +520,6 @@ export function DashboardHome() {
                 </div>
               </article>
             </section>
-
-            <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Recent work</p>
-                  <h2 className="mt-2 text-2xl font-semibold text-slate-950">Pick up where you left off.</h2>
-                </div>
-                <FileText className="text-slate-400" size={24} />
-              </div>
-              <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {recentWork.map((item) => (
-                  <Link key={item.title} href={scopedHref(item.href, selectedBusinessId)} className="rounded-md border border-slate-200 p-4 transition hover:border-cyan-300 hover:bg-cyan-50">
-                    <p className="font-semibold text-slate-950">{item.title}</p>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">{item.value}</p>
-                  </Link>
-                ))}
-              </div>
-            </section>
-
-            <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Saved diagnostics</p>
-                  <h2 className="mt-2 text-2xl font-semibold text-slate-950">Latest LaunchPad context</h2>
-                </div>
-                <BookOpenText className="text-slate-400" size={24} />
-              </div>
-              <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {scopedDiagnostics.slice(0, 3).map((diagnostic) => (
-                  <Link key={diagnostic.id} href={scopedHref("/growth-score", selectedBusinessId)} className="rounded-md border border-slate-200 p-4 transition hover:border-cyan-300 hover:bg-cyan-50">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-semibold text-slate-950">{diagnostic.businessName}</p>
-                        <p className="mt-1 text-sm text-slate-500">{formatDate(diagnostic.completedAt)}</p>
-                      </div>
-                      <span className="rounded-md bg-cyan-50 px-3 py-2 text-sm font-semibold text-cyan-900">{diagnostic.growthScore ?? "--"}</span>
-                    </div>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">{diagnostic.nextMove}</p>
-                  </Link>
-                ))}
-                {!scopedDiagnostics.length ? (
-                  <Link href={scopedHref("/diagnostic", selectedBusinessId)} className="rounded-md border border-dashed border-slate-300 p-4 text-sm font-semibold text-cyan-800">
-                    Run your first LaunchPad Diagnostic
-                  </Link>
-                ) : null}
-              </div>
-            </section>
           </div>
         </section>
       </div>
@@ -694,11 +569,13 @@ function BusinessSwitcher({
 }) {
   return (
     <details className="relative">
-      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm marker:hidden">
-        {selectedBusinessName || "All businesses / clients"}
+      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm marker:hidden">
+        <span className="truncate">{selectedBusinessName ? `Business: ${selectedBusinessName}` : "Business: All businesses / clients"}</span>
+        <ChevronDown size={17} aria-hidden="true" />
       </summary>
       <div className="absolute right-0 z-30 mt-2 w-[min(92vw,360px)] rounded-lg border border-slate-200 bg-white p-3 shadow-xl">
         <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-cyan-800">Active Business / Client</p>
+        <p className="px-2 pb-2 text-sm font-semibold text-slate-950">{selectedBusinessName || "All businesses / clients"}</p>
         <div className="mt-2 grid gap-1">
           <button type="button" onClick={onClear} className={`rounded-md px-3 py-2 text-left text-sm font-semibold ${selectedBusinessId ? "text-slate-700 hover:bg-cyan-50" : "bg-cyan-50 text-cyan-950"}`}>
             View all businesses / clients
