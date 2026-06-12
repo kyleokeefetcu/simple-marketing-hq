@@ -293,6 +293,10 @@ The current production utility model uses:
 
 Global output standard: best recommendation first, then copy/paste asset, why it works, where to use it, and one clear next action. Raw business context must be compressed into short customer-facing language before it appears in generated assets.
 
+Utility pages should feel like app-style workspaces, not long reports. Each HQ utility uses compact work-block tiles near the top so the owner chooses what to work on now. Only the selected work block expands. History, tests, saved versions, results, and reference material are accessed through tiles rather than rendered as permanent bottom sections.
+
+Every utility workspace includes a concise Next Step suggestion and an AI Working Session. The working session is specific to the current utility and selected work block, uses the selected Business / Client, latest diagnostic, saved assets, and current recommendation, and either creates the requested asset or tells the owner the next best action.
+
 LaunchPad Diagnostic follows the same operating philosophy with one important distinction: each completed diagnostic is a fresh point-in-time snapshot. The left navigation opens LaunchPad Diagnostic HQ, not the quiz funnel. Diagnostic HQ shows the latest diagnostic, an optional current draft, a clear Run New Diagnostic action, archived previous diagnostics, and a comparison against the prior snapshot when available.
 
 Run New Diagnostic starts a fresh session at step 1 and does not reuse old quiz answers. Existing business context, saved assets, and previous diagnostics may inform the app in the background, but the owner answers the current-state questions again. Continue Draft is the only action that resumes an incomplete diagnostic. Completed diagnostics save as separate timestamped records and older diagnostics remain archived snapshots.

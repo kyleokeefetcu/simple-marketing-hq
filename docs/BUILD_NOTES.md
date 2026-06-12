@@ -28,7 +28,9 @@
 - LaunchPad Growth Score
 - LaunchPad Action Plan
 - Shared living-asset utility workflow for Audience HQ, Offer HQ, Messaging HQ, Content HQ, Strategy HQ, Execution HQ, Research HQ, and Tool Stack HQ
-- Each utility now shows the current best recommendation first, then CMO recommendation, Feed New Info, Test & Improve, Use It Now, and History / Change Log
+- Each utility now uses a compact tile-based workspace with one selected work block open at a time, a Next Step suggestion, and a utility-specific AI Working Session
+- Content HQ includes Current Plan, Content Themes, Post Ideas, Create Post, Email Ideas, Video Scripts, Hooks, Campaign Results, Tests, and History tiles
+- History and saved versions now live inside the History tile instead of a permanent bottom section
 - Each utility uses selected Business / Client context, latest diagnostic, saved assets, and new raw feedback so the app recommends while the owner approves, corrects, or feeds better information
 - Utility output is intentionally shorter and copy/paste-ready: best recommendation first, compressed customer-facing language, why it works, where to use it, and one next action
 - Utility assets continue to save to Supabase through `marketing_assets` with the selected `business_id`, `role_id`, `asset_type`, structured input, structured output, summary, status, and history

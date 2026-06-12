@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import type { FormEvent } from "react";
-import { ArrowRight, CheckCircle2, ChevronDown, Clipboard, FlaskConical, History, Pencil, RefreshCw, Save, Sparkles } from "lucide-react";
+import { ArrowRight, CheckCircle2, ChevronDown, Clipboard, FlaskConical, History, Lightbulb, Mail, MessageSquare, Save, Sparkles, Target, Video } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/app-header";
-import { AssetSavePanel } from "@/components/asset-save-panel";
 import { getIndustryProfile, getStoredResult, type LaunchPadResult } from "@/lib/launchpad";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { getMarketingAssets, type MarketingAssetSummary, type MarketingAssetType } from "@/lib/supabase/assets";
+import { getMarketingAssets, saveMarketingAsset, type MarketingAssetSummary, type MarketingAssetType } from "@/lib/supabase/assets";
 import { getBusinesses, getSavedDiagnostics, type BusinessSummary, type SavedDiagnosticSummary } from "@/lib/supabase/diagnostics";
 import type { PromptRoleId } from "@/lib/ai/prompts/shared-output-rules";
 
@@ -56,6 +55,28 @@ type Deliverable = {
   actionSteps: string[];
   changeSummary: string;
   suggestedNextUtility: { label: string; href: string };
+};
+
+type WorkBlockId =
+  | "current"
+  | "themes"
+  | "ideas"
+  | "create"
+  | "email"
+  | "video"
+  | "hooks"
+  | "results"
+  | "recommendation"
+  | "feed"
+  | "tests"
+  | "use"
+  | "history";
+
+type WorkBlock = {
+  id: WorkBlockId;
+  title: string;
+  subtitle: string;
+  icon: "spark" | "target" | "message" | "mail" | "video" | "test" | "history" | "idea";
 };
 
 const assetTypes: MarketingAssetType[] = [
@@ -210,6 +231,11 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
   const [deliverable, setDeliverable] = useState<Deliverable | null>(null);
   const [status, setStatus] = useState("Load or select a Business / Client to tailor this utility.");
   const [copyStatus, setCopyStatus] = useState("");
+  const [saveStatus, setSaveStatus] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [activeBlock, setActiveBlock] = useState<WorkBlockId>(kind === "content" ? "current" : "current");
+  const [sessionMessages, setSessionMessages] = useState<{ role: "assistant" | "user"; content: string }[]>([]);
+  const [sessionInput, setSessionInput] = useState("");
 
   const selectedBusiness = businesses.find((business) => business.id === selectedBusinessId) ?? null;
   const context = useMemo<UtilityContext>(() => ({ result, business: selectedBusiness, latestDiagnostic, priorAssets }), [result, selectedBusiness, latestDiagnostic, priorAssets]);
@@ -217,6 +243,10 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
   const businessName = context.business?.name || result?.businessName || "Selected business";
   const assetTitle = `${businessName} ${config.navName}`;
   const scopedHref = (href: string) => (selectedBusinessId ? `${href}?businessId=${selectedBusinessId}` : href);
+  const workBlocks = useMemo(() => getWorkBlocks(config.kind), [config.kind]);
+  const activeWorkBlock = workBlocks.find((block) => block.id === activeBlock) ?? workBlocks[0];
+  const nextStep = getNextStepSuggestion(config, activeBlock, currentRecommendation);
+  const assistantIntro = `I'm working inside ${config.navName} for this business. I'll use your current offer, audience, message, latest diagnostic, saved history, and the ${activeWorkBlock.title} work block. Ask me to create an asset, improve an idea, or tell you what to do next.`;
 
   const loadBusinessContext = useCallback(async (businessId: string) => {
     const supabase = createBrowserSupabaseClient();
@@ -300,6 +330,64 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
     window.setTimeout(() => setCopyStatus(""), 1800);
   }
 
+  async function handleSaveCurrentAsset() {
+    const supabase = createBrowserSupabaseClient();
+    if (!supabase || !selectedBusinessId) {
+      setSaveStatus("Log in and select a Business / Client before saving.");
+      return;
+    }
+
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+      setSaveStatus("Log in before saving this output.");
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveStatus("Saving...");
+    try {
+      await saveMarketingAsset(supabase, data.user, {
+        businessId: selectedBusinessId,
+        roleId: config.roleId,
+        assetType: config.assetType,
+        title: assetTitle,
+        summary: currentRecommendation.summary,
+        input: {
+          feedbackType,
+          feedback,
+          activeBlock,
+          business: context.business,
+          latestDiagnostic: context.latestDiagnostic,
+        },
+        output: currentRecommendation as unknown as Record<string, unknown>,
+        prompt: {
+          purpose: "Save the current living utility recommendation and selected workspace state.",
+          utility: config.navName,
+          activeBlock,
+        },
+      });
+      await loadBusinessContext(selectedBusinessId);
+      setSaveStatus("Saved to this Business / Client history.");
+    } catch (error) {
+      setSaveStatus(`Could not save: ${(error as Error).message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  function handleQuickPrompt(prompt: string) {
+    const response = buildSessionResponse(config, activeWorkBlock, currentRecommendation, prompt);
+    setSessionMessages((messages) => [...messages, { role: "user", content: prompt }, { role: "assistant", content: response }]);
+  }
+
+  function handleSessionSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const prompt = sessionInput.trim();
+    if (!prompt) return;
+    handleQuickPrompt(prompt);
+    setSessionInput("");
+  }
+
   return (
     <main className="min-h-screen bg-slate-50">
       <AppHeader />
@@ -335,202 +423,501 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
           <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">{config.promise}</p>
         </header>
 
-        <section className="mt-5 rounded-lg border border-cyan-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">{config.currentAssetTitle}</p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-950">{currentRecommendation.title}</h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{currentRecommendation.summary}</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => void copyCurrentAsset()} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800">
-                <Clipboard size={16} aria-hidden="true" />
-                Copy
-              </button>
-              <button type="button" onClick={() => handleImprove()} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-4 text-sm font-semibold text-cyan-900">
-                <RefreshCw size={16} aria-hidden="true" />
-                Improve
-              </button>
-              <button type="button" onClick={() => handleImprove()} className="inline-flex min-h-11 items-center gap-2 rounded-md bg-cyan-900 px-4 text-sm font-semibold text-white">
-                <Save size={16} aria-hidden="true" />
-                Save / Approve
-              </button>
-            </div>
-          </div>
-          {copyStatus ? <p className="mt-3 text-sm font-semibold text-emerald-700">{copyStatus}</p> : null}
-
-          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {currentRecommendation.currentAsset.map((item) => (
-              <InfoCard key={item.label} label={item.label} value={item.value} />
-            ))}
-          </div>
-
-          <div className="mt-5 rounded-md bg-cyan-50 p-4">
-            <p className="text-sm font-semibold text-cyan-950">Best recommendation first</p>
-            <p className="mt-2 whitespace-pre-line text-base leading-7 text-cyan-950">{currentRecommendation.copyPasteBlocks[0]?.value}</p>
+        <section className="mt-5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Work blocks</p>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {workBlocks.map((block) => {
+              const active = block.id === activeBlock;
+              return (
+                <button
+                  key={block.id}
+                  type="button"
+                  onClick={() => setActiveBlock(block.id)}
+                  className={`min-h-24 rounded-lg border p-3 text-left transition ${
+                    active ? "border-cyan-800 bg-cyan-50 shadow-sm" : "border-slate-200 bg-white hover:border-cyan-300 hover:bg-cyan-50"
+                  }`}
+                >
+                  <span className={`grid size-9 place-items-center rounded-md ${active ? "bg-cyan-900 text-white" : "bg-slate-100 text-slate-700"}`}>
+                    <WorkBlockIcon icon={block.icon} />
+                  </span>
+                  <span className="mt-3 block text-sm font-semibold text-slate-950">{block.title}</span>
+                  <span className="mt-1 block text-xs leading-5 text-slate-600">{block.subtitle}</span>
+                </button>
+              );
+            })}
           </div>
         </section>
 
-        <section className="mt-5 grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
+        <section className="mt-5 rounded-lg border border-cyan-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Next best move</p>
+              <h2 className="mt-2 text-2xl font-semibold text-slate-950">{nextStep.title}</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{nextStep.why}</p>
+              <p className="mt-2 text-sm font-semibold text-slate-800">Output: {nextStep.output}</p>
+            </div>
+            <button type="button" onClick={() => setActiveBlock(nextStep.blockId)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
+              {nextStep.button}
+              <ArrowRight size={18} aria-hidden="true" />
+            </button>
+          </div>
+        </section>
+
+        <section className="mt-5 grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">{config.cmoTitle}</p>
-            <h2 className="mt-2 text-2xl font-semibold text-slate-950">Based on what we know, here is what your marketing team recommends.</h2>
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">AI Working Session</p>
+            <h2 className="mt-2 text-2xl font-semibold text-slate-950">{activeWorkBlock.title}</h2>
             <div className="mt-4 grid gap-3">
-              <RecommendationRow label="What we recommend" value={currentRecommendation.cmoRecommendation.recommendation} />
-              <RecommendationRow label="Why" value={currentRecommendation.cmoRecommendation.why} />
-              <RecommendationRow label="Customer problem" value={currentRecommendation.cmoRecommendation.customerProblem} />
-              <RecommendationRow label="Outcome to emphasize" value={currentRecommendation.cmoRecommendation.outcome} />
-              <RecommendationRow label="Next action" value={currentRecommendation.cmoRecommendation.nextAction} />
+              <ChatBubble role="assistant" content={assistantIntro} />
+              {sessionMessages.map((message, index) => (
+                <ChatBubble key={`${message.role}-${index}`} role={message.role} content={message.content} />
+              ))}
             </div>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <button type="button" onClick={() => handleImprove()} className="inline-flex min-h-11 items-center gap-2 rounded-md bg-cyan-900 px-4 text-sm font-semibold text-white">
-                <CheckCircle2 size={16} aria-hidden="true" />
-                Use this direction
-              </button>
-              <button type="button" onClick={() => handleImprove()} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-slate-300 px-4 text-sm font-semibold text-slate-800">
-                <Pencil size={16} aria-hidden="true" />
-                This is not right
-              </button>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {getQuickPrompts(config.kind, activeBlock).map((prompt) => (
+                <button key={prompt} type="button" onClick={() => handleQuickPrompt(prompt)} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
+                  {prompt}
+                </button>
+              ))}
             </div>
+            <form onSubmit={handleSessionSubmit} className="mt-4 flex flex-col gap-3 sm:flex-row">
+              <input
+                value={sessionInput}
+                onChange={(event) => setSessionInput(event.target.value)}
+                placeholder={`Ask ${config.navName} what to do next...`}
+                className="min-h-12 flex-1 rounded-md border border-slate-300 px-4 text-sm outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100"
+              />
+              <button type="submit" className="inline-flex min-h-12 items-center justify-center rounded-md bg-cyan-900 px-5 font-semibold text-white">
+                Ask
+              </button>
+            </form>
           </article>
 
-          <form onSubmit={handleImprove} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Feed New Info</p>
-            <h2 className="mt-2 text-2xl font-semibold text-slate-950">Improve this with real-world information.</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">Add raw notes. Simple Marketing HQ will translate them into a better recommendation.</p>
-            <label className="mt-4 block">
-              <span className="text-sm font-semibold text-slate-700">Information type</span>
-              <select
-                value={feedbackType}
-                onChange={(event) => setFeedbackType(event.target.value)}
-                className="mt-2 min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800"
-              >
-                <option value="customer_note">Customer question or sales note</option>
-                <option value="objection">Objection heard</option>
-                <option value="review">Review or testimonial</option>
-                <option value="campaign_result">Campaign result</option>
-                <option value="competitor">Competitor example</option>
-                <option value="new_offer">New service or offer detail</option>
-                <option value="not_right">What feels off</option>
-              </select>
-            </label>
-            <label className="mt-4 block">
-              <span className="text-sm font-semibold text-slate-700">{config.feedLabel}</span>
-              <textarea
-                value={feedback}
-                onChange={(event) => setFeedback(event.target.value)}
-                placeholder={config.feedPlaceholder}
-                className="mt-2 min-h-32 w-full rounded-md border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100"
-              />
-            </label>
-            <button type="submit" className="mt-4 inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
-              <Sparkles size={18} aria-hidden="true" />
-              Analyze and Improve
-            </button>
-          </form>
-        </section>
-
-        <section className="mt-5 grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-start gap-3">
-              <FlaskConical className="mt-1 text-cyan-800" size={22} aria-hidden="true" />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Test & Improve</p>
-                <h2 className="mt-2 text-2xl font-semibold text-slate-950">Small experiments to learn what works.</h2>
+                <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Selected work block</p>
+                <h2 className="mt-2 text-2xl font-semibold text-slate-950">{activeWorkBlock.title}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{activeWorkBlock.subtitle}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => void copyCurrentAsset()} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800">
+                  <Clipboard size={15} aria-hidden="true" />
+                  Copy
+                </button>
+                <button type="button" onClick={() => void handleSaveCurrentAsset()} disabled={isSaving} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-cyan-900 px-3 text-sm font-semibold text-white disabled:bg-slate-300">
+                  <Save size={15} aria-hidden="true" />
+                  {isSaving ? "Saving..." : "Save"}
+                </button>
               </div>
             </div>
-            <div className="mt-4 grid gap-3">
-              {currentRecommendation.tests.map((test) => (
-                <details key={test.title} className="rounded-md border border-slate-200 p-4">
-                  <summary className="cursor-pointer text-sm font-semibold text-slate-950">{test.title}</summary>
-                  <div className="mt-3 grid gap-2 text-sm leading-6 text-slate-700">
-                    <p><strong>Where:</strong> {test.where}</p>
-                    <p><strong>Measure:</strong> {test.measure}</p>
-                    <p><strong>Working signal:</strong> {test.signal}</p>
-                    <p><strong>Next move:</strong> {test.nextMove}</p>
-                  </div>
-                </details>
-              ))}
+            {copyStatus || saveStatus ? <p className="mt-3 text-sm font-semibold text-emerald-700">{copyStatus || saveStatus}</p> : null}
+            <div className="mt-5">
+              {renderWorkBlock({
+                activeBlock,
+                config,
+                currentRecommendation,
+                feedback,
+                feedbackType,
+                history,
+                scopedHref,
+                setFeedback,
+                setFeedbackType,
+                onImprove: handleImprove,
+              })}
             </div>
           </article>
-
-          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Use It Now</p>
-            <h2 className="mt-2 text-2xl font-semibold text-slate-950">Put this asset to work.</h2>
-            <div className="mt-4 grid gap-2">
-              {currentRecommendation.useItNow.map((item) => (
-                <p key={item} className="flex gap-2 text-sm leading-6 text-slate-700">
-                  <CheckCircle2 className="mt-0.5 shrink-0 text-emerald-600" size={17} aria-hidden="true" />
-                  {item}
-                </p>
-              ))}
-            </div>
-            <div className="mt-5 rounded-md bg-slate-50 p-4">
-              <p className="text-sm font-semibold text-slate-950">Next best move</p>
-              <p className="mt-2 text-sm leading-6 text-slate-700">{currentRecommendation.actionSteps[0]}</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">Output created: {config.nextOutput}</p>
-            </div>
-            <Link href={scopedHref(currentRecommendation.suggestedNextUtility.href)} className="mt-5 inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
-              {currentRecommendation.suggestedNextUtility.label}
-              <ArrowRight size={18} aria-hidden="true" />
-            </Link>
-          </article>
-        </section>
-
-        {deliverable ? (
-          <AssetSavePanel
-            roleId={config.roleId}
-            assetType={config.assetType}
-            title={assetTitle}
-            summary={deliverable.summary}
-            input={{
-              feedbackType,
-              feedback,
-              business: context.business,
-              latestDiagnostic: context.latestDiagnostic,
-              launchpadResult: context.result,
-              priorAssetTitles: Object.fromEntries(Object.entries(context.priorAssets).map(([key, asset]) => [key, asset?.title])),
-            }}
-            output={deliverable as unknown as Record<string, unknown>}
-            prompt={{
-              purpose: "Maintain a living marketing asset with current recommendation, CMO recommendation, feedback analysis, tests, use guidance, and one next action.",
-              utility: config.navName,
-              role_id: config.roleId,
-              global_rules: [
-                "The app recommends. The owner approves, corrects, or feeds new information.",
-                "Compress raw business context into short customer-facing language before writing final copy.",
-                "Put the best recommendation first, then copy/paste asset, why it works, where to use it, and one next action.",
-              ],
-            }}
-          />
-        ) : null}
-
-        <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-start gap-3">
-            <History className="mt-1 text-cyan-800" size={22} aria-hidden="true" />
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">History / Change Log</p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-950">Saved versions for this Business / Client.</h2>
-            </div>
-          </div>
-          <div className="mt-4 grid gap-3">
-            {history.length ? (
-              history.map((asset) => (
-                <details key={asset.id} className="rounded-md border border-slate-200 p-4">
-                  <summary className="cursor-pointer text-sm font-semibold text-slate-950">
-                    {asset.title} <span className="font-normal text-slate-500">- {new Date(asset.updatedAt).toLocaleDateString()}</span>
-                  </summary>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">{asset.summary}</p>
-                  <pre className="mt-3 max-h-72 overflow-auto rounded-md bg-slate-950 p-4 text-xs leading-5 text-slate-50">{JSON.stringify(asset.output, null, 2)}</pre>
-                </details>
-              ))
-            ) : (
-              <p className="rounded-md bg-slate-50 p-4 text-sm leading-6 text-slate-600">No saved versions yet. Save the current recommendation when it is ready to become part of this business’s marketing history.</p>
-            )}
-          </div>
         </section>
       </section>
     </main>
+  );
+}
+
+function getWorkBlocks(kind: UtilityKind): WorkBlock[] {
+  if (kind === "content") {
+    return [
+      { id: "current", title: "Current Plan", subtitle: "Themes, CTA, priority.", icon: "spark" },
+      { id: "themes", title: "Content Themes", subtitle: "Improve the angles.", icon: "target" },
+      { id: "ideas", title: "Post Ideas", subtitle: "Ready topics.", icon: "message" },
+      { id: "create", title: "Create Post", subtitle: "Draft one asset.", icon: "spark" },
+      { id: "email", title: "Email Ideas", subtitle: "Topics or draft.", icon: "mail" },
+      { id: "video", title: "Video Scripts", subtitle: "Short scripts.", icon: "video" },
+      { id: "hooks", title: "Hooks", subtitle: "Scroll-stoppers.", icon: "idea" },
+      { id: "results", title: "Campaign Results", subtitle: "Feed back notes.", icon: "target" },
+      { id: "tests", title: "Tests", subtitle: "What to try.", icon: "test" },
+      { id: "history", title: "History", subtitle: "Saved versions.", icon: "history" },
+    ];
+  }
+
+  const shared: Record<Exclude<UtilityKind, "content">, WorkBlock[]> = {
+    icp: [
+      { id: "current", title: "Best-Fit Customer", subtitle: "Current audience.", icon: "target" },
+      { id: "themes", title: "Buyer Problems", subtitle: "What they feel.", icon: "idea" },
+      { id: "ideas", title: "Buying Triggers", subtitle: "Why now.", icon: "spark" },
+      { id: "hooks", title: "Objections", subtitle: "What slows yes.", icon: "message" },
+      { id: "create", title: "Where to Find Them", subtitle: "Channel fit.", icon: "target" },
+      { id: "feed", title: "New Info", subtitle: "Add customer notes.", icon: "spark" },
+      { id: "use", title: "Use It Now", subtitle: "Apply the ICP.", icon: "idea" },
+      { id: "history", title: "History", subtitle: "Saved versions.", icon: "history" },
+    ],
+    offer: [
+      { id: "current", title: "Current Offer", subtitle: "Offer and CTA.", icon: "spark" },
+      { id: "themes", title: "Offer Angles", subtitle: "Ways to frame it.", icon: "idea" },
+      { id: "create", title: "CTA", subtitle: "Next step copy.", icon: "message" },
+      { id: "hooks", title: "Proof / Trust", subtitle: "Reduce risk.", icon: "target" },
+      { id: "ideas", title: "Objections", subtitle: "Buyer hesitation.", icon: "message" },
+      { id: "feed", title: "New Info", subtitle: "Add offer notes.", icon: "spark" },
+      { id: "tests", title: "Tests", subtitle: "What to try.", icon: "test" },
+      { id: "history", title: "History", subtitle: "Saved versions.", icon: "history" },
+    ],
+    message: [
+      { id: "current", title: "Current Message", subtitle: "Main copy.", icon: "message" },
+      { id: "create", title: "Homepage Copy", subtitle: "Hero and opener.", icon: "spark" },
+      { id: "hooks", title: "Headlines", subtitle: "Short options.", icon: "idea" },
+      { id: "email", title: "CTAs", subtitle: "Low-friction asks.", icon: "target" },
+      { id: "ideas", title: "Follow-Up Lines", subtitle: "Use after inquiry.", icon: "mail" },
+      { id: "video", title: "Sales Script", subtitle: "Conversation copy.", icon: "message" },
+      { id: "tests", title: "Tests", subtitle: "What to try.", icon: "test" },
+      { id: "history", title: "History", subtitle: "Saved versions.", icon: "history" },
+    ],
+    strategy_map: [
+      { id: "current", title: "Current Priority", subtitle: "Do first.", icon: "spark" },
+      { id: "themes", title: "Bottleneck", subtitle: "What is stuck.", icon: "target" },
+      { id: "ideas", title: "What to Ignore", subtitle: "Avoid noise.", icon: "idea" },
+      { id: "create", title: "Channel Order", subtitle: "Launch sequence.", icon: "message" },
+      { id: "use", title: "Next 3 Actions", subtitle: "Move now.", icon: "spark" },
+      { id: "hooks", title: "Risks", subtitle: "Watchouts.", icon: "target" },
+      { id: "tests", title: "Tests", subtitle: "What to try.", icon: "test" },
+      { id: "history", title: "History", subtitle: "Saved versions.", icon: "history" },
+    ],
+    marketing_schedule: [
+      { id: "current", title: "This Week’s Plan", subtitle: "Top priority.", icon: "spark" },
+      { id: "create", title: "Today’s Task", subtitle: "One move.", icon: "target" },
+      { id: "ideas", title: "Content to Publish", subtitle: "Use this week.", icon: "message" },
+      { id: "email", title: "Follow-Up", subtitle: "Reply rhythm.", icon: "mail" },
+      { id: "results", title: "Review Results", subtitle: "What happened.", icon: "idea" },
+      { id: "feed", title: "Adjust Plan", subtitle: "Add updates.", icon: "spark" },
+      { id: "history", title: "History", subtitle: "Saved versions.", icon: "history" },
+    ],
+    research: [
+      { id: "current", title: "Market Insights", subtitle: "Current read.", icon: "idea" },
+      { id: "themes", title: "Customer Questions", subtitle: "What they ask.", icon: "message" },
+      { id: "feed", title: "Reviews / Notes", subtitle: "Paste research.", icon: "spark" },
+      { id: "create", title: "Competitors", subtitle: "Compare claims.", icon: "target" },
+      { id: "ideas", title: "Objections", subtitle: "Buying friction.", icon: "message" },
+      { id: "hooks", title: "Content Ideas", subtitle: "Use insights.", icon: "idea" },
+      { id: "use", title: "Offer Improvements", subtitle: "Apply research.", icon: "spark" },
+      { id: "history", title: "History", subtitle: "Saved versions.", icon: "history" },
+    ],
+    recommendation: [
+      { id: "current", title: "Recommended Tools", subtitle: "Best fit now.", icon: "spark" },
+      { id: "themes", title: "Not Ready Yet", subtitle: "What to wait on.", icon: "idea" },
+      { id: "email", title: "Cold Email", subtitle: "Readiness.", icon: "mail" },
+      { id: "create", title: "Website / SEO", subtitle: "Readiness.", icon: "target" },
+      { id: "hooks", title: "CRM / Booking", subtitle: "Follow-up fit.", icon: "message" },
+      { id: "ideas", title: "Social / Content", subtitle: "Channel fit.", icon: "video" },
+      { id: "feed", title: "Tool Notes", subtitle: "Add context.", icon: "spark" },
+      { id: "history", title: "History", subtitle: "Saved versions.", icon: "history" },
+    ],
+  };
+
+  return shared[kind as Exclude<UtilityKind, "content">];
+}
+
+function renderWorkBlock({
+  activeBlock,
+  config,
+  currentRecommendation,
+  feedback,
+  feedbackType,
+  history,
+  scopedHref,
+  setFeedback,
+  setFeedbackType,
+  onImprove,
+}: {
+  activeBlock: WorkBlockId;
+  config: UtilityConfig;
+  currentRecommendation: Deliverable;
+  feedback: string;
+  feedbackType: string;
+  history: MarketingAssetSummary[];
+  scopedHref: (href: string) => string;
+  setFeedback: (value: string) => void;
+  setFeedbackType: (value: string) => void;
+  onImprove: (event?: FormEvent<HTMLFormElement>) => void;
+}) {
+  if (activeBlock === "history") {
+    return <HistoryBlock history={history} />;
+  }
+
+  if (activeBlock === "feed" || activeBlock === "results") {
+    return (
+      <form onSubmit={onImprove} className="grid gap-4">
+        <p className="text-sm leading-6 text-slate-600">Add raw information from the real world. Simple Marketing HQ will update the recommendation from it.</p>
+        <label className="block">
+          <span className="text-sm font-semibold text-slate-700">Information type</span>
+          <select value={feedbackType} onChange={(event) => setFeedbackType(event.target.value)} className="mt-2 min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800">
+            <option value="customer_note">Customer question or sales note</option>
+            <option value="objection">Objection heard</option>
+            <option value="review">Review or testimonial</option>
+            <option value="campaign_result">Campaign result</option>
+            <option value="competitor">Competitor example</option>
+            <option value="new_offer">New service or offer detail</option>
+            <option value="not_right">What feels off</option>
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-sm font-semibold text-slate-700">{config.feedLabel}</span>
+          <textarea value={feedback} onChange={(event) => setFeedback(event.target.value)} placeholder={config.feedPlaceholder} className="mt-2 min-h-32 w-full rounded-md border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100" />
+        </label>
+        <button type="submit" className="inline-flex min-h-12 w-fit items-center justify-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
+          <Sparkles size={18} aria-hidden="true" />
+          Analyze and Improve
+        </button>
+      </form>
+    );
+  }
+
+  if (activeBlock === "tests") {
+    return (
+      <div className="grid gap-3">
+        {currentRecommendation.tests.map((test) => (
+          <article key={test.title} className="rounded-md border border-slate-200 p-4">
+            <h3 className="text-base font-semibold text-slate-950">{test.title}</h3>
+            <div className="mt-3 grid gap-2 text-sm leading-6 text-slate-700">
+              <p><strong>Where:</strong> {test.where}</p>
+              <p><strong>Measure:</strong> {test.measure}</p>
+              <p><strong>Working signal:</strong> {test.signal}</p>
+              <p><strong>Next move:</strong> {test.nextMove}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    );
+  }
+
+  if (activeBlock === "use") {
+    return (
+      <div className="grid gap-3">
+        {currentRecommendation.useItNow.map((item) => (
+          <p key={item} className="flex gap-2 rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-700">
+            <CheckCircle2 className="mt-0.5 shrink-0 text-emerald-600" size={17} aria-hidden="true" />
+            {item}
+          </p>
+        ))}
+        <Link href={scopedHref(currentRecommendation.suggestedNextUtility.href)} className="mt-2 inline-flex min-h-12 w-fit items-center justify-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
+          {currentRecommendation.suggestedNextUtility.label}
+          <ArrowRight size={18} aria-hidden="true" />
+        </Link>
+      </div>
+    );
+  }
+
+  if (activeBlock === "recommendation") {
+    return (
+      <div className="grid gap-3">
+        <RecommendationRow label="What we recommend" value={currentRecommendation.cmoRecommendation.recommendation} />
+        <RecommendationRow label="Why" value={currentRecommendation.cmoRecommendation.why} />
+        <RecommendationRow label="Customer problem" value={currentRecommendation.cmoRecommendation.customerProblem} />
+        <RecommendationRow label="Outcome to emphasize" value={currentRecommendation.cmoRecommendation.outcome} />
+        <RecommendationRow label="Next action" value={currentRecommendation.cmoRecommendation.nextAction} />
+      </div>
+    );
+  }
+
+  const blockOutputs = getBlockOutputs(activeBlock, currentRecommendation);
+  return (
+    <div className="grid gap-4">
+      {activeBlock === "current" ? (
+        <div className="grid gap-3 md:grid-cols-2">
+          {currentRecommendation.currentAsset.map((item) => (
+            <InfoCard key={item.label} label={item.label} value={item.value} />
+          ))}
+        </div>
+      ) : null}
+      <div className="rounded-md bg-cyan-50 p-4">
+        <p className="text-sm font-semibold text-cyan-950">{blockOutputs.title}</p>
+        <p className="mt-2 whitespace-pre-line text-base leading-7 text-cyan-950">{blockOutputs.primary}</p>
+      </div>
+      <div className="grid gap-3">
+        {blockOutputs.items.map((item) => (
+          <p key={item} className="rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-700">{item}</p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function getNextStepSuggestion(config: UtilityConfig, activeBlock: WorkBlockId, deliverable: Deliverable) {
+  const blockId: WorkBlockId = config.kind === "content" ? "create" : activeBlock === "history" ? "current" : activeBlock;
+  const label = config.kind === "content" ? "Create one problem-aware post from your current content theme." : deliverable.actionSteps[0];
+  return {
+    title: label,
+    why: config.kind === "content"
+      ? "Your current message needs a simple proof point before pushing harder into tools or channels."
+      : deliverable.whyThisWorks,
+    output: config.kind === "content" ? "LinkedIn/Facebook post draft." : config.nextOutput,
+    button: config.kind === "content" ? "Create Post" : "Open Work Block",
+    blockId,
+  };
+}
+
+function getQuickPrompts(kind: UtilityKind, activeBlock: WorkBlockId) {
+  if (kind === "content") {
+    if (activeBlock === "create") return ["Create a Facebook post", "Make this shorter", "Turn this into LinkedIn", "Add a CTA"];
+    if (activeBlock === "email") return ["Turn this into an email", "Write 3 subject lines", "Make it warmer", "Add a follow-up"];
+    if (activeBlock === "hooks") return ["Give me 5 hooks", "Make them sharper", "Make hooks less generic", "Use a pain-first angle"];
+    if (activeBlock === "video") return ["Write a 30-second script", "Give me 3 video ideas", "Add opening text", "Make it simpler"];
+    return ["What should I post this week?", "Create a Facebook post", "Give me 5 hooks", "What should I do next?"];
+  }
+
+  if (kind === "offer") return ["Improve this offer", "Handle objections", "Write a stronger CTA", "What should I do next?"];
+  if (kind === "message") return ["Write homepage copy", "Give me 5 headlines", "Improve this CTA", "Make it clearer"];
+  if (kind === "icp") return ["Who is the best-fit customer?", "What pain matters most?", "Where do I find them?", "What should I do next?"];
+  if (kind === "strategy_map") return ["What should I ignore?", "What comes first?", "Give me next 3 actions", "What is the risk?"];
+  if (kind === "marketing_schedule") return ["Plan this week", "What should I do today?", "Make this realistic", "Adjust the plan"];
+  if (kind === "research") return ["Summarize these notes", "Find objections", "Turn this into content ideas", "What should I research next?"];
+  return ["Which tool is next?", "What is not ready yet?", "Review channel readiness", "What should I do next?"];
+}
+
+function buildSessionResponse(config: UtilityConfig, block: WorkBlock, deliverable: Deliverable, prompt: string) {
+  const lower = prompt.toLowerCase();
+  const primary = deliverable.copyPasteBlocks[0]?.value ?? deliverable.cmoRecommendation.recommendation;
+  const next = deliverable.actionSteps[0];
+
+  if (config.kind === "content") {
+    if (lower.includes("email")) {
+      return `Use this email draft:\n\nSubject: The gap behind ${deliverable.cmoRecommendation.customerProblem}\n\nIf ${deliverable.cmoRecommendation.customerProblem} keeps showing up, the next step is not more noise. It is a clearer first decision.\n\nHere is the practical move: ${next}\n\nCTA: Reply with "next step" and I will point you to the first fix.`;
+    }
+    if (lower.includes("hook")) {
+      return `Here are 5 hooks tied to the current message:\n\n1. ${deliverable.cmoRecommendation.customerProblem} is not always the real issue.\n2. The expensive part is waiting too long to fix the first gap.\n3. Before you add another channel, fix this first.\n4. Most leads do not need more information. They need a clearer next step.\n5. If people understand the problem but still do nothing, your CTA may be carrying too much risk.`;
+    }
+    if (lower.includes("post") || block.id === "create") {
+      return `Use this post draft:\n\n${primary}\n\nThe mistake is trying to push more traffic before the first message is clear. Start with one useful proof point, one simple next step, and one reason the buyer should act now.\n\nNext action: publish this as a short post, then feed replies or questions back into Content HQ.`;
+    }
+    return `Recommended next content move: ${next}\n\nWhy: ${deliverable.whyThisWorks}\n\nUse this asset first:\n${primary}`;
+  }
+
+  if (block.id === "history") {
+    return `Use History to decide whether to reuse, revise, or replace an older asset. Current recommendation: ${deliverable.summary}\n\nNext action: compare the latest saved version with what you are trying to do now.`;
+  }
+
+  return `Here is the working recommendation inside ${config.navName}:\n\n${primary}\n\nWhy it matters: ${deliverable.whyThisWorks}\n\nNext action: ${next}`;
+}
+
+function getBlockOutputs(activeBlock: WorkBlockId, deliverable: Deliverable) {
+  const primary = deliverable.copyPasteBlocks[0]?.value ?? deliverable.cmoRecommendation.recommendation;
+  const secondary = deliverable.copyPasteBlocks[1]?.value ?? deliverable.cmoRecommendation.nextAction;
+
+  const map: Record<WorkBlockId, { title: string; primary: string; items: string[] }> = {
+    current: {
+      title: "Best current asset",
+      primary,
+      items: [deliverable.whyThisWorks, `Next action: ${deliverable.actionSteps[0]}`],
+    },
+    themes: {
+      title: "Recommended themes",
+      primary: `Build around: ${deliverable.cmoRecommendation.customerProblem}`,
+      items: [`Outcome theme: ${deliverable.cmoRecommendation.outcome}`, "Proof theme: show one clear example or result.", "Risk theme: make the next step feel safe."],
+    },
+    ideas: {
+      title: "Ideas to use",
+      primary: secondary,
+      items: deliverable.actionSteps,
+    },
+    create: {
+      title: "Ready-to-use draft",
+      primary,
+      items: ["Use this as the first draft.", "Keep it short.", `End with: ${deliverable.cmoRecommendation.nextAction}`],
+    },
+    email: {
+      title: "Email angle",
+      primary: `Subject: The gap behind ${deliverable.cmoRecommendation.customerProblem}`,
+      items: [primary, "CTA: Reply with “next step” if you want the first fix."],
+    },
+    video: {
+      title: "Short video script",
+      primary: `Open with: "${deliverable.cmoRecommendation.customerProblem} is not always the real issue."`,
+      items: ["Show the problem in one sentence.", `Explain the next move: ${deliverable.actionSteps[0]}`, "Close with one simple CTA."],
+    },
+    hooks: {
+      title: "Hooks",
+      primary: `${deliverable.cmoRecommendation.customerProblem} is not always the real issue. The expensive part is waiting too long to fix the first gap.`,
+      items: ["Before you add another channel, fix this first.", "Most leads do not need more information. They need a clearer next step.", "If people hesitate here, the CTA is probably carrying too much risk."],
+    },
+    results: {
+      title: "Campaign result notes",
+      primary: "Paste what happened, what people asked, what got clicks, what got replies, or what fell flat.",
+      items: ["Use real feedback, not strategy language.", "Simple Marketing HQ will turn it into the next improvement."],
+    },
+    recommendation: {
+      title: "CMO recommendation",
+      primary: deliverable.cmoRecommendation.recommendation,
+      items: [deliverable.cmoRecommendation.why, deliverable.cmoRecommendation.nextAction],
+    },
+    feed: {
+      title: "New information",
+      primary: "Add raw customer, campaign, competitor, or sales information.",
+      items: ["The app will translate it into an improved recommendation.", "No marketing jargon needed."],
+    },
+    tests: {
+      title: "Tests",
+      primary: deliverable.tests[0]?.title ?? "Test the current recommendation.",
+      items: deliverable.tests.map((test) => `${test.where}: watch ${test.measure}`),
+    },
+    use: {
+      title: "Use it now",
+      primary: deliverable.useItNow[0] ?? "Use this in the next utility.",
+      items: deliverable.useItNow,
+    },
+    history: {
+      title: "History",
+      primary: "Open saved versions from this Business / Client.",
+      items: [],
+    },
+  };
+
+  return map[activeBlock];
+}
+
+function HistoryBlock({ history }: { history: MarketingAssetSummary[] }) {
+  return (
+    <div className="grid gap-3">
+      {history.length ? (
+        history.map((asset) => (
+          <details key={asset.id} className="rounded-md border border-slate-200 p-4">
+            <summary className="cursor-pointer text-sm font-semibold text-slate-950">
+              {asset.title} <span className="font-normal text-slate-500">- {new Date(asset.updatedAt).toLocaleDateString()}</span>
+            </summary>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{asset.summary}</p>
+            <pre className="mt-3 max-h-72 overflow-auto rounded-md bg-slate-950 p-4 text-xs leading-5 text-slate-50">{JSON.stringify(asset.output, null, 2)}</pre>
+          </details>
+        ))
+      ) : (
+        <p className="rounded-md bg-slate-50 p-4 text-sm leading-6 text-slate-600">No saved versions yet. Save the current recommendation when it is ready to become part of this business’s history.</p>
+      )}
+    </div>
+  );
+}
+
+function WorkBlockIcon({ icon }: { icon: WorkBlock["icon"] }) {
+  if (icon === "target") return <Target size={18} aria-hidden="true" />;
+  if (icon === "message") return <MessageSquare size={18} aria-hidden="true" />;
+  if (icon === "mail") return <Mail size={18} aria-hidden="true" />;
+  if (icon === "video") return <Video size={18} aria-hidden="true" />;
+  if (icon === "test") return <FlaskConical size={18} aria-hidden="true" />;
+  if (icon === "history") return <History size={18} aria-hidden="true" />;
+  if (icon === "idea") return <Lightbulb size={18} aria-hidden="true" />;
+  return <Sparkles size={18} aria-hidden="true" />;
+}
+
+function ChatBubble({ role, content }: { role: "assistant" | "user"; content: string }) {
+  return (
+    <div className={`rounded-lg p-4 ${role === "assistant" ? "bg-cyan-50 text-cyan-950" : "bg-slate-100 text-slate-800"}`}>
+      <p className="text-xs font-semibold uppercase tracking-wide">{role === "assistant" ? "Simple Marketing HQ" : "You"}</p>
+      <p className="mt-2 whitespace-pre-line text-sm leading-6">{content}</p>
+    </div>
   );
 }
 

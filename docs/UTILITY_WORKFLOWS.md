@@ -33,15 +33,17 @@ Each utility should:
 
 ## Utility Page Sections
 
-Every major utility follows this page model:
+Every major utility follows this app-style workspace model:
 
 1. Header with utility name, promise, Business / Client selector, and context status.
-2. Current Asset with copy, save/approve, improve, and next-utility actions.
-3. CMO Recommendation with what we recommend, why, customer problem, outcome, confidence, and next action.
-4. Feed New Info with one raw-information input.
-5. Test & Improve with where to test, what to measure, signal, and next move.
-6. Use It Now with deployment locations and one next action.
-7. History / Change Log with saved versions for the active Business / Client.
+2. Compact app-style work-block tile menu.
+3. Next Step suggestion with what to do, why it matters, expected output, and button.
+4. AI Working Session trained to the selected utility and active work block.
+5. Selected Work Block content.
+
+Only one work block should be expanded at a time. History, saved versions, tests, results, and reference material are available through tiles and should not appear as permanent stacked sections below the page.
+
+Content HQ work blocks include Current Plan, Content Themes, Post Ideas, Create Post, Email Ideas, Video Scripts, Hooks, Campaign Results, Tests, and History. Other HQ utilities use the same shared tile pattern with utility-specific work blocks.
 
 ## Output Standard
 
