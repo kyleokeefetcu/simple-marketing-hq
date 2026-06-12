@@ -261,7 +261,7 @@ const assetTypes: MarketingAssetType[] = [
 
 export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
   const prompt = promptRegistry[roleId];
-  const [result] = useState<LaunchPadResult | null>(() => getStoredResult());
+  const [result, setResult] = useState<LaunchPadResult | null>(null);
   const [businesses, setBusinesses] = useState<BusinessSummary[]>([]);
   const [selectedBusinessId, setSelectedBusinessId] = useState("");
   const [latestDiagnostic, setLatestDiagnostic] = useState<SavedDiagnosticSummary | null>(null);
@@ -292,6 +292,7 @@ export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
 
   useEffect(() => {
     async function loadContext() {
+      setResult(getStoredResult());
       const supabase = createBrowserSupabaseClient();
       if (!supabase) {
         setStatus("Connect Supabase to load saved business context. You can still generate from local diagnostic context.");

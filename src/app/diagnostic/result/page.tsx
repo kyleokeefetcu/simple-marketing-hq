@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, BarChart3, CheckCircle2, ShieldAlert, Target } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/app-header";
 import { StatCard } from "@/components/stat-card";
 import { brand } from "@/lib/brand";
@@ -10,7 +10,29 @@ import type { LaunchPadResult } from "@/lib/launchpad";
 import { getStoredResult } from "@/lib/launchpad";
 
 export default function DiagnosticResultPage() {
-  const [result] = useState<LaunchPadResult | null>(() => getStoredResult());
+  const [result, setResult] = useState<LaunchPadResult | null>(null);
+  const [hasLoaded, setHasLoaded] = useState(false);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setResult(getStoredResult());
+      setHasLoaded(true);
+    });
+  }, []);
+
+  if (!hasLoaded) {
+    return (
+      <main className="min-h-screen bg-slate-50">
+        <AppHeader />
+        <section className="mx-auto w-full max-w-3xl px-5 py-12">
+          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <h1 className="text-2xl font-semibold text-slate-950">Loading your LaunchPad Growth Plan...</h1>
+            <p className="mt-2 text-slate-600">Simple Marketing HQ is checking the diagnostic saved in this browser.</p>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   if (!result) {
     return (

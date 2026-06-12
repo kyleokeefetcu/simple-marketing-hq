@@ -25,14 +25,19 @@
 - Structured website analysis endpoint for inferred business profile fields, same-domain page discovery, sitemap discovery, source evidence, and field-level confidence
 - LaunchPad Growth Score
 - LaunchPad Action Plan
-- ICP Builder / Audience Match with focused input, loaded business context, before/after output, action steps, deployment guidance, per-business save action, and saved history
-- Offer Builder with focused input, current/improved offer framing, value stack, CTA, action steps, deployment guidance, per-business save action, and saved history
-- Message Builder with focused customer-language input, likely customer-want interpretation, positioning, headline, elevator pitch, CTA options, before/after messaging, per-business save action, and saved history
-- Content Engine with focused input, hooks, posts, emails, scripts, campaign ideas, lead magnets, deployment guidance, per-business save action, and saved history
-- Strategy Map with focused input, bottleneck, order of operations, next 7 days, next 30 days, missing assets, deployment guidance, per-business save action, and saved history
-- Marketing Schedule with focused input, weekly rhythm, campaign prep, follow-up tasks, review cycle, per-business save action, and saved history
-- Research Hub with focused input, audience pains, objection research, competitor notes, FAQ ideas, proof gaps, per-business save action, and saved history
-- LaunchPad Recommendations with focused input, readiness check, channel/tool recommendation, deployment prerequisites, per-business save action, and saved history
+- Shared living-asset utility workflow for Audience HQ, Offer HQ, Messaging HQ, Content HQ, Strategy HQ, Execution HQ, Research HQ, and Tool Stack HQ
+- Each utility now shows the current best recommendation first, then CMO recommendation, Feed New Info, Test & Improve, Use It Now, and History / Change Log
+- Each utility uses selected Business / Client context, latest diagnostic, saved assets, and new raw feedback so the app recommends while the owner approves, corrects, or feeds better information
+- Utility output is intentionally shorter and copy/paste-ready: best recommendation first, compressed customer-facing language, why it works, where to use it, and one next action
+- Utility assets continue to save to Supabase through `marketing_assets` with the selected `business_id`, `role_id`, `asset_type`, structured input, structured output, summary, status, and history
+- Audience HQ maintains the current best-fit customer recommendation, buyer pain, buying trigger, poor-fit filter, and belief needed before action
+- Offer HQ maintains the current recommended offer, primary CTA, proof point, best-fit buyer, main problem, main outcome, and angle
+- Messaging HQ maintains the current headline, subheadline, CTA, short pitch, follow-up opener, and short customer-facing copy
+- Content HQ maintains active content themes, this week's recommended content, hooks, posts, email ideas, and publishing action
+- Strategy HQ maintains the current priority, bottleneck, what to ignore, channel order, and next actions
+- Execution HQ maintains this week's plan, tasks, content, follow-up action, review rhythm, and what to skip
+- Research HQ maintains current market insights, objections, proof gaps, competitor notes, and language patterns
+- Tool Stack HQ maintains recommended outside tools/channels only after the marketing foundation is clear enough for deployment
 - Advisor next-action page with user question input, selected business context, current bottleneck, exact steps, copy/paste working note, per-business thread/message persistence, and saved advisor history
 - Internal AI prompt-pack registry with role IDs, role-specific system prompts, required context, input fields, output schemas, asset types, and suggested next utilities
 - Marketing Lab routes for Buyer Psychology Audit, Marketing Reality Check, Market Demand Check, Problem Narrative Builder, Messaging Sequence Builder, and Buyer Messaging Engine
@@ -57,7 +62,7 @@
 - Paste the full master prompt into `docs/PRODUCT_BRIEF.md`.
 - Deepen the scoring model across offer clarity, audience clarity, message clarity, conversion readiness, lead capture, follow-up, content consistency, channel readiness, proof/trust, and next-action clarity.
 - Connect the LaunchPad Diagnostic flow to OpenAI after prompt and data contracts are finalized.
-- Add edit/export actions for saved command-center assets.
+- Add richer edit/export actions for saved command-center assets.
 - Add OpenAI-backed generation for command-center tools after prompt and JSON contracts are finalized; current command-center workflows produce deterministic structured deliverables from saved business, diagnostic, website, and user input context.
 - Add the real RB2B script ID in `NEXT_PUBLIC_RB2B_SCRIPT_ID` only when the `reb2b.load("...")` browser snippet is available for `simplemarketinghq.com`.
 - Keep the private RB2B API key in `RB2B_API_KEY` only; do not expose it to the browser.

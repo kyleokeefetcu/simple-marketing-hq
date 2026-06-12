@@ -9,8 +9,14 @@ export type SavedDiagnosticSummary = {
   businessName: string;
   websiteUrl: string;
   growthScore: number | null;
+  icpClarity: number | null;
+  offerStrength: number | null;
+  channelToIcpFit: string;
   biggestBottleneck: string;
   nextMove: string;
+  actionItems: string[];
+  recommendedFirstChannel: string;
+  channelRecommendationWhy: string;
   completedAt: string;
 };
 
@@ -65,9 +71,14 @@ type DiagnosticRow = {
     businessName?: string;
     growthScore?: number;
     icpClarity?: number;
+    offerStrength?: number;
+    channelToIcpFit?: string;
     industryFit?: string;
     biggestBottleneck?: string;
     nextMove?: string;
+    actionItems?: string[];
+    recommendedFirstChannel?: string;
+    channelRecommendationWhy?: string;
   } | null;
 };
 
@@ -139,9 +150,12 @@ export async function saveLaunchPadResultToSupabase(
         businessName: result.businessName,
         growthScore: result.growthScore,
         icpClarity: result.icpClarity,
+        offerStrength: result.offerStrength,
+        channelToIcpFit: result.channelToIcpFit,
         industryFit: result.industryFit,
         biggestBottleneck: result.biggestBottleneck,
         nextMove: result.nextMove,
+        actionItems: result.actionItems,
         customerDesiredOutcome: result.customerDesiredOutcome,
         recommendedFirstChannel: result.recommendedFirstChannel,
         channelRecommendationWhy: result.channelRecommendationWhy,
@@ -332,8 +346,14 @@ export async function getSavedDiagnostics(supabase: SupabaseClient, businessId?:
     businessName: row.summary?.businessName ?? "Saved business",
     websiteUrl: row.website_url ?? "",
     growthScore: row.summary?.growthScore ?? null,
+    icpClarity: row.summary?.icpClarity ?? null,
+    offerStrength: row.summary?.offerStrength ?? null,
+    channelToIcpFit: row.summary?.channelToIcpFit ?? "",
     biggestBottleneck: row.summary?.biggestBottleneck ?? "No bottleneck saved yet.",
     nextMove: row.summary?.nextMove ?? "Run or update the LaunchPad Diagnostic.",
+    actionItems: row.summary?.actionItems ?? [],
+    recommendedFirstChannel: row.summary?.recommendedFirstChannel ?? "",
+    channelRecommendationWhy: row.summary?.channelRecommendationWhy ?? "",
     completedAt: row.completed_at ?? row.created_at,
   }));
 }

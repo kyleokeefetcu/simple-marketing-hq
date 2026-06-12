@@ -53,6 +53,8 @@ Static UI only in active command-center navigation:
 
 ## Current Requirement
 
+No additional SQL is required for the living-asset utility UX update. The existing `public.marketing_assets` table already stores per-business utility versions and history with `business_id`, `role_id`, `asset_type`, `input`, `output`, `summary`, `status`, `created_at`, and `updated_at`. The current asset, CMO recommendation, feed-new-info analysis, test ideas, use-it-now guidance, and change-log entries are stored as structured JSON in `marketing_assets.output` and scoped by `business_id`.
+
 No additional SQL is required for Prompt Pack 6 because `marketing_reality_check` already exists in the `marketing_assets.asset_type` constraint and `marketing_reality_check` already exists in the `marketing_assets.role_id` constraint.
 
 Future team workspaces, membership roles, Stripe checkout records, OpenAI usage logging, and activated RB2B customer-domain tracking may require additional SQL when those workflows are implemented.

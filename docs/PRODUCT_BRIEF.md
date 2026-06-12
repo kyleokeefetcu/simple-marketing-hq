@@ -268,15 +268,30 @@ Required roles include ICP Builder, Offer Builder, Message Builder, Content Engi
 
 Marketing Lab audits are production app workflows. They load selected Business / Client context, ask short focused questions, generate structured consultant-grade output, show before/after, explain why it matters, provide next 3 actions, recommend the next utility, and save to `marketing_assets` with `role_id`.
 
-Each active marketing utility must behave like a usable workflow, not a static report. The standard is:
+Each active marketing utility must behave like a living marketing asset, not a static report or one-time generator. The standard is:
 
 1. Load the selected Business / Client context, latest diagnostic, website analysis, and saved asset history where available.
-2. Ask only 1-3 focused questions.
-3. Generate a practical deliverable with current-state assessment, improved version, why it is better, action steps, deployment guidance, copy/paste-ready text, and a suggested follow-up utility.
-4. Save the deliverable to Supabase for the selected Business / Client.
-5. Show saved history inside the utility.
+2. Show the current best recommendation first.
+3. Explain what Simple Marketing HQ recommends, why it recommends it, what customer problem it targets, what outcome it should emphasize, and the next action.
+4. Let the owner approve, improve, correct, or feed new raw information.
+5. Accept real-world inputs such as customer questions, objections, reviews, campaign results, competitor examples, sales notes, new offer details, or what felt off.
+6. Turn that new information into an updated recommendation, compact copy/paste asset, test idea, use-it-now guidance, and one next action.
+7. Save the approved or improved asset to Supabase for the selected Business / Client.
+8. Show saved history/change log inside the utility.
 
-The current production utilities follow this structure for ICP Builder, Offer Builder, Message Builder, Content Engine, Strategy Map, Marketing Schedule, Research Hub, and Recommendations. The Advisor follows the same action-first structure while saving conversations to advisor threads/messages.
+The product rule is: Simple Marketing HQ recommends; the owner approves, corrects, or feeds new information. The owner should not be forced to invent the marketing strategy from scratch.
+
+The current production utility model uses:
+- Audience HQ for the current best-fit customer recommendation.
+- Offer HQ for the current offer, CTA, proof point, buyer, problem, outcome, and angle.
+- Messaging HQ for the current headline, subheadline, CTA, short pitch, hook, and follow-up opener.
+- Content HQ for current themes, hooks, posts, email ideas, and content priority.
+- Strategy HQ for current priority, bottleneck, what to ignore, channel order, and next actions.
+- Execution HQ for this week's plan, tasks, content, follow-up, review, and what to skip.
+- Research HQ for customer pains, objections, proof gaps, competitor notes, and language patterns.
+- Tool Stack HQ for outside tools/channels only when the foundation is ready.
+
+Global output standard: best recommendation first, then copy/paste asset, why it works, where to use it, and one clear next action. Raw business context must be compressed into short customer-facing language before it appears in generated assets.
 
 Future team workspaces and membership roles will require additional SQL when collaborative seats are implemented.
 

@@ -6,13 +6,13 @@ import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/app-header";
 import { buildAdvisorNextAction } from "@/lib/command-center";
 import { brand } from "@/lib/brand";
-import { getStoredResult } from "@/lib/launchpad";
+import { getStoredResult, type LaunchPadResult } from "@/lib/launchpad";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getBusinesses, getSavedDiagnostics, type BusinessSummary, type SavedDiagnosticSummary } from "@/lib/supabase/diagnostics";
 import { getAdvisorThreads, saveAdvisorThread, type AdvisorThreadSummary } from "@/lib/supabase/assets";
 
 export default function AdvisorPage() {
-  const [result] = useState(() => getStoredResult());
+  const [result, setResult] = useState<LaunchPadResult | null>(null);
   const [question, setQuestion] = useState("What should I build next to get more leads or booked calls?");
   const [user, setUser] = useState<User | null>(null);
   const [businesses, setBusinesses] = useState<BusinessSummary[]>([]);
@@ -28,6 +28,7 @@ export default function AdvisorPage() {
 
   useEffect(() => {
     async function loadAdvisor() {
+      setResult(getStoredResult());
       const supabase = createBrowserSupabaseClient();
       if (!supabase) {
         setStatus("Add Supabase environment variables to save advisor threads.");
