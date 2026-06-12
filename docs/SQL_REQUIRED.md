@@ -57,7 +57,7 @@ No additional SQL is required for the living-asset utility UX update. The existi
 
 No additional SQL is required for LaunchPad Diagnostic HQ or the fresh diagnostic lifecycle. The existing `public.launchpad_diagnostics` table already stores multiple completed diagnostic rows per `business_id` with `created_at`, `completed_at`, `summary`, and related child records. The app treats the newest completed diagnostic as current and older completed diagnostics as archived snapshots.
 
-No additional SQL is required for the tile-based utility workspace or AI Working Session update. Current recommendations, saved versions, and history continue to use `public.marketing_assets`. The in-page working session is a utility interaction layer and does not require persistent chat tables at this stage because saved outputs are persisted as marketing assets.
+No additional SQL is required for the tile-based utility workspace or AI-first focused work block update. Current recommendations, saved versions, and history continue to use `public.marketing_assets`. The in-page working session is a utility interaction layer and does not require persistent chat tables at this stage because saved outputs are persisted as marketing assets.
 
 No additional SQL is required for Prompt Pack 6 because `marketing_reality_check` already exists in the `marketing_assets.asset_type` constraint and `marketing_reality_check` already exists in the `marketing_assets.role_id` constraint.
 

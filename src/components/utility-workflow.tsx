@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { FormEvent } from "react";
-import { ArrowRight, CheckCircle2, ChevronDown, Clipboard, FlaskConical, History, Lightbulb, Mail, MessageSquare, Save, Sparkles, Target, Video } from "lucide-react";
+import { ArrowRight, CheckCircle2, ChevronDown, FlaskConical, History, Lightbulb, Mail, MessageSquare, Sparkles, Target, Video } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/app-header";
 import { getIndustryProfile, getStoredResult, type LaunchPadResult } from "@/lib/launchpad";
@@ -78,6 +78,8 @@ type WorkBlock = {
   subtitle: string;
   icon: "spark" | "target" | "message" | "mail" | "video" | "test" | "history" | "idea";
 };
+
+type DetailView = "asset" | "history" | "tests" | "feed" | null;
 
 const assetTypes: MarketingAssetType[] = [
   "icp",
@@ -234,6 +236,8 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
   const [saveStatus, setSaveStatus] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [activeBlock, setActiveBlock] = useState<WorkBlockId>(kind === "content" ? "current" : "current");
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [detailView, setDetailView] = useState<DetailView>(null);
   const [sessionMessages, setSessionMessages] = useState<{ role: "assistant" | "user"; content: string }[]>([]);
   const [sessionInput, setSessionInput] = useState("");
 
@@ -380,6 +384,24 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
     setSessionMessages((messages) => [...messages, { role: "user", content: prompt }, { role: "assistant", content: response }]);
   }
 
+  function openWorkBlock(blockId: WorkBlockId) {
+    setActiveBlock(blockId);
+    setWorkspaceOpen(true);
+    setDetailView(null);
+    const params = new URLSearchParams(window.location.search);
+    params.set("block", blockId.replaceAll("_", "-"));
+    window.history.pushState(null, "", `${window.location.pathname}?${params.toString()}`);
+  }
+
+  function closeWorkspace() {
+    setWorkspaceOpen(false);
+    setDetailView(null);
+    const params = new URLSearchParams(window.location.search);
+    params.delete("block");
+    const query = params.toString();
+    window.history.pushState(null, "", query ? `${window.location.pathname}?${query}` : window.location.pathname);
+  }
+
   function handleSessionSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const prompt = sessionInput.trim();
@@ -423,6 +445,93 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
           <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">{config.promise}</p>
         </header>
 
+        {workspaceOpen ? (
+          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <button type="button" onClick={closeWorkspace} className="text-sm font-semibold text-cyan-800">
+                  {config.navName} / {activeWorkBlock.title}
+                </button>
+                <h2 className="mt-2 text-3xl font-semibold text-slate-950">{activeWorkBlock.title}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Working on {config.navName.replace(" HQ", "")} + {activeWorkBlock.title}. The AI session is using the selected Business / Client, latest diagnostic, and saved asset history.
+                </p>
+              </div>
+              <button type="button" onClick={closeWorkspace} className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 px-4 text-sm font-semibold text-slate-800">
+                Back to tiles
+              </button>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button type="button" onClick={() => setDetailView(detailView === "asset" ? null : "asset")} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
+                Show current asset
+              </button>
+              <button type="button" onClick={() => void handleSaveCurrentAsset()} disabled={isSaving} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50 disabled:opacity-50">
+                {isSaving ? "Saving..." : "Save version"}
+              </button>
+              <button type="button" onClick={() => setDetailView(detailView === "history" ? null : "history")} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
+                View history
+              </button>
+              <button type="button" onClick={() => setDetailView(detailView === "tests" ? null : "tests")} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
+                Tests
+              </button>
+              <button type="button" onClick={() => setDetailView(detailView === "feed" ? null : "feed")} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
+                New info
+              </button>
+              <button type="button" onClick={() => void copyCurrentAsset()} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
+                Copy output
+              </button>
+            </div>
+            {copyStatus || saveStatus ? <p className="mt-3 text-sm font-semibold text-emerald-700">{copyStatus || saveStatus}</p> : null}
+
+            {detailView ? (
+              <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                {renderWorkBlock({
+                  activeBlock: detailView === "asset" ? "current" : detailView === "history" ? "history" : detailView === "tests" ? "tests" : "feed",
+                  config,
+                  currentRecommendation,
+                  feedback,
+                  feedbackType,
+                  history,
+                  scopedHref,
+                  setFeedback,
+                  setFeedbackType,
+                  onImprove: handleImprove,
+                })}
+              </div>
+            ) : null}
+
+            <article className="mt-5 rounded-lg border border-cyan-200 bg-white p-5 shadow-sm">
+              <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">AI Working Session</p>
+              <h2 className="mt-2 text-2xl font-semibold text-slate-950">{activeWorkBlock.title}</h2>
+              <div className="mt-4 grid gap-3">
+                <ChatBubble role="assistant" content={assistantIntro} />
+                {sessionMessages.map((message, index) => (
+                  <ChatBubble key={`${message.role}-${index}`} role={message.role} content={message.content} />
+                ))}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {getQuickPrompts(config.kind, activeBlock).map((prompt) => (
+                  <button key={prompt} type="button" onClick={() => handleQuickPrompt(prompt)} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+              <form onSubmit={handleSessionSubmit} className="mt-4 flex flex-col gap-3 sm:flex-row">
+                <input
+                  value={sessionInput}
+                  onChange={(event) => setSessionInput(event.target.value)}
+                  placeholder={`Ask ${config.navName} to create, improve, or choose the next action...`}
+                  className="min-h-12 flex-1 rounded-md border border-slate-300 px-4 text-sm outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100"
+                />
+                <button type="submit" className="inline-flex min-h-12 items-center justify-center rounded-md bg-cyan-900 px-5 font-semibold text-white">
+                  Ask
+                </button>
+              </form>
+            </article>
+          </section>
+        ) : (
+          <>
         <section className="mt-5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Work blocks</p>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -432,7 +541,7 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
                 <button
                   key={block.id}
                   type="button"
-                  onClick={() => setActiveBlock(block.id)}
+                  onClick={() => openWorkBlock(block.id)}
                   className={`min-h-24 rounded-lg border p-3 text-left transition ${
                     active ? "border-cyan-800 bg-cyan-50 shadow-sm" : "border-slate-200 bg-white hover:border-cyan-300 hover:bg-cyan-50"
                   }`}
@@ -452,21 +561,23 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Next best move</p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-950">{nextStep.title}</h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{nextStep.why}</p>
-              <p className="mt-2 text-sm font-semibold text-slate-800">Output: {nextStep.output}</p>
+              <ul className="mt-2 space-y-1 text-sm leading-6 text-slate-700">
+                <li>{nextStep.title}</li>
+                <li><strong>Output:</strong> {nextStep.output}</li>
+                <li><strong>Why:</strong> {nextStep.why}</li>
+              </ul>
             </div>
-            <button type="button" onClick={() => setActiveBlock(nextStep.blockId)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
+            <button type="button" onClick={() => openWorkBlock(nextStep.blockId)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
               {nextStep.button}
               <ArrowRight size={18} aria-hidden="true" />
             </button>
           </div>
         </section>
 
-        <section className="mt-5 grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+        <section className="mt-5">
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">AI Working Session</p>
-            <h2 className="mt-2 text-2xl font-semibold text-slate-950">{activeWorkBlock.title}</h2>
+            <h2 className="mt-2 text-2xl font-semibold text-slate-950">Ask what to work on next.</h2>
             <div className="mt-4 grid gap-3">
               <ChatBubble role="assistant" content={assistantIntro} />
               {sessionMessages.map((message, index) => (
@@ -492,42 +603,9 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
               </button>
             </form>
           </article>
-
-          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Selected work block</p>
-                <h2 className="mt-2 text-2xl font-semibold text-slate-950">{activeWorkBlock.title}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{activeWorkBlock.subtitle}</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => void copyCurrentAsset()} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800">
-                  <Clipboard size={15} aria-hidden="true" />
-                  Copy
-                </button>
-                <button type="button" onClick={() => void handleSaveCurrentAsset()} disabled={isSaving} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-cyan-900 px-3 text-sm font-semibold text-white disabled:bg-slate-300">
-                  <Save size={15} aria-hidden="true" />
-                  {isSaving ? "Saving..." : "Save"}
-                </button>
-              </div>
-            </div>
-            {copyStatus || saveStatus ? <p className="mt-3 text-sm font-semibold text-emerald-700">{copyStatus || saveStatus}</p> : null}
-            <div className="mt-5">
-              {renderWorkBlock({
-                activeBlock,
-                config,
-                currentRecommendation,
-                feedback,
-                feedbackType,
-                history,
-                scopedHref,
-                setFeedback,
-                setFeedbackType,
-                onImprove: handleImprove,
-              })}
-            </div>
-          </article>
         </section>
+          </>
+        )}
       </section>
     </main>
   );
@@ -751,16 +829,33 @@ function renderWorkBlock({
 
 function getNextStepSuggestion(config: UtilityConfig, activeBlock: WorkBlockId, deliverable: Deliverable) {
   const blockId: WorkBlockId = config.kind === "content" ? "create" : activeBlock === "history" ? "current" : activeBlock;
-  const label = config.kind === "content" ? "Create one problem-aware post from your current content theme." : deliverable.actionSteps[0];
+  const label = config.kind === "content" ? "Create one problem-aware post from your current content theme." : getShortNextAction(config, deliverable);
   return {
     title: label,
     why: config.kind === "content"
-      ? "Your current message needs a simple proof point before pushing harder into tools or channels."
-      : deliverable.whyThisWorks,
+      ? "Your message needs a simple proof point before pushing harder into channels."
+      : getShortWhy(deliverable),
     output: config.kind === "content" ? "LinkedIn/Facebook post draft." : config.nextOutput,
-    button: config.kind === "content" ? "Create Post" : "Open Work Block",
+    button: config.kind === "content" ? "Create Post" : `Open ${config.navName}`,
     blockId,
   };
+}
+
+function getShortNextAction(config: UtilityConfig, deliverable: Deliverable) {
+  if (config.kind === "offer") return "Use this offer to create Messaging HQ.";
+  if (config.kind === "message") return "Turn this message into Content HQ.";
+  if (config.kind === "icp") return "Use this audience to sharpen the offer.";
+  if (config.kind === "strategy_map") return "Turn the priority into this week’s plan.";
+  if (config.kind === "marketing_schedule") return "Complete today’s first marketing task.";
+  if (config.kind === "research") return "Turn the strongest insight into messaging.";
+  if (config.kind === "recommendation") return "Check foundation readiness before choosing a tool.";
+  return deliverable.actionSteps[0];
+}
+
+function getShortWhy(deliverable: Deliverable) {
+  const bottleneck = deliverable.cmoRecommendation.customerProblem;
+  if (bottleneck.length > 80) return "It matches the current bottleneck.";
+  return `${bottleneck} is the current bottleneck.`;
 }
 
 function getQuickPrompts(kind: UtilityKind, activeBlock: WorkBlockId) {

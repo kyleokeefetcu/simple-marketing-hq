@@ -37,11 +37,12 @@ Every major utility follows this app-style workspace model:
 
 1. Header with utility name, promise, Business / Client selector, and context status.
 2. Compact app-style work-block tile menu.
-3. Next Step suggestion with what to do, why it matters, expected output, and button.
-4. AI Working Session trained to the selected utility and active work block.
-5. Selected Work Block content.
+3. Short Next Best Move strip with one action, one output, and one short why.
+4. AI Working Session as the main component.
 
-Only one work block should be expanded at a time. History, saved versions, tests, results, and reference material are available through tiles and should not appear as permanent stacked sections below the page.
+Clicking a work-block tile opens a focused AI workspace for that block. The selected work block becomes AI context, not a large visible content card. Current asset, history, saved versions, tests, and new info are available through compact buttons inside the focused workspace.
+
+The main utility page should not show a large "Selected Work Block" panel. The visual priority is work-block tiles, short next move, and the AI Working Session.
 
 Content HQ work blocks include Current Plan, Content Themes, Post Ideas, Create Post, Email Ideas, Video Scripts, Hooks, Campaign Results, Tests, and History. Other HQ utilities use the same shared tile pattern with utility-specific work blocks.
 

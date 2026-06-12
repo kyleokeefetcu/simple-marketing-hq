@@ -28,7 +28,8 @@
 - LaunchPad Growth Score
 - LaunchPad Action Plan
 - Shared living-asset utility workflow for Audience HQ, Offer HQ, Messaging HQ, Content HQ, Strategy HQ, Execution HQ, Research HQ, and Tool Stack HQ
-- Each utility now uses a compact tile-based workspace with one selected work block open at a time, a Next Step suggestion, and a utility-specific AI Working Session
+- Each utility now uses a compact tile-based workspace where clicking a tile opens a focused AI-first work session instead of rendering a large selected-block content panel
+- The main utility page now prioritizes work-block tiles, a short Next Best Move strip, and the AI Working Session
 - Content HQ includes Current Plan, Content Themes, Post Ideas, Create Post, Email Ideas, Video Scripts, Hooks, Campaign Results, Tests, and History tiles
 - History and saved versions now live inside the History tile instead of a permanent bottom section
 - Each utility uses selected Business / Client context, latest diagnostic, saved assets, and new raw feedback so the app recommends while the owner approves, corrects, or feeds better information
