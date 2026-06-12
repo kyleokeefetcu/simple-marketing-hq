@@ -293,6 +293,12 @@ The current production utility model uses:
 
 Global output standard: best recommendation first, then copy/paste asset, why it works, where to use it, and one clear next action. Raw business context must be compressed into short customer-facing language before it appears in generated assets.
 
+LaunchPad Diagnostic follows the same operating philosophy with one important distinction: each completed diagnostic is a fresh point-in-time snapshot. The left navigation opens LaunchPad Diagnostic HQ, not the quiz funnel. Diagnostic HQ shows the latest diagnostic, an optional current draft, a clear Run New Diagnostic action, archived previous diagnostics, and a comparison against the prior snapshot when available.
+
+Run New Diagnostic starts a fresh session at step 1 and does not reuse old quiz answers. Existing business context, saved assets, and previous diagnostics may inform the app in the background, but the owner answers the current-state questions again. Continue Draft is the only action that resumes an incomplete diagnostic. Completed diagnostics save as separate timestamped records and older diagnostics remain archived snapshots.
+
+Diagnostic questions must use plain business-owner language. The diagnostic asks about what the business sells, who pays, how customers find them, what is not working, what changed, what customers ask, and what would make the month better. Simple Marketing HQ translates those plain answers into buyer, offer, message, channel, bottleneck, and next-action strategy behind the scenes.
+
 Future team workspaces and membership roles will require additional SQL when collaborative seats are implemented.
 
 ## Acceptance Criteria

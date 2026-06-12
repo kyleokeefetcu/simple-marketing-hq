@@ -20,6 +20,7 @@ Each utility should:
 
 ## Active Utility Roles
 
+- LaunchPad Diagnostic HQ: diagnostic snapshot lifecycle, latest result, current draft, archive, comparison, and fresh-run entry point
 - Audience HQ: `icp_builder`
 - Offer HQ: `offer_builder`
 - Messaging HQ: `message_builder`
@@ -61,3 +62,14 @@ Utility outputs save to `public.marketing_assets`.
 Advisor conversations save to `public.advisor_threads` and `public.advisor_messages`.
 
 Every saved output must be scoped to a `business_id` and protected by RLS ownership rules.
+
+## LaunchPad Diagnostic Lifecycle
+
+LaunchPad Diagnostic is not a living asset page in the same way Offer HQ or Messaging HQ are. It is a fresh snapshot in time.
+
+- `/diagnostic` opens LaunchPad Diagnostic HQ.
+- `/diagnostic/run?fresh=1` starts a new diagnostic from step 1.
+- `/diagnostic/run?resume=1` resumes an incomplete browser draft.
+- `/diagnostic/result?diagnosticId=...` opens a specific saved diagnostic snapshot.
+
+Run New Diagnostic should never silently resume an old quiz. Previous diagnostics stay archived and available for comparison. Existing business context can be used as background, but old answers are not prefilled into a fresh diagnostic.

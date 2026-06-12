@@ -21,6 +21,8 @@
 ## Current Foundation
 
 - AI-first LaunchPad Diagnostic intake with early website URL input, multi-page website analysis, confidence-gated editable confirmation cards, and short current-state gap questions that avoid asking the user to choose the marketing strategy
+- LaunchPad Diagnostic HQ at `/diagnostic` with latest diagnostic snapshot, current browser draft, Run New Diagnostic, Continue Draft, archived diagnostic history, and simple comparison against the prior snapshot
+- Fresh diagnostic funnel at `/diagnostic/run?fresh=1`; draft resume is explicit through `/diagnostic/run?resume=1`
 - Diagnostic output now infers the likely customer desired outcome, recommended first channel to prepare for, why that channel fits, preparation steps, and what channel to ignore for now
 - Structured website analysis endpoint for inferred business profile fields, same-domain page discovery, sitemap discovery, source evidence, and field-level confidence
 - LaunchPad Growth Score

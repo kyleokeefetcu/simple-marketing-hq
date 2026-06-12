@@ -358,6 +358,35 @@ export async function getSavedDiagnostics(supabase: SupabaseClient, businessId?:
   }));
 }
 
+export async function getSavedDiagnosticById(supabase: SupabaseClient, diagnosticId: string): Promise<SavedDiagnosticSummary | null> {
+  const { data, error } = await supabase
+    .from("launchpad_diagnostics")
+    .select("id, business_id, website_url, completed_at, created_at, summary")
+    .eq("id", diagnosticId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+
+  const row = data as DiagnosticRow;
+  return {
+    id: row.id,
+    businessId: row.business_id,
+    businessName: row.summary?.businessName ?? "Saved business",
+    websiteUrl: row.website_url ?? "",
+    growthScore: row.summary?.growthScore ?? null,
+    icpClarity: row.summary?.icpClarity ?? null,
+    offerStrength: row.summary?.offerStrength ?? null,
+    channelToIcpFit: row.summary?.channelToIcpFit ?? "",
+    biggestBottleneck: row.summary?.biggestBottleneck ?? "No bottleneck saved yet.",
+    nextMove: row.summary?.nextMove ?? "Run or update the LaunchPad Diagnostic.",
+    actionItems: row.summary?.actionItems ?? [],
+    recommendedFirstChannel: row.summary?.recommendedFirstChannel ?? "",
+    channelRecommendationWhy: row.summary?.channelRecommendationWhy ?? "",
+    completedAt: row.completed_at ?? row.created_at,
+  };
+}
+
 export async function getSavedCheckIns(supabase: SupabaseClient, businessId?: string | null): Promise<SavedCheckInSummary[]> {
   let query = supabase
     .from("check_ins")

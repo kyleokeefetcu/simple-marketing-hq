@@ -32,12 +32,12 @@ const confirmationFields = [
 
 export function DiagnosticFlow() {
   const router = useRouter();
-  const savedProgress = getSavedProgress();
-  const [phase, setPhase] = useState<IntakePhase>(savedProgress.phase);
-  const [gapIndex, setGapIndex] = useState(savedProgress.gapIndex);
-  const [answers, setAnswers] = useState<Record<string, string>>(savedProgress.answers);
-  const [websiteUrl, setWebsiteUrl] = useState(savedProgress.answers.websiteUrl ?? "");
-  const [profile, setProfile] = useState<WebsiteAnalysisProfile | null>(savedProgress.profile);
+  const fallbackProgress = getEmptyProgress();
+  const [phase, setPhase] = useState<IntakePhase>(fallbackProgress.phase);
+  const [gapIndex, setGapIndex] = useState(fallbackProgress.gapIndex);
+  const [answers, setAnswers] = useState<Record<string, string>>(fallbackProgress.answers);
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [profile, setProfile] = useState<WebsiteAnalysisProfile | null>(null);
   const [isWorking, setIsWorking] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [saveStatus, setSaveStatus] = useState("");
@@ -51,7 +51,37 @@ export function DiagnosticFlow() {
   const canContinue = phase === "questions" ? currentValue.trim().length > 0 : true;
 
   useEffect(() => {
-    window.localStorage.setItem("simple-marketing-hq:diagnostic-progress", JSON.stringify({ phase, gapIndex, answers, profile }));
+    queueMicrotask(() => {
+      const params = new URLSearchParams(window.location.search);
+      const shouldResume = params.get("resume") === "1";
+      const shouldStartFresh = params.get("fresh") === "1" || !shouldResume;
+      const businessId = params.get("businessId");
+
+      if (businessId) {
+        window.localStorage.setItem("simple-marketing-hq:selected-business-id", businessId);
+      }
+
+      if (shouldStartFresh) {
+        clearSavedProgress();
+        setPhase("website");
+        setGapIndex(0);
+        setAnswers({});
+        setWebsiteUrl("");
+        setProfile(null);
+        return;
+      }
+
+      const savedProgress = getSavedProgress();
+      setPhase(savedProgress.phase);
+      setGapIndex(savedProgress.gapIndex);
+      setAnswers(savedProgress.answers);
+      setWebsiteUrl(savedProgress.answers.websiteUrl ?? "");
+      setProfile(savedProgress.profile);
+    });
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("simple-marketing-hq:diagnostic-progress", JSON.stringify({ phase, gapIndex, answers, profile, startedAt: answers.startedAt ?? new Date().toISOString() }));
   }, [phase, gapIndex, answers, profile]);
 
   useEffect(() => {
@@ -147,6 +177,7 @@ export function DiagnosticFlow() {
         }
       }
 
+      clearSavedProgress();
       router.push("/dashboard");
       return;
     }
@@ -376,8 +407,13 @@ function FooterActions({
   );
 }
 
-function getSavedProgress() {
+function getEmptyProgress() {
   const fallback = { phase: "website" as IntakePhase, gapIndex: 0, answers: {} as Record<string, string>, profile: null as WebsiteAnalysisProfile | null };
+  return fallback;
+}
+
+function getSavedProgress() {
+  const fallback = getEmptyProgress();
   if (typeof window === "undefined") return fallback;
   const raw = window.localStorage.getItem("simple-marketing-hq:diagnostic-progress");
   if (!raw) return fallback;
@@ -388,6 +424,11 @@ function getSavedProgress() {
     answers: parsed.answers ?? fallback.answers,
     profile: parsed.profile ?? fallback.profile,
   };
+}
+
+function clearSavedProgress() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem("simple-marketing-hq:diagnostic-progress");
 }
 
 function mergeProfileIntoAnswers(current: Record<string, string>, profile: WebsiteAnalysisProfile) {

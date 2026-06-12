@@ -8,14 +8,28 @@ import { StatCard } from "@/components/stat-card";
 import { brand } from "@/lib/brand";
 import type { LaunchPadResult } from "@/lib/launchpad";
 import { getStoredResult } from "@/lib/launchpad";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { getSavedDiagnosticById, type SavedDiagnosticSummary } from "@/lib/supabase/diagnostics";
 
 export default function DiagnosticResultPage() {
   const [result, setResult] = useState<LaunchPadResult | null>(null);
+  const [savedDiagnostic, setSavedDiagnostic] = useState<SavedDiagnosticSummary | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
-    queueMicrotask(() => {
-      setResult(getStoredResult());
+    queueMicrotask(async () => {
+      const params = new URLSearchParams(window.location.search);
+      const diagnosticId = params.get("diagnosticId");
+      const supabase = createBrowserSupabaseClient();
+      if (diagnosticId && supabase) {
+        try {
+          const saved = await getSavedDiagnosticById(supabase, diagnosticId);
+          setSavedDiagnostic(saved);
+        } catch {
+          setSavedDiagnostic(null);
+        }
+      }
+      if (!diagnosticId) setResult(getStoredResult());
       setHasLoaded(true);
     });
   }, []);
@@ -34,6 +48,68 @@ export default function DiagnosticResultPage() {
     );
   }
 
+  if (savedDiagnostic) {
+    return (
+      <main className="min-h-screen bg-slate-50">
+        <AppHeader />
+        <section className="mx-auto w-full max-w-6xl px-5 py-8">
+          <Link href="/diagnostic" className="text-sm font-semibold text-cyan-800">
+            Back to Diagnostic HQ
+          </Link>
+          <div className="mt-5 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+            <article className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">{brand.growthScoreName}</p>
+              <h1 className="mt-3 text-4xl font-semibold text-slate-950">{savedDiagnostic.businessName}</h1>
+              <p className="mt-3 text-slate-600">Diagnostic snapshot from {new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(savedDiagnostic.completedAt))}.</p>
+              <div className="mt-6 flex items-end gap-3">
+                <span className="text-7xl font-semibold text-cyan-900">{savedDiagnostic.growthScore ?? "--"}</span>
+                <span className="pb-3 text-slate-500">/ 100</span>
+              </div>
+            </article>
+
+            <article className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="grid size-11 place-items-center rounded-md bg-amber-100 text-amber-700">
+                  <ShieldAlert size={23} aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-500">Current bottleneck at this snapshot</p>
+                  <h2 className="text-2xl font-semibold text-slate-950">{savedDiagnostic.biggestBottleneck}</h2>
+                </div>
+              </div>
+              <div className="mt-6 rounded-md bg-cyan-50 p-4">
+                <p className="text-sm font-semibold text-cyan-950">Highest-leverage next move</p>
+                <p className="mt-2 text-sm leading-6 text-cyan-900">{savedDiagnostic.nextMove}</p>
+              </div>
+            </article>
+          </div>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-3 lg:grid-cols-4">
+            <StatCard icon={<BarChart3 size={21} />} label="Offer Strength" value={savedDiagnostic.offerStrength === null ? "--" : `${savedDiagnostic.offerStrength}`} body="How easy it was for a buyer to understand what they should say yes to." />
+            <StatCard icon={<Target size={21} />} label="ICP Clarity" value={savedDiagnostic.icpClarity === null ? "--" : `${savedDiagnostic.icpClarity}`} body="How clearly the best-fit customer and buying situation were defined." />
+            <StatCard icon={<CheckCircle2 size={21} />} label="Channel Fit" value={savedDiagnostic.channelToIcpFit || "--"} body="Whether the first channel matched the business foundation." />
+            <StatCard icon={<BarChart3 size={21} />} label="Snapshot" value="Saved" body="This diagnostic remains available as an archived point-in-time read." />
+          </div>
+
+          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-2xl font-semibold text-slate-950">Action Plan From This Snapshot</h2>
+            <div className="mt-4 grid gap-3">
+              {(savedDiagnostic.actionItems.length ? savedDiagnostic.actionItems : [savedDiagnostic.nextMove]).map((item) => (
+                <p key={item} className="rounded-md bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+                  {item}
+                </p>
+              ))}
+            </div>
+            <Link href="/dashboard" className="mt-5 inline-flex items-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
+              Open Command Center
+              <ArrowRight size={18} aria-hidden="true" />
+            </Link>
+          </section>
+        </section>
+      </main>
+    );
+  }
+
   if (!result) {
     return (
       <main className="min-h-screen bg-slate-50">
@@ -42,7 +118,7 @@ export default function DiagnosticResultPage() {
           <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
             <h1 className="text-2xl font-semibold text-slate-950">No diagnostic found yet.</h1>
             <p className="mt-2 text-slate-600">Start the LaunchPad Diagnostic to generate your Growth Plan.</p>
-            <Link href="/diagnostic" className="mt-5 inline-flex rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
+            <Link href="/diagnostic/run?fresh=1" className="mt-5 inline-flex rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
               Start Diagnostic
             </Link>
           </div>

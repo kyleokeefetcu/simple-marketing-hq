@@ -1,5 +1,5 @@
-import { DiagnosticFlow } from "@/components/diagnostic-flow";
+import { DiagnosticHQ } from "@/components/diagnostic-hq";
 
 export default function DiagnosticPage() {
-  return <DiagnosticFlow />;
+  return <DiagnosticHQ />;
 }

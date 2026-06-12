@@ -270,7 +270,7 @@ export function DashboardHome() {
         title: "Run your LaunchPad Diagnostic.",
         why: "Simple Marketing HQ needs a little context before it can recommend the right first asset.",
         steps: ["Enter your website", "Confirm what we find", "Get your first action plan"],
-        href: "/diagnostic",
+        href: "/diagnostic/run?fresh=1",
         cta: "Run New Diagnostic",
       };
   const portfolioMode = !selectedBusinessId && businesses.length > 1;
@@ -414,7 +414,7 @@ export function DashboardHome() {
                 </div>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-                <Link href={scopedHref("/diagnostic", selectedBusinessId)} className="inline-flex min-h-12 items-center justify-center rounded-md bg-cyan-900 px-5 py-3 text-sm font-semibold text-white">
+                <Link href={scopedHref("/diagnostic/run?fresh=1", selectedBusinessId)} className="inline-flex min-h-12 items-center justify-center rounded-md bg-cyan-900 px-5 py-3 text-sm font-semibold text-white">
                   Run New Diagnostic
                 </Link>
                 <BusinessSwitcher
@@ -625,7 +625,9 @@ function getSelectedBusinessId() {
 }
 
 function scopedHref(href: string, businessId: string) {
-  return businessId ? `${href}?businessId=${encodeURIComponent(businessId)}` : href;
+  if (!businessId) return href;
+  const separator = href.includes("?") ? "&" : "?";
+  return `${href}${separator}businessId=${encodeURIComponent(businessId)}`;
 }
 
 function formatDate(value: string) {
