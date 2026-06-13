@@ -5,11 +5,11 @@
 - Created a separate local app folder named `launchpad-marketing-hub`.
 - Public product/app name: Simple Marketing HQ.
 - Main deployment URL: simplemarketinghq.com.
-- Positioning: AI marketing advisor and marketing foundation command center for small businesses.
+- Positioning: AI marketing team and simple command center for small businesses, with an AI CMO, practical utilities, and a living marketing foundation.
 - LaunchPad is reserved for the internal diagnostic/advisor system inside the app.
 - Chosen stack: Next.js, TypeScript, Tailwind CSS, App Router, Supabase-ready helpers, and Vercel-ready defaults.
 - PWA-first foundation includes manifest metadata, app icons, mobile viewport support, and installable app naming.
-- Current build target is a sellable SaaS product foundation with public website, account-ready flows, saved diagnostic fallback, action-first command-center dashboard, persisted ICP/offer/message/content/strategy/schedule/research/recommendation assets, persisted advisor threads/messages, visitor/referral workflows, and subscription-ready structure.
+- Current build target is a sellable SaaS product foundation with public website, account-ready flows, saved diagnostic fallback, action-first command-center dashboard, persisted audience/offer/message/content/strategy/schedule/research/recommendation assets, persisted advisor threads/messages, visitor/referral workflows, and subscription-ready structure.
 
 ## Installed Packages
 
@@ -21,6 +21,7 @@
 ## Current Foundation
 
 - AI-first LaunchPad Diagnostic intake with early website URL input, multi-page website analysis, confidence-gated editable confirmation cards, and short current-state gap questions that avoid asking the user to choose the marketing strategy
+- Public homepage now positions Simple Marketing HQ as an AI marketing team and command center: the diagnostic starts the work, the AI CMO recommends the next best move, utilities build the assets, and the living foundation improves over time.
 - LaunchPad Diagnostic HQ at `/diagnostic` with latest diagnostic snapshot, current browser draft, Run New Diagnostic, Continue Draft, archived diagnostic history, and simple comparison against the prior snapshot
 - Fresh diagnostic funnel at `/diagnostic/run?fresh=1`; draft resume is explicit through `/diagnostic/run?resume=1`
 - Diagnostic output now infers the likely customer desired outcome, recommended first channel to prepare for, why that channel fits, preparation steps, and what channel to ignore for now

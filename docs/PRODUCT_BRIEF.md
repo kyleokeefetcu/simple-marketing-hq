@@ -6,7 +6,7 @@ Public app name: Simple Marketing HQ
 Main URL: simplemarketinghq.com
 Internal framework name: LaunchPad
 
-Positioning: Simple Marketing HQ is an AI marketing advisor and marketing foundation command center for small businesses.
+Positioning: Simple Marketing HQ is an AI marketing team and simple command center for small businesses. It gives owners an AI CMO, practical marketing utilities, and a living marketing foundation that improves as the business changes.
 
 Critical naming rule: Simple Marketing HQ is the public product name. LaunchPad is only the internal diagnostic, score, action-plan, advisor, and recommendation framework. Do not use LaunchPad Marketing Hub as a public product name.
 
@@ -27,15 +27,17 @@ In the current production architecture, the user profile acts as the account/wor
 
 ## Product Direction
 
-Simple Marketing HQ is not just a website scanner, SEO scanner, diagnostic quiz, checklist app, generic CRM, automation platform, or content calendar. The LaunchPad Diagnostic is the intake and first assessment layer, not the core product.
+Simple Marketing HQ is not just a website scanner, SEO scanner, diagnostic quiz, checklist app, generic CRM, automation platform, content calendar, static report, or one-time marketing audit. The LaunchPad Diagnostic is the intake and first snapshot, not the core product.
 
-The core product is a systematic AI-powered marketing workspace that prepares a small business for marketing takeoff.
+The core product is an AI CMO command center that helps small business owners decide what to fix first, open the right utility, build or improve the actual asset, and come back often as the business changes.
 
-Core metaphor:
+Core product frame:
 
-- The rocket ship is the customer's marketing foundation: offer, message, audience, strategy, content, schedule, campaign plan, research, assets, recommendations, and next actions.
-- Takeoff is channel deployment: cold email tools, social platforms, ad platforms, CRM platforms, websites, SEO tools, affiliate/recommended tools, and partner channels.
-- Simple Marketing HQ prepares the rocket ship. External tools deploy it.
+- The AI CMO recommends the next best move.
+- The command center keeps offer, audience, message, content, strategy, execution, research, recommendations, and next actions in one simple place.
+- The utilities build and improve the actual marketing assets.
+- The marketing foundation is living: customer questions, sales notes, objections, reviews, campaign results, new offers, and ideas should improve future recommendations.
+- External tools and channels come after the foundation is clear enough to use them well.
 
 Users should always know:
 
@@ -191,16 +193,27 @@ Use structured JSON where practical so the UI can reliably render scores, sectio
 
 ## Public Website Direction
 
-Public positioning should say that Simple Marketing HQ helps small businesses build the marketing foundation before launching into channels.
+Public positioning should say that Simple Marketing HQ is an AI marketing team and simple command center for small businesses. It should feel practical, owner-friendly, and action-oriented, not like a report product, one-time diagnostic, quiz app, giant dashboard, or channel deployment tool.
 
-Hero idea:
+Hero direction:
 
-- Headline: Build your marketing foundation before takeoff.
-- Supporting copy: Simple Marketing HQ is an AI marketing advisor and foundation command center for small businesses. Diagnose what is missing, build the offer and assets, then choose the right channel to launch.
-- Primary CTA: Start Your Free Diagnostic.
-- Secondary CTA: See How It Works.
+- Eyebrow: AI marketing team and command center for small businesses.
+- Headline: Your marketing team in a simple command center.
+- Supporting copy: Simple Marketing HQ gives small business owners an AI CMO and easy marketing utilities that keep your offer, audience, message, content, and weekly plan moving as your business changes.
+- Primary CTA: Start Free Diagnostic.
+- Secondary CTA: See the Command Center.
 
-Avoid language that reduces the product to a website scanner, SEO scanner, generic dashboard, checklist, or quiz.
+Public section structure:
+
+1. Hero with AI CMO / command center positioning and a short next-best-move card.
+2. The Diagnostic starts the work and turns plain business-owner answers into a clear recommendation.
+3. Your AI CMO tells you what to fix first, why it matters, what to ignore, which utility to open, and what asset to build next.
+4. Easy utilities build the assets: Audience HQ, Offer HQ, Messaging HQ, Content HQ, Strategy HQ, Execution HQ, Research HQ, Advisor, and Tool Stack HQ.
+5. Your marketing gets better over time as owners add customer questions, sales notes, campaign results, objections, reviews, new offers, and ideas.
+6. Built for owners who need more leads, booked jobs, sales, and clarity.
+7. Pricing / CTA: start free, build the foundation, upgrade when ready to execute deeper.
+
+Use simple words like customers, leads, sales, booked jobs, revenue, follow-up, website visitors, what is not working, and what to fix first. Avoid overusing diagnostic, score, assessment, report, ICP, funnel, positioning, value proposition, and conversion readiness in public homepage copy.
 
 ## SaaS Readiness
 
