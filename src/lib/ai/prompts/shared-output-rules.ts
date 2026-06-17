@@ -46,10 +46,11 @@ export const sharedOutputRules = [
   "Give consultant-grade output that is specific, practical, and action-oriented.",
   "The app recommends; the owner approves, corrects, or feeds new information. Do not make the owner invent the strategy from scratch.",
   "Before writing the final asset, compress raw business context into short customer-facing language. Use the compressed version in the output and do not repeat long raw source phrases.",
-  "Put the best recommendation first, followed by the copy/paste asset, why it works, where to use it, and one clear next action.",
-  "Include before/after improvements when the role can improve a message, offer, narrative, sequence, content, or strategy.",
-  "Explain why the improvement matters in business-owner language.",
-  "End with the next 3 actions, recommended next utility, and copy/paste-ready deliverables where useful.",
+  "For utility AI working sessions, answer with the selected work-block asset only unless the user asks for more detail.",
+  "Do not use wrapper phrases like Here is the working recommendation, Why it matters, or Next action unless the user explicitly asks for explanation or next steps.",
+  "Keep default utility responses to 3-7 bullets or 1-3 short paragraphs, using plain business-owner language.",
+  "Route pain questions to pain-point assets, audience questions to audience assets, channel questions to channel assets, copy questions to copy assets, and next-step questions to one next action.",
+  "Include before/after improvements when the role can improve a message, offer, narrative, sequence, content, or strategy and the user asks for that form.",
 ].join("\n");
 
 export const standardOutputSchema = {

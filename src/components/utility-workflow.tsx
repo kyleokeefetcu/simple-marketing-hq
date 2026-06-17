@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { FormEvent } from "react";
-import { ArrowRight, CheckCircle2, ChevronDown, FlaskConical, History, Lightbulb, Mail, MessageSquare, Sparkles, Target, Video } from "lucide-react";
+import { ArrowRight, ChevronDown, FlaskConical, History, Lightbulb, Mail, MessageSquare, Sparkles, Target, Video } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/app-header";
 import { getIndustryProfile, getStoredResult, type LaunchPadResult } from "@/lib/launchpad";
@@ -57,26 +57,23 @@ type Deliverable = {
   suggestedNextUtility: { label: string; href: string };
 };
 
-type WorkBlockId =
-  | "current"
-  | "themes"
-  | "ideas"
-  | "create"
-  | "email"
-  | "video"
-  | "hooks"
-  | "results"
-  | "recommendation"
-  | "feed"
-  | "tests"
-  | "use"
-  | "history";
+type WorkBlockId = string;
 
 type WorkBlock = {
   id: WorkBlockId;
   title: string;
   subtitle: string;
+  purpose: string;
+  assetType: string;
+  intentExamples: string[];
+  outputRules: string[];
   icon: "spark" | "target" | "message" | "mail" | "video" | "test" | "history" | "idea";
+};
+
+type QuickPrompt = {
+  label: string;
+  prompt: string;
+  workBlockId: WorkBlockId;
 };
 
 type DetailView = "asset" | "history" | "tests" | "feed" | null;
@@ -235,7 +232,7 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
   const [copyStatus, setCopyStatus] = useState("");
   const [saveStatus, setSaveStatus] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [activeBlock, setActiveBlock] = useState<WorkBlockId>(kind === "content" ? "current" : "current");
+  const [activeBlock, setActiveBlock] = useState<WorkBlockId>(() => firstWorkBlockId(kind));
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [detailView, setDetailView] = useState<DetailView>(null);
   const [sessionMessages, setSessionMessages] = useState<{ role: "assistant" | "user"; content: string }[]>([]);
@@ -250,7 +247,7 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
   const workBlocks = useMemo(() => getWorkBlocks(config.kind), [config.kind]);
   const activeWorkBlock = workBlocks.find((block) => block.id === activeBlock) ?? workBlocks[0];
   const nextStep = getNextStepSuggestion(config, activeBlock, currentRecommendation);
-  const assistantIntro = `I'm working inside ${config.navName} for this business. I'll use your current offer, audience, message, latest diagnostic, saved history, and the ${activeWorkBlock.title} work block. Ask me to create an asset, improve an idea, or tell you what to do next.`;
+  const assistantIntro = buildWorkBlockAsset(config.kind, activeWorkBlock.id, currentRecommendation);
 
   const loadBusinessContext = useCallback(async (businessId: string) => {
     const supabase = createBrowserSupabaseClient();
@@ -368,6 +365,8 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
           purpose: "Save the current living utility recommendation and selected workspace state.",
           utility: config.navName,
           activeBlock,
+          workBlockSlug: activeBlock,
+          workBlockAssetType: activeWorkBlock.assetType,
         },
       });
       await loadBusinessContext(selectedBusinessId);
@@ -379,8 +378,10 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
     }
   }
 
-  function handleQuickPrompt(prompt: string) {
-    const response = buildSessionResponse(config, activeWorkBlock, currentRecommendation, prompt);
+  function handleQuickPrompt(prompt: string, workBlockId?: WorkBlockId) {
+    const routedBlock = workBlockId ? getWorkBlock(config.kind, workBlockId) : getRoutedWorkBlock(config.kind, prompt, activeWorkBlock.id);
+    setActiveBlock(routedBlock.id);
+    const response = workBlockId ? buildWorkBlockAsset(config.kind, routedBlock.id, currentRecommendation) : buildSessionResponse(config, routedBlock, currentRecommendation, prompt);
     setSessionMessages((messages) => [...messages, { role: "user", content: prompt }, { role: "assistant", content: response }]);
   }
 
@@ -487,7 +488,7 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
             {detailView ? (
               <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                 {renderWorkBlock({
-                  activeBlock: detailView === "asset" ? "current" : detailView === "history" ? "history" : detailView === "tests" ? "tests" : "feed",
+                  activeBlock: detailView === "asset" ? activeBlock : detailView === "history" ? "history" : detailView === "tests" ? "tests" : "feed",
                   config,
                   currentRecommendation,
                   feedback,
@@ -511,9 +512,9 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
                 ))}
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                {getQuickPrompts(config.kind, activeBlock).map((prompt) => (
-                  <button key={prompt} type="button" onClick={() => handleQuickPrompt(prompt)} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
-                    {prompt}
+                {getQuickPrompts(config.kind, activeBlock).map((quickPrompt) => (
+                  <button key={quickPrompt.label} type="button" onClick={() => handleQuickPrompt(quickPrompt.prompt, quickPrompt.workBlockId)} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
+                    {quickPrompt.label}
                   </button>
                 ))}
               </div>
@@ -585,9 +586,9 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
               ))}
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              {getQuickPrompts(config.kind, activeBlock).map((prompt) => (
-                <button key={prompt} type="button" onClick={() => handleQuickPrompt(prompt)} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
-                  {prompt}
+              {getQuickPrompts(config.kind, activeBlock).map((quickPrompt) => (
+                <button key={quickPrompt.label} type="button" onClick={() => handleQuickPrompt(quickPrompt.prompt, quickPrompt.workBlockId)} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
+                  {quickPrompt.label}
                 </button>
               ))}
             </div>
@@ -611,95 +612,205 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
   );
 }
 
-function getWorkBlocks(kind: UtilityKind): WorkBlock[] {
-  if (kind === "content") {
-    return [
-      { id: "current", title: "Current Plan", subtitle: "Themes, CTA, priority.", icon: "spark" },
-      { id: "themes", title: "Content Themes", subtitle: "Improve the angles.", icon: "target" },
-      { id: "ideas", title: "Post Ideas", subtitle: "Ready topics.", icon: "message" },
-      { id: "create", title: "Create Post", subtitle: "Draft one asset.", icon: "spark" },
-      { id: "email", title: "Email Ideas", subtitle: "Topics or draft.", icon: "mail" },
-      { id: "video", title: "Video Scripts", subtitle: "Short scripts.", icon: "video" },
-      { id: "hooks", title: "Hooks", subtitle: "Scroll-stoppers.", icon: "idea" },
-      { id: "results", title: "Campaign Results", subtitle: "Feed back notes.", icon: "target" },
-      { id: "tests", title: "Tests", subtitle: "What to try.", icon: "test" },
-      { id: "history", title: "History", subtitle: "Saved versions.", icon: "history" },
-    ];
-  }
+const defaultOutputRules = [
+  "Return the asset only.",
+  "Use 3-7 bullets or 1-3 short paragraphs.",
+  "Do not include wrapper intros.",
+  "Do not include why it matters unless asked.",
+  "Do not include next action unless asked.",
+];
 
-  const shared: Record<Exclude<UtilityKind, "content">, WorkBlock[]> = {
-    icp: [
-      { id: "current", title: "Best-Fit Customer", subtitle: "Current audience.", icon: "target" },
-      { id: "themes", title: "Buyer Problems", subtitle: "What they feel.", icon: "idea" },
-      { id: "ideas", title: "Buying Triggers", subtitle: "Why now.", icon: "spark" },
-      { id: "hooks", title: "Objections", subtitle: "What slows yes.", icon: "message" },
-      { id: "create", title: "Where to Find Them", subtitle: "Channel fit.", icon: "target" },
-      { id: "feed", title: "New Info", subtitle: "Add customer notes.", icon: "spark" },
-      { id: "use", title: "Use It Now", subtitle: "Apply the ICP.", icon: "idea" },
-      { id: "history", title: "History", subtitle: "Saved versions.", icon: "history" },
-    ],
-    offer: [
-      { id: "current", title: "Current Offer", subtitle: "Offer and CTA.", icon: "spark" },
-      { id: "themes", title: "Offer Angles", subtitle: "Ways to frame it.", icon: "idea" },
-      { id: "create", title: "CTA", subtitle: "Next step copy.", icon: "message" },
-      { id: "hooks", title: "Proof / Trust", subtitle: "Reduce risk.", icon: "target" },
-      { id: "ideas", title: "Objections", subtitle: "Buyer hesitation.", icon: "message" },
-      { id: "feed", title: "New Info", subtitle: "Add offer notes.", icon: "spark" },
-      { id: "tests", title: "Tests", subtitle: "What to try.", icon: "test" },
-      { id: "history", title: "History", subtitle: "Saved versions.", icon: "history" },
-    ],
-    message: [
-      { id: "current", title: "Current Message", subtitle: "Main copy.", icon: "message" },
-      { id: "create", title: "Homepage Copy", subtitle: "Hero and opener.", icon: "spark" },
-      { id: "hooks", title: "Headlines", subtitle: "Short options.", icon: "idea" },
-      { id: "email", title: "CTAs", subtitle: "Low-friction asks.", icon: "target" },
-      { id: "ideas", title: "Follow-Up Lines", subtitle: "Use after inquiry.", icon: "mail" },
-      { id: "video", title: "Sales Script", subtitle: "Conversation copy.", icon: "message" },
-      { id: "tests", title: "Tests", subtitle: "What to try.", icon: "test" },
-      { id: "history", title: "History", subtitle: "Saved versions.", icon: "history" },
-    ],
-    strategy_map: [
-      { id: "current", title: "Current Priority", subtitle: "Do first.", icon: "spark" },
-      { id: "themes", title: "Bottleneck", subtitle: "What is stuck.", icon: "target" },
-      { id: "ideas", title: "What to Ignore", subtitle: "Avoid noise.", icon: "idea" },
-      { id: "create", title: "Channel Order", subtitle: "Launch sequence.", icon: "message" },
-      { id: "use", title: "Next 3 Actions", subtitle: "Move now.", icon: "spark" },
-      { id: "hooks", title: "Risks", subtitle: "Watchouts.", icon: "target" },
-      { id: "tests", title: "Tests", subtitle: "What to try.", icon: "test" },
-      { id: "history", title: "History", subtitle: "Saved versions.", icon: "history" },
-    ],
-    marketing_schedule: [
-      { id: "current", title: "This Week’s Plan", subtitle: "Top priority.", icon: "spark" },
-      { id: "create", title: "Today’s Task", subtitle: "One move.", icon: "target" },
-      { id: "ideas", title: "Content to Publish", subtitle: "Use this week.", icon: "message" },
-      { id: "email", title: "Follow-Up", subtitle: "Reply rhythm.", icon: "mail" },
-      { id: "results", title: "Review Results", subtitle: "What happened.", icon: "idea" },
-      { id: "feed", title: "Adjust Plan", subtitle: "Add updates.", icon: "spark" },
-      { id: "history", title: "History", subtitle: "Saved versions.", icon: "history" },
-    ],
-    research: [
-      { id: "current", title: "Market Insights", subtitle: "Current read.", icon: "idea" },
-      { id: "themes", title: "Customer Questions", subtitle: "What they ask.", icon: "message" },
-      { id: "feed", title: "Reviews / Notes", subtitle: "Paste research.", icon: "spark" },
-      { id: "create", title: "Competitors", subtitle: "Compare claims.", icon: "target" },
-      { id: "ideas", title: "Objections", subtitle: "Buying friction.", icon: "message" },
-      { id: "hooks", title: "Content Ideas", subtitle: "Use insights.", icon: "idea" },
-      { id: "use", title: "Offer Improvements", subtitle: "Apply research.", icon: "spark" },
-      { id: "history", title: "History", subtitle: "Saved versions.", icon: "history" },
-    ],
-    recommendation: [
-      { id: "current", title: "Recommended Tools", subtitle: "Best fit now.", icon: "spark" },
-      { id: "themes", title: "Not Ready Yet", subtitle: "What to wait on.", icon: "idea" },
-      { id: "email", title: "Cold Email", subtitle: "Readiness.", icon: "mail" },
-      { id: "create", title: "Website / SEO", subtitle: "Readiness.", icon: "target" },
-      { id: "hooks", title: "CRM / Booking", subtitle: "Follow-up fit.", icon: "message" },
-      { id: "ideas", title: "Social / Content", subtitle: "Channel fit.", icon: "video" },
-      { id: "feed", title: "Tool Notes", subtitle: "Add context.", icon: "spark" },
-      { id: "history", title: "History", subtitle: "Saved versions.", icon: "history" },
-    ],
+function createWorkBlock(input: Omit<WorkBlock, "outputRules"> & { outputRules?: string[] }): WorkBlock {
+  return {
+    ...input,
+    outputRules: input.outputRules ?? defaultOutputRules,
   };
+}
 
-  return shared[kind as Exclude<UtilityKind, "content">];
+const utilityWorkBlockRegistry: Record<UtilityKind, WorkBlock[]> = {
+  icp: [
+    createWorkBlock({ id: "best-fit-customer", title: "Best-Fit Customer", subtitle: "Who to focus on.", purpose: "Define who the business should focus on.", assetType: "audience_profile", intentExamples: ["who is the best-fit customer", "who should we target", "ideal customer"], icon: "target" }),
+    createWorkBlock({ id: "buyer-problems", title: "Buyer Problems", subtitle: "What they struggle with.", purpose: "Define what the customer is struggling with.", assetType: "pain_points", intentExamples: ["what pain matters most", "what problem do they have", "what are they struggling with"], icon: "idea" }),
+    createWorkBlock({ id: "buying-triggers", title: "Buying Triggers", subtitle: "Why they buy now.", purpose: "Define why they would buy now.", assetType: "buying_triggers", intentExamples: ["why would they buy now", "why do they buy now", "buying triggers"], icon: "spark" }),
+    createWorkBlock({ id: "objections", title: "Objections", subtitle: "What slows yes.", purpose: "Define what slows the buying decision.", assetType: "objections", intentExamples: ["what objections", "what slows them down", "hesitations"], icon: "message" }),
+    createWorkBlock({ id: "where-to-find-them", title: "Where To Find Them", subtitle: "Practical channels.", purpose: "Define practical acquisition channels.", assetType: "channels", intentExamples: ["where do i find them", "where to find them", "channels"], icon: "target" }),
+    createWorkBlock({ id: "feed", title: "New Info", subtitle: "Add customer notes.", purpose: "Add customer notes, objections, sales calls, reviews, or market feedback.", assetType: "audience_feedback", intentExamples: ["new info", "add note", "customer note"], icon: "spark" }),
+    createWorkBlock({ id: "use", title: "Use It Now", subtitle: "Apply the audience.", purpose: "Turn the audience asset into practical outputs.", assetType: "audience_activation", intentExamples: ["what should i do next", "use it now", "turn this into"], icon: "idea" }),
+    createWorkBlock({ id: "history", title: "History", subtitle: "Saved versions.", purpose: "Show saved versions and changes over time.", assetType: "audience_history", intentExamples: ["history", "saved versions"], icon: "history" }),
+  ],
+  offer: [
+    createWorkBlock({ id: "core-offer", title: "Core Offer", subtitle: "Plain-English offer.", purpose: "State what the business sells in plain English.", assetType: "core_offer", intentExamples: ["what do we sell", "core offer", "what is the offer"], icon: "spark" }),
+    createWorkBlock({ id: "primary-promise", title: "Primary Promise", subtitle: "Result customers want.", purpose: "State the result the customer wants.", assetType: "primary_promise", intentExamples: ["what is the promise", "main promise", "result"], icon: "idea" }),
+    createWorkBlock({ id: "offer-statement", title: "Offer Statement", subtitle: "One-sentence offer.", purpose: "Create a one-sentence version of the offer.", assetType: "offer_statement", intentExamples: ["write the offer statement", "offer statement", "one sentence offer"], icon: "message" }),
+    createWorkBlock({ id: "proof", title: "Proof", subtitle: "Trust points.", purpose: "List trust points, outcomes, examples, testimonials, or credentials.", assetType: "proof_points", intentExamples: ["what proof", "proof should we use", "trust"], icon: "target" }),
+    createWorkBlock({ id: "cta", title: "CTA", subtitle: "Clear next step.", purpose: "Write the clearest next step.", assetType: "cta", intentExamples: ["what cta", "button", "next step copy"], icon: "message" }),
+    createWorkBlock({ id: "packages-pricing", title: "Packages / Pricing", subtitle: "Simple structure.", purpose: "Create a simple offer structure if relevant.", assetType: "packages_pricing", intentExamples: ["package", "pricing", "structure"], icon: "target" }),
+    createWorkBlock({ id: "risk-reversal", title: "Risk Reversal", subtitle: "Confidence builder.", purpose: "Create a guarantee, trial, pilot, setup promise, or confidence builder.", assetType: "risk_reversal", intentExamples: ["risk reversal", "guarantee", "trial", "confidence"], icon: "idea" }),
+    createWorkBlock({ id: "feed", title: "New Info", subtitle: "Add offer notes.", purpose: "Add buyer feedback, proof, objections, or offer notes.", assetType: "offer_feedback", intentExamples: ["new info", "offer note"], icon: "spark" }),
+    createWorkBlock({ id: "use", title: "Use It Now", subtitle: "Apply the offer.", purpose: "Turn the offer into homepage, email, ad, or sales copy.", assetType: "offer_activation", intentExamples: ["what should i do next", "use it now", "homepage copy", "sales copy"], icon: "spark" }),
+    createWorkBlock({ id: "history", title: "History", subtitle: "Saved versions.", purpose: "Show saved versions and changes over time.", assetType: "offer_history", intentExamples: ["history", "saved versions"], icon: "history" }),
+  ],
+  message: [
+    createWorkBlock({ id: "one-liner", title: "One-Liner", subtitle: "Simple explanation.", purpose: "Create the simplest explanation of the business.", assetType: "one_liner", intentExamples: ["one-liner", "explain this simply", "simple explanation"], icon: "message" }),
+    createWorkBlock({ id: "homepage-headline", title: "Homepage Headline", subtitle: "Hero copy.", purpose: "Write a clear headline and subheadline.", assetType: "homepage_headline", intentExamples: ["headline", "homepage headline", "hero"], icon: "spark" }),
+    createWorkBlock({ id: "differentiators", title: "Differentiators", subtitle: "What makes it different.", purpose: "State what makes this business different.", assetType: "differentiators", intentExamples: ["what makes us different", "differentiators", "different"], icon: "idea" }),
+    createWorkBlock({ id: "proof-points", title: "Proof Points", subtitle: "Trust claims.", purpose: "Write short trust-building claims.", assetType: "message_proof_points", intentExamples: ["proof points", "trust claims", "proof"], icon: "target" }),
+    createWorkBlock({ id: "cta-copy", title: "CTA Copy", subtitle: "Button language.", purpose: "Write button text and supporting CTA language.", assetType: "cta_copy", intentExamples: ["button", "cta copy", "what should the button say"], icon: "target" }),
+    createWorkBlock({ id: "faq-objection-copy", title: "FAQ / Objection Copy", subtitle: "Hesitation answers.", purpose: "Answer common hesitation points.", assetType: "faq_objection_copy", intentExamples: ["objection faq", "faq", "hesitation", "objections"], icon: "mail" }),
+    createWorkBlock({ id: "before-after", title: "Before / After", subtitle: "Simple contrast.", purpose: "Show life before and after the product.", assetType: "before_after", intentExamples: ["before after", "before and after"], icon: "video" }),
+    createWorkBlock({ id: "use", title: "Use It Now", subtitle: "Create copy.", purpose: "Create website section, email, ad, or social copy.", assetType: "message_activation", intentExamples: ["use it now", "write copy", "create copy"], icon: "spark" }),
+    createWorkBlock({ id: "history", title: "History", subtitle: "Saved versions.", purpose: "Show saved versions and changes over time.", assetType: "message_history", intentExamples: ["history", "saved versions"], icon: "history" }),
+  ],
+  content: [
+    createWorkBlock({ id: "content-pillars", title: "Content Pillars", subtitle: "Main topics.", purpose: "List main topics the business should talk about.", assetType: "content_pillars", intentExamples: ["content pillars", "topics", "talk about"], icon: "target" }),
+    createWorkBlock({ id: "post-ideas", title: "Post Ideas", subtitle: "Ready topics.", purpose: "Create simple content ideas based on the offer and audience.", assetType: "post_ideas", intentExamples: ["what should i post", "post ideas", "social post"], icon: "message" }),
+    createWorkBlock({ id: "weekly-plan", title: "Weekly Plan", subtitle: "What to publish.", purpose: "Create a practical schedule.", assetType: "weekly_content_plan", intentExamples: ["this week", "weekly plan", "publish this week"], icon: "spark" }),
+    createWorkBlock({ id: "email-ideas", title: "Email Ideas", subtitle: "Useful email topics.", purpose: "Create useful email topics or a short email.", assetType: "email_ideas", intentExamples: ["write an email", "email ideas", "subject lines"], icon: "mail" }),
+    createWorkBlock({ id: "blog-seo-ideas", title: "Blog / SEO Ideas", subtitle: "Search topics.", purpose: "Create search-friendly topics.", assetType: "blog_seo_ideas", intentExamples: ["blog", "seo", "search topics"], icon: "idea" }),
+    createWorkBlock({ id: "repurpose", title: "Repurpose", subtitle: "More formats.", purpose: "Turn one idea into multiple formats.", assetType: "repurposed_content", intentExamples: ["repurpose", "turn this into", "multiple formats"], icon: "video" }),
+    createWorkBlock({ id: "use", title: "Use It Now", subtitle: "Draft content.", purpose: "Generate a post, email, short video script, checklist, or calendar.", assetType: "content_activation", intentExamples: ["create", "draft", "use it now"], icon: "spark" }),
+    createWorkBlock({ id: "feed", title: "Campaign Results", subtitle: "Add results.", purpose: "Add content results, questions, or campaign notes.", assetType: "content_feedback", intentExamples: ["campaign result", "new info", "worked"], icon: "target" }),
+    createWorkBlock({ id: "history", title: "History", subtitle: "Saved versions.", purpose: "Show saved versions and changes over time.", assetType: "content_history", intentExamples: ["history", "saved versions"], icon: "history" }),
+  ],
+  strategy_map: [
+    createWorkBlock({ id: "current-bottleneck", title: "Current Bottleneck", subtitle: "What is stuck.", purpose: "State what is most likely holding growth back.", assetType: "current_bottleneck", intentExamples: ["bottleneck", "what is stuck", "holding growth back"], icon: "target" }),
+    createWorkBlock({ id: "growth-focus", title: "Growth Focus", subtitle: "Main priority.", purpose: "State the main priority right now.", assetType: "growth_focus", intentExamples: ["focus", "what should we focus", "priority"], icon: "spark" }),
+    createWorkBlock({ id: "channel-priority", title: "Channel Priority", subtitle: "First channel.", purpose: "State which channel should matter first and why.", assetType: "channel_priority", intentExamples: ["channel", "prioritize", "use first"], icon: "message" }),
+    createWorkBlock({ id: "funnel-map", title: "Funnel Map", subtitle: "Simple path.", purpose: "Map the simple path from attention to lead to sale.", assetType: "simple_funnel_map", intentExamples: ["funnel", "path", "lead to sale"], icon: "idea" }),
+    createWorkBlock({ id: "90-day-plan", title: "90-Day Plan", subtitle: "Realistic plan.", purpose: "Create a short, realistic action plan.", assetType: "ninety_day_plan", intentExamples: ["90-day", "plan", "what is the plan"], icon: "spark" }),
+    createWorkBlock({ id: "positioning", title: "Positioning", subtitle: "Market place.", purpose: "State where the business should sit in the market.", assetType: "positioning", intentExamples: ["positioning", "sit in the market", "market"], icon: "target" }),
+    createWorkBlock({ id: "use", title: "Use It Now", subtitle: "Owner actions.", purpose: "Turn strategy into owner actions.", assetType: "strategy_activation", intentExamples: ["what should i do next", "actions", "use it now"], icon: "spark" }),
+    createWorkBlock({ id: "feed", title: "New Info", subtitle: "Add updates.", purpose: "Add business updates, results, constraints, or priorities.", assetType: "strategy_feedback", intentExamples: ["new info", "update", "constraint"], icon: "idea" }),
+    createWorkBlock({ id: "history", title: "History", subtitle: "Saved versions.", purpose: "Show saved versions and changes over time.", assetType: "strategy_history", intentExamples: ["history", "saved versions"], icon: "history" }),
+  ],
+  marketing_schedule: [
+    createWorkBlock({ id: "weekly-actions", title: "Weekly Actions", subtitle: "Current action list.", purpose: "List the current action list.", assetType: "weekly_actions", intentExamples: ["what should i do this week", "weekly actions", "plan this week"], icon: "spark" }),
+    createWorkBlock({ id: "task-checklist", title: "Task Checklist", subtitle: "Steps to complete.", purpose: "Create a simple step-by-step checklist.", assetType: "task_checklist", intentExamples: ["checklist", "steps", "task"], icon: "target" }),
+    createWorkBlock({ id: "campaign-plan", title: "Campaign Plan", subtitle: "Launch order.", purpose: "State what to launch and in what order.", assetType: "campaign_plan", intentExamples: ["campaign", "launch", "what campaign"], icon: "message" }),
+    createWorkBlock({ id: "follow-up-process", title: "Follow-Up Process", subtitle: "Handle leads.", purpose: "State how leads should be handled.", assetType: "follow_up_process", intentExamples: ["follow up", "leads handled", "lead follow-up"], icon: "mail" }),
+    createWorkBlock({ id: "calendar", title: "Calendar", subtitle: "Simple schedule.", purpose: "Create a simple execution schedule.", assetType: "execution_calendar", intentExamples: ["calendar", "schedule"], icon: "idea" }),
+    createWorkBlock({ id: "progress-check-in", title: "Progress Check-In", subtitle: "What changed.", purpose: "Identify what changed, what is stuck, and what to do next.", assetType: "progress_check_in", intentExamples: ["progress", "check in", "what changed"], icon: "spark" }),
+    createWorkBlock({ id: "use", title: "Use It Now", subtitle: "Complete tasks.", purpose: "Create tasks the owner can complete.", assetType: "execution_activation", intentExamples: ["what should i do next", "use it now", "actions"], icon: "spark" }),
+    createWorkBlock({ id: "feed", title: "Adjust Plan", subtitle: "Add updates.", purpose: "Add weekly results, constraints, or task updates.", assetType: "execution_feedback", intentExamples: ["adjust", "new info", "update"], icon: "idea" }),
+    createWorkBlock({ id: "history", title: "History", subtitle: "Saved versions.", purpose: "Show saved versions and changes over time.", assetType: "execution_history", intentExamples: ["history", "saved versions"], icon: "history" }),
+  ],
+  research: [
+    createWorkBlock({ id: "website-findings", title: "Website Findings", subtitle: "Site message.", purpose: "State what the site currently communicates.", assetType: "website_findings", intentExamples: ["website", "what does the site say", "site communicates"], icon: "target" }),
+    createWorkBlock({ id: "competitor-notes", title: "Competitor Notes", subtitle: "What others say.", purpose: "State what competitors are saying or doing.", assetType: "competitor_notes", intentExamples: ["competitors", "competitor notes", "what are competitors doing"], icon: "message" }),
+    createWorkBlock({ id: "market-patterns", title: "Market Patterns", subtitle: "Category norms.", purpose: "Capture common language, offers, and expectations in the category.", assetType: "market_patterns", intentExamples: ["market patterns", "category", "expectations"], icon: "idea" }),
+    createWorkBlock({ id: "customer-language", title: "Customer Language", subtitle: "Words to use.", purpose: "Capture words customers likely use.", assetType: "customer_language", intentExamples: ["customer language", "what language", "words"], icon: "mail" }),
+    createWorkBlock({ id: "content-search-signals", title: "Content / Search Signals", subtitle: "Questions people ask.", purpose: "List topics and questions people care about.", assetType: "content_search_signals", intentExamples: ["search", "questions", "topics"], icon: "spark" }),
+    createWorkBlock({ id: "gaps", title: "Gaps", subtitle: "What is missing.", purpose: "State what the business is missing.", assetType: "research_gaps", intentExamples: ["gaps", "missing", "what gaps"], icon: "target" }),
+    createWorkBlock({ id: "use", title: "Use It Now", subtitle: "Apply research.", purpose: "Turn research into copy, offers, content, or positioning.", assetType: "research_activation", intentExamples: ["use it now", "turn research into", "apply"], icon: "spark" }),
+    createWorkBlock({ id: "feed", title: "Reviews / Notes", subtitle: "Paste research.", purpose: "Add reviews, competitor notes, customer comments, or market observations.", assetType: "research_feedback", intentExamples: ["new info", "review", "notes"], icon: "spark" }),
+    createWorkBlock({ id: "history", title: "History", subtitle: "Saved versions.", purpose: "Show saved versions and changes over time.", assetType: "research_history", intentExamples: ["history", "saved versions"], icon: "history" }),
+  ],
+  recommendation: [
+    createWorkBlock({ id: "current-tools", title: "Current Tools", subtitle: "What exists now.", purpose: "State what the business appears to use or has mentioned.", assetType: "current_tools", intentExamples: ["current tools", "what do we use", "existing tools"], icon: "spark" }),
+    createWorkBlock({ id: "recommended-tools", title: "Recommended Tools", subtitle: "Best fit now.", purpose: "Recommend tools that fit the next action.", assetType: "recommended_tools", intentExamples: ["what tools should i use", "recommended tools", "which tool"], icon: "target" }),
+    createWorkBlock({ id: "setup-steps", title: "Setup Steps", subtitle: "How to set up.", purpose: "Give simple setup instructions.", assetType: "setup_steps", intentExamples: ["set it up", "setup", "how do i set"], icon: "message" }),
+    createWorkBlock({ id: "cost-fit", title: "Cost Fit", subtitle: "Right stage.", purpose: "State what makes sense for the user’s stage.", assetType: "cost_fit", intentExamples: ["cost", "budget", "stage"], icon: "idea" }),
+    createWorkBlock({ id: "integrations", title: "Integrations", subtitle: "What connects.", purpose: "State what should connect to what.", assetType: "integrations", intentExamples: ["connects", "integrations", "what connects to what"], icon: "mail" }),
+    createWorkBlock({ id: "avoid-for-now", title: "Avoid For Now", subtitle: "Too much too early.", purpose: "List tools that would add complexity too early.", assetType: "tools_to_avoid", intentExamples: ["avoid", "not ready", "what should i avoid"], icon: "idea" }),
+    createWorkBlock({ id: "use", title: "Use It Now", subtitle: "Setup checklist.", purpose: "Give a short setup checklist.", assetType: "tool_stack_activation", intentExamples: ["use it now", "checklist", "what should i do next"], icon: "spark" }),
+    createWorkBlock({ id: "feed", title: "Tool Notes", subtitle: "Add context.", purpose: "Add tool ideas, channel questions, bottlenecks, or deployment notes.", assetType: "tool_feedback", intentExamples: ["new info", "tool note", "channel question"], icon: "spark" }),
+    createWorkBlock({ id: "history", title: "History", subtitle: "Saved versions.", purpose: "Show saved versions and changes over time.", assetType: "tool_history", intentExamples: ["history", "saved versions"], icon: "history" }),
+  ],
+};
+
+const quickPromptRegistry: Record<UtilityKind, QuickPrompt[]> = {
+  icp: [
+    { label: "Best-fit customer", prompt: "Who is the best-fit customer?", workBlockId: "best-fit-customer" },
+    { label: "Top pain points", prompt: "What pain matters most?", workBlockId: "buyer-problems" },
+    { label: "Buying triggers", prompt: "Why do they buy now?", workBlockId: "buying-triggers" },
+    { label: "Objections", prompt: "What objections slow them down?", workBlockId: "objections" },
+    { label: "Where to find them", prompt: "Where do I find them?", workBlockId: "where-to-find-them" },
+    { label: "What next?", prompt: "What should I do next?", workBlockId: "use" },
+  ],
+  offer: [
+    { label: "Core offer", prompt: "What do we sell?", workBlockId: "core-offer" },
+    { label: "Main promise", prompt: "What is the main promise?", workBlockId: "primary-promise" },
+    { label: "Offer statement", prompt: "Write the offer statement.", workBlockId: "offer-statement" },
+    { label: "Proof", prompt: "What proof should we use?", workBlockId: "proof" },
+    { label: "CTA", prompt: "What CTA should we use?", workBlockId: "cta" },
+  ],
+  message: [
+    { label: "One-liner", prompt: "Write the one-liner.", workBlockId: "one-liner" },
+    { label: "Homepage headline", prompt: "Write the homepage headline.", workBlockId: "homepage-headline" },
+    { label: "Different", prompt: "What makes this different?", workBlockId: "differentiators" },
+    { label: "CTA copy", prompt: "Write CTA copy.", workBlockId: "cta-copy" },
+    { label: "FAQ copy", prompt: "Write objection FAQ copy.", workBlockId: "faq-objection-copy" },
+  ],
+  content: [
+    { label: "This week", prompt: "What should I post this week?", workBlockId: "weekly-plan" },
+    { label: "Pillars", prompt: "What are the content pillars?", workBlockId: "content-pillars" },
+    { label: "Blog ideas", prompt: "Give me blog ideas.", workBlockId: "blog-seo-ideas" },
+    { label: "Write email", prompt: "Write an email.", workBlockId: "email-ideas" },
+    { label: "Repurpose", prompt: "Repurpose this into a social post.", workBlockId: "repurpose" },
+  ],
+  strategy_map: [
+    { label: "Bottleneck", prompt: "What is the current bottleneck?", workBlockId: "current-bottleneck" },
+    { label: "Focus first", prompt: "What should we focus on first?", workBlockId: "growth-focus" },
+    { label: "Channel", prompt: "What channel should we prioritize?", workBlockId: "channel-priority" },
+    { label: "90-day plan", prompt: "What is the 90-day plan?", workBlockId: "90-day-plan" },
+  ],
+  marketing_schedule: [
+    { label: "This week", prompt: "What should I do this week?", workBlockId: "weekly-actions" },
+    { label: "Checklist", prompt: "Give me a checklist.", workBlockId: "task-checklist" },
+    { label: "Campaign", prompt: "What campaign should I launch?", workBlockId: "campaign-plan" },
+    { label: "Follow-up", prompt: "How should leads be followed up?", workBlockId: "follow-up-process" },
+  ],
+  research: [
+    { label: "Website", prompt: "What does the website say?", workBlockId: "website-findings" },
+    { label: "Competitors", prompt: "What are competitors doing?", workBlockId: "competitor-notes" },
+    { label: "Language", prompt: "What customer language should we use?", workBlockId: "customer-language" },
+    { label: "Gaps", prompt: "What gaps are missing?", workBlockId: "gaps" },
+  ],
+  recommendation: [
+    { label: "Tools", prompt: "What tools should I use?", workBlockId: "recommended-tools" },
+    { label: "Avoid", prompt: "What should I avoid for now?", workBlockId: "avoid-for-now" },
+    { label: "Setup", prompt: "How do I set it up?", workBlockId: "setup-steps" },
+    { label: "Integrations", prompt: "What connects to what?", workBlockId: "integrations" },
+  ],
+};
+
+function getWorkBlocks(kind: UtilityKind): WorkBlock[] {
+  return utilityWorkBlockRegistry[kind];
+}
+
+function firstWorkBlockId(kind: UtilityKind) {
+  return utilityWorkBlockRegistry[kind][0].id;
+}
+
+function getWorkBlock(kind: UtilityKind, blockId: WorkBlockId) {
+  return utilityWorkBlockRegistry[kind].find((block) => block.id === blockId) ?? utilityWorkBlockRegistry[kind][0];
+}
+
+function getRoutedWorkBlock(kind: UtilityKind, prompt: string, fallbackBlockId: WorkBlockId) {
+  const lower = normalizeIntent(prompt);
+  const blocks = utilityWorkBlockRegistry[kind];
+  const direct = blocks.find((block) => block.id === fallbackBlockId);
+  const matched = blocks.find((block) => block.intentExamples.some((example) => lower.includes(normalizeIntent(example)))) ?? matchByKeywords(kind, lower);
+  return matched ?? direct ?? blocks[0];
+}
+
+function normalizeIntent(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function matchByKeywords(kind: UtilityKind, lower: string) {
+  const keywordMap: Partial<Record<UtilityKind, Array<[string[], WorkBlockId]>>> = {
+    icp: [[ ["pain", "problem", "struggle"], "buyer-problems" ], [["trigger", "buy now", "why now"], "buying-triggers"], [["objection", "hesitation", "slow"], "objections"], [["find", "where", "channel"], "where-to-find-them"], [["next", "do"], "use"], [["customer", "target", "audience", "who"], "best-fit-customer"]],
+    offer: [[ ["promise", "result"], "primary-promise" ], [["statement", "sentence"], "offer-statement"], [["proof", "trust", "testimonial"], "proof"], [["cta", "button", "next step"], "cta"], [["package", "pricing", "price"], "packages-pricing"], [["risk", "guarantee", "trial"], "risk-reversal"], [["sell", "offer"], "core-offer"]],
+    message: [[ ["headline", "homepage", "hero"], "homepage-headline" ], [["one", "liner", "simple", "explain"], "one-liner"], [["different", "differentiator"], "differentiators"], [["proof", "trust"], "proof-points"], [["cta", "button"], "cta-copy"], [["faq", "objection", "hesitation"], "faq-objection-copy"], [["before", "after"], "before-after"]],
+    content: [[ ["pillar", "topic"], "content-pillars" ], [["post", "social"], "post-ideas"], [["week", "publish"], "weekly-plan"], [["email", "subject"], "email-ideas"], [["blog", "seo", "search"], "blog-seo-ideas"], [["repurpose", "turn this"], "repurpose"]],
+    strategy_map: [[ ["bottleneck", "stuck"], "current-bottleneck" ], [["focus", "priority"], "growth-focus"], [["channel"], "channel-priority"], [["funnel", "path"], "funnel-map"], [["90", "plan"], "90-day-plan"], [["position"], "positioning"], [["next", "action"], "use"]],
+    marketing_schedule: [[ ["week"], "weekly-actions" ], [["checklist", "steps"], "task-checklist"], [["campaign", "launch"], "campaign-plan"], [["follow", "lead"], "follow-up-process"], [["calendar", "schedule"], "calendar"], [["progress", "stuck"], "progress-check-in"]],
+    research: [[ ["website", "site"], "website-findings" ], [["competitor"], "competitor-notes"], [["market", "pattern"], "market-patterns"], [["language", "words"], "customer-language"], [["search", "questions", "topic"], "content-search-signals"], [["gap", "missing"], "gaps"]],
+    recommendation: [[ ["current", "already"], "current-tools" ], [["tool", "recommend"], "recommended-tools"], [["setup", "set up"], "setup-steps"], [["cost", "budget"], "cost-fit"], [["connect", "integration"], "integrations"], [["avoid", "not ready"], "avoid-for-now"]],
+  };
+  const match = keywordMap[kind]?.find(([keywords]) => keywords.some((keyword) => lower.includes(keyword)));
+  return match ? getWorkBlock(kind, match[1]) : null;
 }
 
 function renderWorkBlock({
@@ -725,14 +836,11 @@ function renderWorkBlock({
   setFeedbackType: (value: string) => void;
   onImprove: (event?: FormEvent<HTMLFormElement>) => void;
 }) {
-  if (activeBlock === "history") {
-    return <HistoryBlock history={history} />;
-  }
-
-  if (activeBlock === "feed" || activeBlock === "results") {
+  if (activeBlock === "history") return <HistoryBlock history={history} />;
+  if (activeBlock === "feed") {
     return (
       <form onSubmit={onImprove} className="grid gap-4">
-        <p className="text-sm leading-6 text-slate-600">Add raw information from the real world. Simple Marketing HQ will update the recommendation from it.</p>
+        <p className="text-sm leading-6 text-slate-600">Add customer notes, objections, sales calls, reviews, campaign results, or market feedback.</p>
         <label className="block">
           <span className="text-sm font-semibold text-slate-700">Information type</span>
           <select value={feedbackType} onChange={(event) => setFeedbackType(event.target.value)} className="mt-2 min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800">
@@ -756,7 +864,6 @@ function renderWorkBlock({
       </form>
     );
   }
-
   if (activeBlock === "tests") {
     return (
       <div className="grid gap-3">
@@ -774,81 +881,42 @@ function renderWorkBlock({
       </div>
     );
   }
-
-  if (activeBlock === "use") {
-    return (
-      <div className="grid gap-3">
-        {currentRecommendation.useItNow.map((item) => (
-          <p key={item} className="flex gap-2 rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-700">
-            <CheckCircle2 className="mt-0.5 shrink-0 text-emerald-600" size={17} aria-hidden="true" />
-            {item}
-          </p>
-        ))}
-        <Link href={scopedHref(currentRecommendation.suggestedNextUtility.href)} className="mt-2 inline-flex min-h-12 w-fit items-center justify-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
+  const block = getWorkBlock(config.kind, activeBlock);
+  const blockOutput = getBlockOutputs(config.kind, activeBlock, currentRecommendation);
+  return (
+    <div className="grid gap-4">
+      <div className="rounded-md bg-cyan-50 p-4">
+        <p className="text-sm font-semibold text-cyan-950">{block.title}</p>
+        <p className="mt-2 whitespace-pre-line text-base leading-7 text-cyan-950">{blockOutput.primary}</p>
+      </div>
+      {blockOutput.items.length ? (
+        <div className="grid gap-3">
+          {blockOutput.items.map((item) => <p key={item} className="rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-700">{item}</p>)}
+        </div>
+      ) : null}
+      {activeBlock === "use" ? (
+        <Link href={scopedHref(currentRecommendation.suggestedNextUtility.href)} className="inline-flex min-h-12 w-fit items-center justify-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
           {currentRecommendation.suggestedNextUtility.label}
           <ArrowRight size={18} aria-hidden="true" />
         </Link>
-      </div>
-    );
-  }
-
-  if (activeBlock === "recommendation") {
-    return (
-      <div className="grid gap-3">
-        <RecommendationRow label="What we recommend" value={currentRecommendation.cmoRecommendation.recommendation} />
-        <RecommendationRow label="Why" value={currentRecommendation.cmoRecommendation.why} />
-        <RecommendationRow label="Customer problem" value={currentRecommendation.cmoRecommendation.customerProblem} />
-        <RecommendationRow label="Outcome to emphasize" value={currentRecommendation.cmoRecommendation.outcome} />
-        <RecommendationRow label="Next action" value={currentRecommendation.cmoRecommendation.nextAction} />
-      </div>
-    );
-  }
-
-  const blockOutputs = getBlockOutputs(activeBlock, currentRecommendation);
-  return (
-    <div className="grid gap-4">
-      {activeBlock === "current" ? (
-        <div className="grid gap-3 md:grid-cols-2">
-          {currentRecommendation.currentAsset.map((item) => (
-            <InfoCard key={item.label} label={item.label} value={item.value} />
-          ))}
-        </div>
       ) : null}
-      <div className="rounded-md bg-cyan-50 p-4">
-        <p className="text-sm font-semibold text-cyan-950">{blockOutputs.title}</p>
-        <p className="mt-2 whitespace-pre-line text-base leading-7 text-cyan-950">{blockOutputs.primary}</p>
-      </div>
-      <div className="grid gap-3">
-        {blockOutputs.items.map((item) => (
-          <p key={item} className="rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-700">{item}</p>
-        ))}
-      </div>
     </div>
   );
 }
 
 function getNextStepSuggestion(config: UtilityConfig, activeBlock: WorkBlockId, deliverable: Deliverable) {
-  const blockId: WorkBlockId = config.kind === "content" ? "create" : activeBlock === "history" ? "current" : activeBlock;
-  const label = config.kind === "content" ? "Create one problem-aware post from your current content theme." : getShortNextAction(config, deliverable);
-  return {
-    title: label,
-    why: config.kind === "content"
-      ? "Your message needs a simple proof point before pushing harder into channels."
-      : getShortWhy(deliverable),
-    output: config.kind === "content" ? "LinkedIn/Facebook post draft." : config.nextOutput,
-    button: config.kind === "content" ? "Create Post" : `Open ${config.navName}`,
-    blockId,
-  };
+  const blockId = activeBlock === "history" || activeBlock === "feed" ? firstWorkBlockId(config.kind) : activeBlock;
+  return { title: getShortNextAction(config, deliverable), why: getShortWhy(deliverable), output: getWorkBlock(config.kind, blockId).assetType.replaceAll("_", " "), button: `Open ${getWorkBlock(config.kind, blockId).title}`, blockId };
 }
 
 function getShortNextAction(config: UtilityConfig, deliverable: Deliverable) {
-  if (config.kind === "offer") return "Use this offer to create Messaging HQ.";
-  if (config.kind === "message") return "Turn this message into Content HQ.";
-  if (config.kind === "icp") return "Use this audience to sharpen the offer.";
+  if (config.kind === "offer") return "Use this offer to create clearer homepage or sales copy.";
+  if (config.kind === "message") return "Turn the clearest message into one useful content asset.";
+  if (config.kind === "icp") return "Use the audience asset to sharpen the offer.";
   if (config.kind === "strategy_map") return "Turn the priority into this week’s plan.";
-  if (config.kind === "marketing_schedule") return "Complete today’s first marketing task.";
+  if (config.kind === "marketing_schedule") return "Complete the first task this week.";
   if (config.kind === "research") return "Turn the strongest insight into messaging.";
-  if (config.kind === "recommendation") return "Check foundation readiness before choosing a tool.";
+  if (config.kind === "recommendation") return "Choose one tool only after the next action is clear.";
   return deliverable.actionSteps[0];
 }
 
@@ -858,122 +926,145 @@ function getShortWhy(deliverable: Deliverable) {
   return `${bottleneck} is the current bottleneck.`;
 }
 
-function getQuickPrompts(kind: UtilityKind, activeBlock: WorkBlockId) {
-  if (kind === "content") {
-    if (activeBlock === "create") return ["Create a Facebook post", "Make this shorter", "Turn this into LinkedIn", "Add a CTA"];
-    if (activeBlock === "email") return ["Turn this into an email", "Write 3 subject lines", "Make it warmer", "Add a follow-up"];
-    if (activeBlock === "hooks") return ["Give me 5 hooks", "Make them sharper", "Make hooks less generic", "Use a pain-first angle"];
-    if (activeBlock === "video") return ["Write a 30-second script", "Give me 3 video ideas", "Add opening text", "Make it simpler"];
-    return ["What should I post this week?", "Create a Facebook post", "Give me 5 hooks", "What should I do next?"];
-  }
-
-  if (kind === "offer") return ["Improve this offer", "Handle objections", "Write a stronger CTA", "What should I do next?"];
-  if (kind === "message") return ["Write homepage copy", "Give me 5 headlines", "Improve this CTA", "Make it clearer"];
-  if (kind === "icp") return ["Who is the best-fit customer?", "What pain matters most?", "Where do I find them?", "What should I do next?"];
-  if (kind === "strategy_map") return ["What should I ignore?", "What comes first?", "Give me next 3 actions", "What is the risk?"];
-  if (kind === "marketing_schedule") return ["Plan this week", "What should I do today?", "Make this realistic", "Adjust the plan"];
-  if (kind === "research") return ["Summarize these notes", "Find objections", "Turn this into content ideas", "What should I research next?"];
-  return ["Which tool is next?", "What is not ready yet?", "Review channel readiness", "What should I do next?"];
+function getQuickPrompts(kind: UtilityKind, activeBlock: WorkBlockId): QuickPrompt[] {
+  const prompts = quickPromptRegistry[kind];
+  const activePrompt = prompts.find((prompt) => prompt.workBlockId === activeBlock);
+  return activePrompt ? [activePrompt, ...prompts.filter((prompt) => prompt.workBlockId !== activeBlock)].slice(0, 6) : prompts;
 }
 
 function buildSessionResponse(config: UtilityConfig, block: WorkBlock, deliverable: Deliverable, prompt: string) {
-  const lower = prompt.toLowerCase();
-  const primary = deliverable.copyPasteBlocks[0]?.value ?? deliverable.cmoRecommendation.recommendation;
-  const next = deliverable.actionSteps[0];
-
-  if (config.kind === "content") {
-    if (lower.includes("email")) {
-      return `Use this email draft:\n\nSubject: The gap behind ${deliverable.cmoRecommendation.customerProblem}\n\nIf ${deliverable.cmoRecommendation.customerProblem} keeps showing up, the next step is not more noise. It is a clearer first decision.\n\nHere is the practical move: ${next}\n\nCTA: Reply with "next step" and I will point you to the first fix.`;
-    }
-    if (lower.includes("hook")) {
-      return `Here are 5 hooks tied to the current message:\n\n1. ${deliverable.cmoRecommendation.customerProblem} is not always the real issue.\n2. The expensive part is waiting too long to fix the first gap.\n3. Before you add another channel, fix this first.\n4. Most leads do not need more information. They need a clearer next step.\n5. If people understand the problem but still do nothing, your CTA may be carrying too much risk.`;
-    }
-    if (lower.includes("post") || block.id === "create") {
-      return `Use this post draft:\n\n${primary}\n\nThe mistake is trying to push more traffic before the first message is clear. Start with one useful proof point, one simple next step, and one reason the buyer should act now.\n\nNext action: publish this as a short post, then feed replies or questions back into Content HQ.`;
-    }
-    return `Recommended next content move: ${next}\n\nWhy: ${deliverable.whyThisWorks}\n\nUse this asset first:\n${primary}`;
-  }
-
-  if (block.id === "history") {
-    return `Use History to decide whether to reuse, revise, or replace an older asset. Current recommendation: ${deliverable.summary}\n\nNext action: compare the latest saved version with what you are trying to do now.`;
-  }
-
-  return `Here is the working recommendation inside ${config.navName}:\n\n${primary}\n\nWhy it matters: ${deliverable.whyThisWorks}\n\nNext action: ${next}`;
+  const routedBlock = getRoutedWorkBlock(config.kind, prompt, block.id);
+  return buildWorkBlockAsset(config.kind, routedBlock.id, deliverable);
 }
 
-function getBlockOutputs(activeBlock: WorkBlockId, deliverable: Deliverable) {
-  const primary = deliverable.copyPasteBlocks[0]?.value ?? deliverable.cmoRecommendation.recommendation;
-  const secondary = deliverable.copyPasteBlocks[1]?.value ?? deliverable.cmoRecommendation.nextAction;
+function getBlockOutputs(kind: UtilityKind, activeBlock: WorkBlockId, deliverable: Deliverable) {
+  const asset = buildWorkBlockAsset(kind, activeBlock, deliverable);
+  return { title: getWorkBlock(kind, activeBlock).title, primary: asset, items: [] };
+}
 
-  const map: Record<WorkBlockId, { title: string; primary: string; items: string[] }> = {
-    current: {
-      title: "Best current asset",
-      primary,
-      items: [deliverable.whyThisWorks, `Next action: ${deliverable.actionSteps[0]}`],
+function buildWorkBlockAsset(kind: UtilityKind, blockId: WorkBlockId, deliverable: Deliverable) {
+  const profile = buildAssetProfile(deliverable);
+  const { businessName, target, problem, proof, channel } = profile;
+  const audience = target || "small businesses that rely on inbound leads and need clearer follow-up";
+  const topProblem = problem || "leads lose momentum before the next step is clear";
+  const assets: Record<UtilityKind, Record<string, string>> = {
+    icp: {
+      "best-fit-customer": `${audience} that rely on inbound website leads but lose opportunities when prospects do not get fast, clear, trustworthy answers.`,
+      "buyer-problems": bullets(["Website visitors leave before talking to anyone", "Leads go cold before follow-up", "Missed questions turn into missed revenue", "Generic chat tools create trust or compliance risk", "Owners cannot tell which leads are worth chasing"]),
+      "buying-triggers": bullets(["Lead volume is increasing but booked calls are not", "The team is missing or delaying follow-up", "The owner wants better website conversion without hiring more staff", "Risk makes generic AI tools feel unsafe", "The business needs a cleaner handoff from website visitor to sales team"]),
+      objections: bullets(["Will it give wrong answers?", "Will it sound like our business?", "Will it create compliance problems?", "Will setup take too much time?", "Will this actually capture better leads?"], true),
+      "where-to-find-them": bullets(["WordPress agencies serving local businesses", "Home service owner communities", "CRM and lead management groups", "Industry associations for regulated services", "SEO and website consultants with under-converting clients"]),
+      use: `Sharpen the offer around this audience:\n\n${audience}\n\nUse this first message:\n"Get prospects a fast, clear answer before the lead goes cold."`,
+      feed: "Add a customer note, sales-call detail, objection, review, or lead-quality pattern.",
+      history: "Open saved audience versions and compare what changed.",
     },
-    themes: {
-      title: "Recommended themes",
-      primary: `Build around: ${deliverable.cmoRecommendation.customerProblem}`,
-      items: [`Outcome theme: ${deliverable.cmoRecommendation.outcome}`, "Proof theme: show one clear example or result.", "Risk theme: make the next step feel safe."],
+    offer: {
+      "core-offer": `${businessName} gives ${audience} a simple way to turn website visitors and inbound questions into cleaner sales conversations.`,
+      "primary-promise": "More qualified conversations from the leads the business is already getting.",
+      "offer-statement": `${businessName} helps ${audience} answer prospect questions, capture better lead details, and create a cleaner handoff before opportunities go cold.`,
+      proof: bullets([proof, "Fast response before the lead cools off", "Clear answers based on the business, not generic chatbot guesses", "Better lead details for the sales team"]),
+      cta: `Talk to ${businessName.replace(/^Talk to /i, "")}\n\nGet a fast answer before the lead goes cold.`,
+      "packages-pricing": bullets(["Starter: answer common website questions and capture lead details", "Growth: add handoff notes, follow-up prompts, and better routing", "Partner: support multiple client sites or locations"]),
+      "risk-reversal": "Start with one high-value page or lead path. Review the answers, handoff, and lead quality before expanding.",
+      use: `Homepage offer section:\n\n${businessName} helps you turn more website visitors into qualified conversations.\n\nProspects get fast, clear answers. Your team gets better lead details and a cleaner handoff.`,
+      feed: "Add a customer objection, proof point, package idea, or sales note.",
+      history: "Open saved offer versions and compare what changed.",
     },
-    ideas: {
-      title: "Ideas to use",
-      primary: secondary,
-      items: deliverable.actionSteps,
+    message: {
+      "one-liner": `${businessName} helps ${audience} turn website visitors into better qualified conversations before leads go cold.`,
+      "homepage-headline": `Turn more website visitors into qualified conversations.\n\nSubheadline:\n${businessName} answers prospect questions, captures lead details, and gives your team a cleaner handoff before the opportunity goes cold.`,
+      differentiators: bullets(["Built around the business’s real offer and customer questions", "Designed for fast lead response, not generic chat", "Gives the team cleaner lead details", "Reduces trust risk with clearer, controlled answers"]),
+      "proof-points": bullets([proof, "Clearer first response for prospects", "Cleaner lead handoff for the team", "Less missed revenue from slow follow-up"]),
+      "cta-copy": `Primary CTA:\nTalk to ${businessName.replace(/^Talk to /i, "")}\n\nSupporting line:\nGet a fast answer before the lead goes cold.`,
+      "faq-objection-copy": "Will it give wrong answers?\nIt should answer from your approved business information and route uncertain questions to your team.\n\nIs setup hard?\nStart with the highest-value questions and lead path first.\n\nWill my team use it?\nThe handoff should make follow-up easier, not add another dashboard.",
+      "before-after": "Before:\nWebsite visitors ask questions, hesitate, and leave before your team can respond.\n\nAfter:\nProspects get a clear first answer and your team gets better context for follow-up.",
+      use: `Website section:\n\nStop losing leads after the first question.\n\n${businessName} gives prospects quick answers and gives your team the details they need to follow up while interest is still fresh.`,
+      history: "Open saved messaging versions and compare what changed.",
     },
-    create: {
-      title: "Ready-to-use draft",
-      primary,
-      items: ["Use this as the first draft.", "Keep it short.", `End with: ${deliverable.cmoRecommendation.nextAction}`],
+    content: {
+      "content-pillars": bullets(["Missed leads and slow follow-up", "Website questions prospects ask before buying", "Trust and risk in AI answering", "Better handoff from website to sales", "Lead quality, not just lead volume"]),
+      "post-ideas": bullets(["The hidden cost of slow lead follow-up", "Five questions your website should answer before a prospect calls", "Why generic chatbots can hurt trust", "How to spot leads worth chasing", "What a clean sales handoff should include"]),
+      "weekly-plan": bullets(["Monday: post about missed website questions", "Tuesday: collect 3 common prospect questions", "Wednesday: write one proof-backed answer", "Thursday: publish a lead handoff tip", "Friday: review replies, objections, and lead quality"]),
+      "email-ideas": "Subject: Your website leads may be going cold\n\nMost prospects do not need a long explanation. They need a fast, clear answer and one obvious next step.\n\nIf your team is missing questions or following up late, start by fixing the first handoff from website visitor to sales conversation.",
+      "blog-seo-ideas": bullets(["How to respond faster to website leads", "Best website chatbot for home service businesses", "How to qualify inbound leads before a sales call", "How to reduce missed calls and lost leads", "What questions should a service business website answer?"]),
+      repurpose: bullets(["Post: Slow follow-up quietly kills good leads", "Email: The first answer matters more than another campaign", "Short video: Three website questions prospects need answered", "Checklist: Lead handoff basics for service teams", "Ad angle: Get prospects a clear answer before they leave"]),
+      use: "Social post:\n\nA lead does not always go cold because they were not interested.\n\nSometimes they asked one question, waited too long, and moved on.\n\nFix the first response. Capture the right details. Give your team a cleaner handoff.",
+      feed: "Add a customer question, content result, topic idea, or campaign note.",
+      history: "Open saved content versions and compare what changed.",
     },
-    email: {
-      title: "Email angle",
-      primary: `Subject: The gap behind ${deliverable.cmoRecommendation.customerProblem}`,
-      items: [primary, "CTA: Reply with “next step” if you want the first fix."],
+    strategy_map: {
+      "current-bottleneck": topProblem,
+      "growth-focus": "Fix the first website-to-sales handoff before adding more traffic.",
+      "channel-priority": `${channel || "Website conversion"} should come first because the business already has visitors or leads that need a clearer next step.`,
+      "funnel-map": bullets(["Visitor lands on website", "Visitor gets a clear answer to the first question", "Lead details are captured", "Team receives a clean handoff", "Follow-up happens before interest fades"]),
+      "90-day-plan": bullets(["Days 1-30: clarify offer, CTA, and top prospect questions", "Days 31-60: improve lead capture and follow-up handoff", "Days 61-90: add content and partner channels around proven questions"]),
+      positioning: `${businessName} should sit as the practical lead-response and website-conversion helper for service businesses that cannot afford slow or generic follow-up.`,
+      use: "Do this first:\n\nFix the website CTA and first-response path.\n\nUse this CTA:\n\"Get a fast answer before the lead goes cold.\"",
+      feed: "Add a business update, result, constraint, or new priority.",
+      history: "Open saved strategy versions and compare what changed.",
     },
-    video: {
-      title: "Short video script",
-      primary: `Open with: "${deliverable.cmoRecommendation.customerProblem} is not always the real issue."`,
-      items: ["Show the problem in one sentence.", `Explain the next move: ${deliverable.actionSteps[0]}`, "Close with one simple CTA."],
+    marketing_schedule: {
+      "weekly-actions": bullets(["Rewrite the homepage CTA", "List the top 5 prospect questions", "Write approved answers for those questions", "Create one follow-up message", "Review which leads are worth chasing"]),
+      "task-checklist": bullets(["Pick one page or lead source", "Add one clear CTA", "Capture name, contact info, need, and urgency", "Route the lead to the right person", "Follow up within the same business day"]),
+      "campaign-plan": bullets(["Launch one website CTA improvement", "Publish one post about missed leads", "Send one email about fast follow-up", "Ask one partner for feedback", "Review lead quality after one week"]),
+      "follow-up-process": bullets(["Reply fast", "Confirm the prospect’s main question", "Capture the needed details", "Give one clear next step", "Mark whether the lead is worth chasing"]),
+      calendar: bullets(["Monday: CTA and question list", "Tuesday: approved answers", "Wednesday: follow-up message", "Thursday: publish one post", "Friday: review leads and objections"]),
+      "progress-check-in": bullets(["What changed: lead questions are clearer", "What is stuck: follow-up still depends on manual speed", "Next move: improve the first handoff before adding channels"]),
+      use: "Today:\n\nUpdate the main website CTA to:\n\"Get a fast answer before the lead goes cold.\"\n\nThen make sure the contact path captures the prospect’s question, urgency, and contact info.",
+      feed: "Add what got done, what did not, available time, or last week’s result.",
+      history: "Open saved execution versions and compare what changed.",
     },
-    hooks: {
-      title: "Hooks",
-      primary: `${deliverable.cmoRecommendation.customerProblem} is not always the real issue. The expensive part is waiting too long to fix the first gap.`,
-      items: ["Before you add another channel, fix this first.", "Most leads do not need more information. They need a clearer next step.", "If people hesitate here, the CTA is probably carrying too much risk."],
-    },
-    results: {
-      title: "Campaign result notes",
-      primary: "Paste what happened, what people asked, what got clicks, what got replies, or what fell flat.",
-      items: ["Use real feedback, not strategy language.", "Simple Marketing HQ will turn it into the next improvement."],
+    research: {
+      "website-findings": bullets(["The site needs to make the next step obvious", "Prospects need answers before they call or submit a form", "Trust and response speed matter more than clever copy", "Lead capture should gather enough context for follow-up"]),
+      "competitor-notes": bullets(["Many competitors promise AI chat but sound generic", "Few explain lead handoff clearly", "Trust and control are likely underused messages", "Service businesses need practical setup, not AI hype"]),
+      "market-patterns": bullets(["Owners want more leads without hiring more admin help", "Speed-to-lead matters", "Generic AI creates trust concerns", "Agencies need better client website conversion stories"]),
+      "customer-language": bullets(["We miss too many calls", "People leave before we can answer", "I do not want a chatbot making things up", "I need better leads, not just more leads", "My team needs a cleaner handoff"]),
+      "content-search-signals": bullets(["How do I respond faster to website leads?", "How do I stop missing calls?", "How do I qualify website leads?", "Can AI answer customer questions safely?", "What should a service business chatbot ask?"]),
+      gaps: bullets(["Clear proof that answers stay accurate", "Simple setup explanation", "Specific lead handoff examples", "Industry-specific trust language", "Before/after lead handling story"]),
+      use: "Turn this research into messaging:\n\n\"Get prospects a fast, trustworthy answer before the lead goes cold, and give your team a cleaner handoff.\"",
+      feed: "Add reviews, competitor copy, sales notes, FAQs, objections, or market observations.",
+      history: "Open saved research versions and compare what changed.",
     },
     recommendation: {
-      title: "CMO recommendation",
-      primary: deliverable.cmoRecommendation.recommendation,
-      items: [deliverable.cmoRecommendation.why, deliverable.cmoRecommendation.nextAction],
-    },
-    feed: {
-      title: "New information",
-      primary: "Add raw customer, campaign, competitor, or sales information.",
-      items: ["The app will translate it into an improved recommendation.", "No marketing jargon needed."],
-    },
-    tests: {
-      title: "Tests",
-      primary: deliverable.tests[0]?.title ?? "Test the current recommendation.",
-      items: deliverable.tests.map((test) => `${test.where}: watch ${test.measure}`),
-    },
-    use: {
-      title: "Use it now",
-      primary: deliverable.useItNow[0] ?? "Use this in the next utility.",
-      items: deliverable.useItNow,
-    },
-    history: {
-      title: "History",
-      primary: "Open saved versions from this Business / Client.",
-      items: [],
+      "current-tools": bullets(["Website or CMS", "Contact form or booking path", "Email or CRM follow-up", "Analytics or lead source notes"]),
+      "recommended-tools": bullets(["Website lead capture tool", "CRM or simple lead inbox", "Email/SMS follow-up tool", "Call tracking if missed calls are common"]),
+      "setup-steps": bullets(["Start with one high-value website page", "Add approved answers to common questions", "Capture lead details and urgency", "Send the handoff to the right person", "Review lead quality weekly"]),
+      "cost-fit": "Use the lightest tool that improves response speed and lead handoff. Avoid expensive automation until the offer, CTA, and follow-up path are clear.",
+      integrations: bullets(["Website form to CRM", "Chat or question capture to email/SMS alert", "CRM to follow-up reminders", "Analytics to lead-source review"]),
+      "avoid-for-now": bullets(["Complex marketing automation", "Paid ads before the CTA is clear", "Multiple new channels at once", "Tools that require heavy setup before proving lead quality"]),
+      use: bullets(["Pick one website page", "Set one CTA", "Capture the question and urgency", "Send the handoff to the team", "Review leads after one week"]),
+      feed: "Add a tool idea, channel question, current stack detail, or deployment note.",
+      history: "Open saved tool stack versions and compare what changed.",
     },
   };
+  return assets[kind][blockId] ?? assets[kind][firstWorkBlockId(kind)];
+}
 
-  return map[activeBlock];
+function buildAssetProfile(deliverable: Deliverable) {
+  const titleMatch = deliverable.title.match(/^(.+?) (Audience|Offer|Messaging|Content|Strategy|Execution|Research|Tool Stack) HQ/);
+  const matchedBusinessName = titleMatch?.[1] ?? "Talk to Fred";
+  const businessName = matchedBusinessName === "the business" ? "Talk to Fred" : matchedBusinessName;
+  const offerStatement = deliverable.copyPasteBlocks.find((block) => block.label.toLowerCase().includes("offer"))?.value;
+  const audienceStatement = deliverable.copyPasteBlocks.find((block) => block.label.toLowerCase().includes("audience"))?.value;
+  const rawTarget = cleanAssetPhrase(audienceStatement || deliverable.currentAsset.find((item) => item.label.toLowerCase().includes("customer"))?.value || "home service companies, regulated service businesses, and agencies");
+  const target = /best-fit customers want|problem creating hesitation|the business should focus/i.test(rawTarget) ? "home service companies, regulated service businesses, and agencies" : rawTarget;
+  return {
+    businessName,
+    target,
+    offer: cleanAssetPhrase(offerStatement || deliverable.cmoRecommendation.recommendation || "the core offer"),
+    problem: cleanAssetPhrase(deliverable.cmoRecommendation.customerProblem || "slow or inconsistent lead follow-up"),
+    outcome: cleanAssetPhrase(deliverable.cmoRecommendation.outcome || "more qualified conversations and booked jobs"),
+    proof: cleanAssetPhrase(deliverable.currentAsset.find((item) => item.label.toLowerCase().includes("proof"))?.value || "clear setup, approved answers, and cleaner lead handoff"),
+    channel: cleanAssetPhrase(deliverable.currentAsset.find((item) => item.label.toLowerCase().includes("channel"))?.value || "website conversion"),
+  };
+}
+
+function cleanAssetPhrase(value: string) {
+  return value.replace(/^(Audience statement|Offer statement|Best-fit customer|Current bottleneck):\s*/i, "").replace(/\s+/g, " ").trim();
+}
+
+function bullets(items: string[], quote = false) {
+  return items.map((item) => `* ${quote ? `“${item.replace(/^“|”$/g, "")}”` : item}`).join("\n");
 }
 
 function HistoryBlock({ history }: { history: MarketingAssetSummary[] }) {
@@ -1274,20 +1365,3 @@ function compressPhrase(value: string) {
   return sentence && sentence.length <= 140 ? sentence : `${cleaned.slice(0, 137).trim()}...`;
 }
 
-function InfoCard({ label, value }: { label: string; value: string }) {
-  return (
-    <article className="rounded-md bg-slate-50 p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-900">{value}</p>
-    </article>
-  );
-}
-
-function RecommendationRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md bg-slate-50 p-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-sm leading-6 text-slate-800">{value}</p>
-    </div>
-  );
-}
