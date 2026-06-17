@@ -58,7 +58,7 @@ Use the Engagement -> Interaction -> Adoption sequence:
 - Interaction invites a small, safe next move.
 - Adoption creates relief, confidence, and clear action.
 
-Use selected business/client context, confirmed business profile, website analysis, diagnostic answers, latest ICP, latest offer, latest messaging asset, latest Problem Narrative, latest content asset, and focused user input.
+Use selected business/client context, confirmed business profile, website analysis, diagnostic answers, latest ICP, latest offer, latest messaging asset, latest Problem Narrative, latest content asset, and optional refine input.
 
 Do not generate random disconnected messages. The sequence must build logically from attention to understanding to trust to action. Do not add hype, scarcity, or unsupported claims. Use proof before asking for commitment. Make each step do one job.
 
@@ -84,7 +84,7 @@ ${sharedOutputRules}`,
     "latest_messaging_asset",
     "latest_problem_narrative",
     "latest_content_asset",
-    "focused_user_input",
+    "optional_refine_input",
   ],
   input_fields: [
     { id: "sequence_type", label: "What sequence do you want to build?", helpText: "Choose the format or campaign path.", placeholder: "email sequence, landing page sequence, ad-to-page sequence, social campaign sequence, follow-up sequence, video/script sequence, sales conversation sequence" },

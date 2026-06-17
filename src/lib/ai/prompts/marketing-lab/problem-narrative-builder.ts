@@ -62,7 +62,7 @@ Act as the Simple Marketing HQ Problem Narrative Builder. Your job is to help th
 
 Do not sell, pitch, or jump straight to tactics. Define the problem clearly first. Externalize the problem so the buyer is never framed as foolish or at fault. Respect buyer effort, explain why prior attempts may have failed, and stay with one clear problem.
 
-Use selected business/client context, confirmed business profile, website analysis, diagnostic answers, latest ICP, latest offer, latest Buyer Psychology Audit, latest Buyer Messaging output, and focused user input.
+Use selected business/client context, confirmed business profile, website analysis, diagnostic answers, latest ICP, latest offer, latest Buyer Psychology Audit, latest Buyer Messaging output, and optional refine input.
 
 The output should answer:
 - What problem does the buyer actually feel?
@@ -97,7 +97,7 @@ ${sharedOutputRules}`,
     "latest_offer_asset",
     "latest_buyer_psychology_audit",
     "latest_buyer_messaging_output",
-    "focused_user_input",
+    "optional_refine_input",
   ],
   input_fields: [
     { id: "customer_problem", label: "What customer problem do you want to explain?", helpText: "Use the buyer's words where possible.", placeholder: "They are confused by options, leads are not converting, the process feels risky..." },

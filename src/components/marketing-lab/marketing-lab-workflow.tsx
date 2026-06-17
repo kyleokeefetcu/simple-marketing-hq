@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import type { FormEvent } from "react";
-import { ArrowRight, Beaker, Sparkles } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Copy, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { AppHeader } from "@/components/app-header";
 import { AssetSavePanel } from "@/components/asset-save-panel";
 import { promptRegistry } from "@/lib/ai/prompts/registry";
@@ -268,7 +268,8 @@ export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
   const [priorAssets, setPriorAssets] = useState<Partial<Record<MarketingAssetType, MarketingAssetSummary>>>({});
   const [answers, setAnswers] = useState<Record<string, string>>(() => Object.fromEntries(prompt.input_fields.map((field) => [field.id, ""])));
   const [deliverable, setDeliverable] = useState<LabDeliverable | null>(null);
-  const [status, setStatus] = useState("Load or select a Business / Client to tailor this audit.");
+  const [status, setStatus] = useState("Load or select a Business / Client to tailor this tool.");
+  const [showRefineInput, setShowRefineInput] = useState(false);
 
   const selectedBusiness = businesses.find((business) => business.id === selectedBusinessId) ?? null;
   const businessName = selectedBusiness?.name || result?.businessName || "Selected business";
@@ -314,7 +315,7 @@ export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
         setSelectedBusinessId(nextBusinessId);
 
         if (!nextBusinessId) {
-          setStatus("Create or select a Business / Client to tailor this audit.");
+          setStatus("Create or select a Business / Client to tailor this tool.");
           return;
         }
 
@@ -354,10 +355,8 @@ export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
     }));
   }
 
-  const generated = useMemo(
-    () => deliverable ?? buildLabDeliverable(prompt, { answers: {}, result, business: selectedBusiness, latestDiagnostic, priorAssets }),
-    [deliverable, latestDiagnostic, priorAssets, prompt, result, selectedBusiness],
-  );
+  const hasSavedContext = Boolean(selectedBusiness || result || latestDiagnostic || Object.values(priorAssets).some(Boolean));
+  const generated = deliverable;
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -377,6 +376,7 @@ export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Selected context</p>
             <h2 className="mt-2 text-2xl font-semibold text-slate-950">{businessName}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{getContextSourceLine(businessName, hasSavedContext)}</p>
             <div className="mt-4 grid gap-3">
               <ContextRow label="Industry/category" value={result?.industryFit || result?.answers.industryLabel || "Not confirmed yet"} />
               <ContextRow label="What they sell" value={result?.answers.whatSelling || selectedBusiness?.services || "Not confirmed yet"} />
@@ -400,508 +400,48 @@ export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
               ))}
             </select>
             <p className="mt-2 text-sm leading-6 text-slate-600">{status}</p>
+            {!hasSavedContext ? <p className="mt-3 rounded-md bg-amber-50 p-3 text-sm leading-6 text-amber-900">Run a diagnostic first or add a page/message to review.</p> : null}
           </article>
 
           <form onSubmit={handleGenerate} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Focused input</p>
-            <h2 className="mt-2 text-2xl font-semibold text-slate-950">Answer the short audit questions.</h2>
-            <div className="mt-4 grid gap-4">
-              {prompt.input_fields.map((field) => (
-                <label key={field.id} className="block">
-                  <span className="text-sm font-semibold text-slate-700">{field.label}</span>
-                  <span className="mt-1 block text-xs leading-5 text-slate-500">{field.helpText}</span>
-                  <input
-                    value={answers[field.id] ?? ""}
-                    onChange={(event) => setAnswers((current) => ({ ...current, [field.id]: event.target.value }))}
-                    placeholder={field.placeholder}
-                    className="mt-2 min-h-12 w-full rounded-md border border-slate-300 px-4 py-3 text-sm outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100"
-                  />
-                </label>
-              ))}
-            </div>
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Generate</p>
+            <h2 className="mt-2 text-2xl font-semibold text-slate-950">Get the usable asset.</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Simple Marketing HQ will use the selected business, saved diagnostic, website analysis, and saved assets by default.</p>
             <button type="submit" className="mt-5 inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
               <Sparkles size={18} aria-hidden="true" />
-              Generate audit
+              Generate
             </button>
+            <button type="button" onClick={() => setShowRefineInput((current) => !current)} className="mt-4 block text-sm font-semibold text-cyan-800">
+              Optional: narrow the result
+            </button>
+            {showRefineInput || !hasSavedContext ? (
+              <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm leading-6 text-slate-600">Use this only if you want to focus the output on a specific page, buyer, or action.</p>
+                <div className="mt-4 grid gap-4">
+                  {prompt.input_fields.map((field) => (
+                    <label key={field.id} className="block">
+                      <span className="text-sm font-semibold text-slate-700">{field.label}</span>
+                      <span className="mt-1 block text-xs leading-5 text-slate-500">{field.helpText}</span>
+                      <input
+                        value={answers[field.id] ?? ""}
+                        onChange={(event) => setAnswers((current) => ({ ...current, [field.id]: event.target.value }))}
+                        placeholder={field.placeholder}
+                        className="mt-2 min-h-12 w-full rounded-md border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100"
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </form>
         </section>
 
-        <section className="mt-5 rounded-lg border border-cyan-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Structured output</p>
-          <h2 className="mt-2 text-2xl font-semibold text-slate-950">{generated.title}</h2>
-          {!deliverable ? <p className="mt-2 text-sm leading-6 text-slate-600">Preview shown. Answer the audit questions and generate to tailor this output.</p> : null}
-          <div className="mt-5 grid gap-4 lg:grid-cols-3">
-            <InfoCard title="Current-state assessment" value={generated.current_state_assessment} />
-            <InfoCard title="Before" value={generated.before_after.before} />
-            <InfoCard title="After" value={generated.before_after.after} highlight />
-          </div>
-          <article className="mt-4 rounded-md bg-cyan-50 p-4">
-            <p className="text-sm font-semibold text-cyan-950">Why this matters</p>
-            <p className="mt-2 text-sm leading-6 text-cyan-900">{generated.before_after.why_better}</p>
-          </article>
-        </section>
-
-        {generated.market_demand_read ? (
-          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Market Demand Read</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {Object.entries(generated.market_demand_read).map(([label, value]) => (
-                <div key={label} className="rounded-md bg-slate-50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replace(/_/g, " ")}</p>
-                  <p className="mt-2 text-lg font-semibold text-slate-950">{value}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {generated.buyer_psychology_summary ? (
-          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Buyer Psychology Summary</p>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {Object.entries(generated.buyer_psychology_summary).map(([label, value]) => (
-                <div key={label} className="rounded-md bg-slate-50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replace(/_/g, " ")}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {generated.before_after_improvements?.length ? (
-          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Before/After Improvements</p>
-            <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              {generated.before_after_improvements.map((improvement) => (
-                <article key={improvement.type} className="rounded-md border border-slate-200 p-4">
-                  <h2 className="text-lg font-semibold capitalize text-slate-950">{improvement.type.replace(/_/g, " ")}</h2>
-                  <div className="mt-3 grid gap-3">
-                    <InfoCard title="Before" value={improvement.before} />
-                    <InfoCard title="After" value={improvement.after} highlight />
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-slate-700">{improvement.why_the_after_is_better}</p>
-                  <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Use it: {improvement.where_to_use_it.join(", ")}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {generated.messaging_strategy ? (
-          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Messaging Strategy</p>
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {Object.entries(generated.messaging_strategy).map(([label, value]) => (
-                <div key={label} className="rounded-md bg-slate-50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replace(/_/g, " ")}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {generated.core_message_assets ? (
-          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Core Message Assets</p>
-            <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              {Object.entries(generated.core_message_assets).map(([label, value]) => (
-                <div key={label} className="rounded-md border border-slate-200 p-4">
-                  <p className="text-sm font-semibold capitalize text-slate-500">{label.replace(/_/g, " ")}</p>
-                  <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-900">{Array.isArray(value) ? value.join("\n") : value}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {generated.channel_versions ? (
-          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Channel Versions</p>
-            <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              {Object.entries(generated.channel_versions).map(([label, value]) => (
-                <div key={label} className="rounded-md border border-slate-200 p-4">
-                  <p className="text-sm font-semibold capitalize text-slate-500">{label.replace(/_/g, " ")}</p>
-                  <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-900">{value}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {generated.objection_responses?.length ? (
-          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Objection Responses</p>
-            <div className="mt-4 grid gap-4 lg:grid-cols-3">
-              {generated.objection_responses.map((item) => (
-                <article key={item.objection} className="rounded-md border border-slate-200 p-4">
-                  <p className="text-sm font-semibold text-slate-500">{item.objection}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-900">{item.response}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {generated.problem_summary ? (
-          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Problem Summary</p>
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {Object.entries(generated.problem_summary).map(([label, value]) => (
-                <div key={label} className="rounded-md bg-slate-50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replace(/_/g, " ")}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {generated.problem_narrative ? (
-          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Problem Narrative</p>
-            <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              {Object.entries(generated.problem_narrative).map(([label, value]) => (
-                <div key={label} className="rounded-md border border-slate-200 p-4">
-                  <p className="text-sm font-semibold capitalize text-slate-500">{label.replace(/_/g, " ")}</p>
-                  <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-900">{value}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {generated.tension_points || generated.belief_shift ? (
-          <section className="mt-5 grid gap-5 lg:grid-cols-2">
-            {generated.tension_points ? (
-              <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Tension Points</p>
-                <div className="mt-4 grid gap-3">
-                  {Object.entries(generated.tension_points).map(([label, value]) => (
-                    <div key={label} className="rounded-md bg-slate-50 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replace(/_/g, " ")}</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            ) : null}
-            {generated.belief_shift ? (
-              <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Belief Shift</p>
-                <div className="mt-4 grid gap-3">
-                  {Object.entries(generated.belief_shift).map(([label, value]) => (
-                    <div key={label} className="rounded-md bg-slate-50 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replace(/_/g, " ")}</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            ) : null}
-          </section>
-        ) : null}
-
-        {generated.content_angles ? (
-          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Content Angles</p>
-            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {Object.entries(generated.content_angles).map(([label, values]) => (
-                <article key={label} className="rounded-md border border-slate-200 p-4">
-                  <p className="text-sm font-semibold capitalize text-slate-500">{label.replace(/_/g, " ")}</p>
-                  <div className="mt-3 grid gap-2">
-                    {values.map((value) => (
-                      <p key={value} className="rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-800">
-                        {value}
-                      </p>
-                    ))}
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {generated.sequence_strategy ? (
-          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Sequence Strategy</p>
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {Object.entries(generated.sequence_strategy).map(([label, value]) => (
-                <div key={label} className="rounded-md bg-slate-50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replace(/_/g, " ")}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {generated.sequence_map?.length ? (
-          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Sequence Map</p>
-            <div className="mt-4 grid gap-4">
-              {generated.sequence_map.map((step) => (
-                <article key={step.step_number} className="rounded-md border border-slate-200 p-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-md bg-cyan-900 text-sm font-semibold text-white">{step.step_number}</span>
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-950">{step.purpose}</h2>
-                      <p className="mt-2 text-sm leading-6 text-slate-900">{step.message}</p>
-                      <p className="mt-3 text-sm leading-6 text-slate-600">{step.why_this_step_matters}</p>
-                      <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-cyan-800">Next move: {step.cta_or_next_move}</p>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {generated.copy_blocks ? (
-          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Sequence Copy Blocks</p>
-            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {Object.entries(generated.copy_blocks).map(([label, values]) => (
-                <article key={label} className="rounded-md border border-slate-200 p-4">
-                  <p className="text-sm font-semibold capitalize text-slate-500">{label.replace(/_/g, " ")}</p>
-                  <div className="mt-3 grid gap-2">
-                    {values.map((value) => (
-                      <p key={value} className="rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-800">
-                        {value}
-                      </p>
-                    ))}
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {generated.objection_handling?.length ? (
-          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Sequence Objection Handling</p>
-            <div className="mt-4 grid gap-4 lg:grid-cols-3">
-              {generated.objection_handling.map((item) => (
-                <article key={item.likely_objection} className="rounded-md border border-slate-200 p-4">
-                  <p className="text-sm font-semibold text-slate-500">{item.likely_objection}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-900">{item.response}</p>
-                  <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-cyan-800">Use in: {item.where_it_belongs_in_sequence}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {generated.reality_check_summary ? (
-          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Reality Check Summary</p>
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {Object.entries(generated.reality_check_summary).map(([label, value]) => (
-                <div key={label} className="rounded-md bg-slate-50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replace(/_/g, " ")}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {generated.what_is_working || generated.what_to_ignore_for_now ? (
-          <section className="mt-5 grid gap-5 lg:grid-cols-2">
-            {generated.what_is_working ? (
-              <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">What Is Working</p>
-                <div className="mt-4 grid gap-4">
-                  {Object.entries(generated.what_is_working).map(([label, values]) => (
-                    <div key={label} className="rounded-md border border-slate-200 p-4">
-                      <p className="text-sm font-semibold capitalize text-slate-500">{label.replace(/_/g, " ")}</p>
-                      <div className="mt-3 grid gap-2">
-                        {values.map((value) => (
-                          <p key={value} className="rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-800">
-                            {value}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            ) : null}
-            {generated.what_to_ignore_for_now ? (
-              <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Ignore For Now</p>
-                <div className="mt-4 grid gap-4">
-                  {Object.entries(generated.what_to_ignore_for_now).map(([label, values]) => (
-                    <div key={label} className="rounded-md border border-slate-200 p-4">
-                      <p className="text-sm font-semibold capitalize text-slate-500">{label.replace(/_/g, " ")}</p>
-                      <div className="mt-3 grid gap-2">
-                        {values.map((value) => (
-                          <p key={value} className="rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-800">
-                            {value}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            ) : null}
-          </section>
-        ) : null}
-
-        {generated.what_is_confusing || generated.what_is_missing ? (
-          <section className="mt-5 grid gap-5 lg:grid-cols-2">
-            {generated.what_is_confusing ? (
-              <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">What Is Confusing</p>
-                <div className="mt-4 grid gap-3">
-                  {Object.entries(generated.what_is_confusing).map(([label, value]) => (
-                    <div key={label} className="rounded-md bg-slate-50 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replace(/_/g, " ")}</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            ) : null}
-            {generated.what_is_missing ? (
-              <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">What Is Missing</p>
-                <div className="mt-4 grid gap-3">
-                  {Object.entries(generated.what_is_missing).map(([label, value]) => (
-                    <div key={label} className="rounded-md bg-slate-50 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replace(/_/g, " ")}</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            ) : null}
-          </section>
-        ) : null}
-
-        {generated.highest_leverage_fix ? (
-          <section className="mt-5 rounded-lg border border-cyan-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Highest-Leverage Fix</p>
-            <div className="mt-4 grid gap-4 lg:grid-cols-3">
-              {Object.entries(generated.highest_leverage_fix).map(([label, value]) => (
-                <div key={label} className="rounded-md bg-cyan-50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-cyan-900">{label.replace(/_/g, " ")}</p>
-                  <p className="mt-2 text-sm leading-6 text-cyan-950">{value}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        <section className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {generated.sections.map((section) => (
-            <article key={section.title} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-950">{section.title}</h2>
-              <div className="mt-4 grid gap-3">
-                {section.items.map((item) => (
-                  <p key={item} className="rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-700">
-                    {item}
-                  </p>
-                ))}
-              </div>
-            </article>
-          ))}
-        </section>
-
-        <section className="mt-5 grid gap-5 lg:grid-cols-[1fr_0.85fr]">
-          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-xl font-semibold text-slate-950">Copy/paste-ready deliverables</h2>
-            <div className="mt-4 grid gap-3">
-              {generated.copy_paste_deliverables.map((block) => (
-                <div key={block.label} className="rounded-md border border-slate-200 p-4">
-                  <p className="text-sm font-semibold text-slate-500">{block.label}</p>
-                  <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-900">{block.value}</p>
-                </div>
-              ))}
-            </div>
-          </article>
-
-          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-xl font-semibold text-slate-950">Next 3 actions</h2>
-            <div className="mt-4 grid gap-3">
-              {generated.next_3_actions.map((step, index) => (
-                <div key={step} className="flex gap-3 rounded-md border border-slate-200 p-4">
-                  <span className="grid size-7 shrink-0 place-items-center rounded-md bg-cyan-900 text-sm font-semibold text-white">{index + 1}</span>
-                  <p className="text-sm leading-6 text-slate-700">{step}</p>
-                </div>
-              ))}
-            </div>
-            <Link href={scopedHref(generated.recommended_next_utility)} className="mt-5 inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
-              Open recommended utility
-              <ArrowRight size={18} aria-hidden="true" />
-            </Link>
-            {prompt.role_id === "market_demand_check" ? (
-              <div className="mt-3 grid gap-3">
-                <Link href={scopedHref("/offer-builder")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-cyan-900 px-5 py-3 font-semibold text-cyan-900">
-                  Send to Offer Builder
-                </Link>
-                <Link href={scopedHref("/message-builder")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 px-5 py-3 font-semibold text-slate-800">
-                  Use this in Message Builder
-                </Link>
-              </div>
-            ) : null}
-            {prompt.role_id === "buyer_psychology_audit" ? (
-              <div className="mt-3 grid gap-3">
-                <Link href={scopedHref("/message-builder")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-cyan-900 px-5 py-3 font-semibold text-cyan-900">
-                  Send to Message Builder
-                </Link>
-                <Link href={scopedHref("/content-engine")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 px-5 py-3 font-semibold text-slate-800">
-                  Create content from this
-                </Link>
-              </div>
-            ) : null}
-            {prompt.role_id === "buyer_messaging_engine" ? (
-              <div className="mt-3 grid gap-3">
-                <Link href={scopedHref("/content-engine")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-cyan-900 px-5 py-3 font-semibold text-cyan-900">
-                  Send to Content Engine
-                </Link>
-                <Link href={scopedHref("/strategy-map")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 px-5 py-3 font-semibold text-slate-800">
-                  Use in Strategy Map
-                </Link>
-              </div>
-            ) : null}
-            {prompt.role_id === "problem_narrative_builder" ? (
-              <div className="mt-3 grid gap-3">
-                <Link href={scopedHref("/content-engine")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-cyan-900 px-5 py-3 font-semibold text-cyan-900">
-                  Send to Content Engine
-                </Link>
-                <Link href={scopedHref("/message-builder")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 px-5 py-3 font-semibold text-slate-800">
-                  Use in Message Builder
-                </Link>
-              </div>
-            ) : null}
-            {prompt.role_id === "messaging_sequence_builder" ? (
-              <div className="mt-3 grid gap-3">
-                <Link href={scopedHref("/marketing-schedule")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-cyan-900 px-5 py-3 font-semibold text-cyan-900">
-                  Send to Marketing Schedule
-                </Link>
-                <Link href={scopedHref("/content-engine")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 px-5 py-3 font-semibold text-slate-800">
-                  Build content from this
-                </Link>
-              </div>
-            ) : null}
-            {prompt.role_id === "marketing_reality_check" ? (
-              <div className="mt-3 grid gap-3">
-                <Link href={scopedHref(generated.recommended_next_utility)} className="inline-flex min-h-12 items-center justify-center rounded-md border border-cyan-900 px-5 py-3 font-semibold text-cyan-900">
-                  Open the fix-first utility
-                </Link>
-                <Link href={scopedHref("/advisor")} className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 px-5 py-3 font-semibold text-slate-800">
-                  Ask Advisor what to ignore
-                </Link>
-              </div>
-            ) : null}
-          </article>
-        </section>
+        {generated ? <LabResultCard deliverable={generated} roleId={prompt.role_id} businessName={businessName} scopedHref={scopedHref} /> : null}
 
         {deliverable ? (
           <AssetSavePanel
+            saveButtonLabel="Save to AI training"
+            heading="Save to AI training"
             roleId={prompt.role_id}
             assetType={prompt.asset_type}
             title={`${businessName} ${prompt.display_name}`}
@@ -916,20 +456,104 @@ export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
               output_schema: prompt.output_schema,
             }}
           />
-        ) : (
-          <section className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-start gap-3">
-              <Beaker className="mt-1 text-cyan-800" size={22} aria-hidden="true" />
-              <div>
-                <h2 className="text-xl font-semibold text-slate-950">Save history appears after generation.</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600">Generate the audit first, then save it to the selected Business / Client history.</p>
-              </div>
-            </div>
-          </section>
-        )}
+        ) : null}
       </section>
     </main>
   );
+}
+
+function LabResultCard({ deliverable, roleId, businessName, scopedHref }: { deliverable: LabDeliverable; roleId: PromptRoleId; businessName: string; scopedHref: (href: string) => string }) {
+  const actions = getLabActions(roleId, deliverable.recommended_next_utility);
+  return (
+    <section className="mt-5 rounded-lg border border-cyan-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Result</p>
+          <h2 className="mt-2 text-2xl font-semibold text-slate-950">{deliverable.title}</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Using saved website analysis for {businessName}.</p>
+        </div>
+        <button type="button" onClick={() => void copyLabOutput(deliverable)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-slate-300 px-4 text-sm font-semibold text-slate-800">
+          <Copy size={16} aria-hidden="true" />
+          Copy
+        </button>
+      </div>
+
+      <div className="mt-5 grid gap-4">
+        {deliverable.sections.map((section) => (
+          <article key={section.title} className="rounded-md border border-slate-200 p-4">
+            <h3 className="text-base font-semibold text-slate-950">{section.title}</h3>
+            <div className="mt-3 grid gap-2">
+              {section.items.map((item) => (
+                <p key={item} className="text-sm leading-6 text-slate-700">{item}</p>
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {deliverable.copy_paste_deliverables.length ? (
+        <article className="mt-4 rounded-md bg-cyan-50 p-4">
+          <h3 className="text-base font-semibold text-cyan-950">Copy/Paste Assets</h3>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            {deliverable.copy_paste_deliverables.map((block) => (
+              <div key={block.label} className="rounded-md bg-white p-3">
+                <p className="text-sm font-semibold text-slate-500">{block.label}</p>
+                <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-900">{block.value}</p>
+              </div>
+            ))}
+          </div>
+        </article>
+      ) : null}
+
+      <article className="mt-4 rounded-md border border-slate-200 p-4">
+        <h3 className="text-base font-semibold text-slate-950">Next Step</h3>
+        <p className="mt-2 text-sm leading-6 text-slate-700">{deliverable.next_3_actions[0]}</p>
+      </article>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {actions.map((action) => (
+          <Link key={action.label} href={scopedHref(action.href)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-cyan-900 px-4 text-sm font-semibold text-cyan-900">
+            {action.label}
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function getLabActions(roleId: PromptRoleId, recommendedHref: string) {
+  if (roleId === "buyer_psychology_audit") {
+    return [
+      { label: "Send to Messaging HQ", href: "/message-builder" },
+      { label: "Send to Research HQ", href: "/research-hub" },
+      { label: "Send to Strategy HQ", href: "/strategy-map" },
+    ];
+  }
+  if (roleId === "buyer_messaging_engine") {
+    return [
+      { label: "Send to Messaging HQ", href: "/message-builder" },
+      { label: "Send to Offer HQ", href: "/offer-builder" },
+      { label: "Send to Content HQ", href: "/content-engine" },
+    ];
+  }
+  if (roleId === "market_demand_check") {
+    return [
+      { label: "Send to Offer HQ", href: "/offer-builder" },
+      { label: "Send to Messaging HQ", href: "/message-builder" },
+      { label: "Send to Execution HQ", href: "/marketing-schedule" },
+    ];
+  }
+  return [{ label: "Open matching HQ", href: recommendedHref }];
+}
+
+async function copyLabOutput(deliverable: LabDeliverable) {
+  const sectionText = deliverable.sections.map((section) => `${section.title}\n${section.items.join("\n")}`).join("\n\n");
+  const copyText = deliverable.copy_paste_deliverables.map((block) => `${block.label}\n${block.value}`).join("\n\n");
+  await navigator.clipboard.writeText([deliverable.title, sectionText, copyText, `Next Step\n${deliverable.next_3_actions[0]}`].filter(Boolean).join("\n\n"));
+}
+
+function getContextSourceLine(businessName: string, hasSavedContext: boolean) {
+  return hasSavedContext ? `Using saved website analysis for ${businessName}.` : "Run a diagnostic first or add a page/message to review.";
 }
 
 function buildLabDeliverable(
@@ -952,27 +576,27 @@ function buildLabDeliverable(
   const savedAssetSignal = Object.values(context.priorAssets).some(Boolean) ? "Use the strongest saved asset as source material." : "Generate the first version and save it as the source asset.";
 
   if (prompt.role_id === "market_demand_check") {
-    return buildMarketDemandDeliverable(prompt, context, { businessName, offer, customer, bottleneck, outcome, primaryInput });
+    return compactLabDeliverable(prompt.role_id, buildMarketDemandDeliverable(prompt, context, { businessName, offer, customer, bottleneck, outcome, primaryInput }), { businessName, offer, customer, bottleneck, outcome, primaryInput });
   }
 
   if (prompt.role_id === "buyer_psychology_audit") {
-    return buildBuyerPsychologyDeliverable(context, { businessName, offer, customer, bottleneck, outcome, primaryInput });
+    return compactLabDeliverable(prompt.role_id, buildBuyerPsychologyDeliverable(context, { businessName, offer, customer, bottleneck, outcome, primaryInput }), { businessName, offer, customer, bottleneck, outcome, primaryInput });
   }
 
   if (prompt.role_id === "buyer_messaging_engine") {
-    return buildBuyerMessagingDeliverable(context, { businessName, offer, customer, bottleneck, outcome, primaryInput });
+    return compactLabDeliverable(prompt.role_id, buildBuyerMessagingDeliverable(context, { businessName, offer, customer, bottleneck, outcome, primaryInput }), { businessName, offer, customer, bottleneck, outcome, primaryInput });
   }
 
   if (prompt.role_id === "problem_narrative_builder") {
-    return buildProblemNarrativeDeliverable(context, { businessName, offer, customer, bottleneck, outcome, primaryInput });
+    return compactLabDeliverable(prompt.role_id, buildProblemNarrativeDeliverable(context, { businessName, offer, customer, bottleneck, outcome, primaryInput }), { businessName, offer, customer, bottleneck, outcome, primaryInput });
   }
 
   if (prompt.role_id === "messaging_sequence_builder") {
-    return buildMessagingSequenceDeliverable(context, { businessName, offer, customer, bottleneck, outcome, primaryInput });
+    return compactLabDeliverable(prompt.role_id, buildMessagingSequenceDeliverable(context, { businessName, offer, customer, bottleneck, outcome, primaryInput }), { businessName, offer, customer, bottleneck, outcome, primaryInput });
   }
 
   if (prompt.role_id === "marketing_reality_check") {
-    return buildMarketingRealityCheckDeliverable(context, { businessName, offer, customer, bottleneck, outcome, primaryInput });
+    return compactLabDeliverable(prompt.role_id, buildMarketingRealityCheckDeliverable(context, { businessName, offer, customer, bottleneck, outcome, primaryInput }), { businessName, offer, customer, bottleneck, outcome, primaryInput });
   }
 
   return {
@@ -987,7 +611,7 @@ function buildLabDeliverable(
     },
     sections: [
       {
-        title: "Consultant diagnosis",
+        title: "Recommended Asset",
         items: [
           `${prompt.purpose}`,
           `Business context: ${businessName} sells ${offer}.`,
@@ -995,7 +619,7 @@ function buildLabDeliverable(
         ],
       },
       {
-        title: "What to improve",
+        title: "Fix First",
         items: [
           "Make the buyer problem more specific.",
           "Connect proof to the hesitation that blocks action.",
@@ -1003,14 +627,14 @@ function buildLabDeliverable(
         ],
       },
       {
-        title: "Role-specific output",
+        title: "Copy/Paste Assets",
         items: buildRoleSpecificItems(prompt.role_id, context.answers, { businessName, offer, customer, outcome, bottleneck }),
       },
     ],
     next_3_actions: [
       "Use the after version as the working direction for the next asset.",
-      "Save this output to the selected Business / Client history.",
-      `Open the recommended next utility and turn this into a deployable asset. ${savedAssetSignal}`,
+      "Save the useful parts to AI training.",
+      `Send this to the matching HQ and turn it into the next working asset. ${savedAssetSignal}`,
     ],
     recommended_next_utility: recommendedUtility,
     copy_paste_deliverables: [
@@ -1024,6 +648,123 @@ function buildLabDeliverable(
       },
     ],
   };
+}
+
+function compactLabDeliverable(roleId: PromptRoleId, deliverable: LabDeliverable, base: { businessName: string; offer: string; customer: string; bottleneck: string; outcome: string; primaryInput: string }): LabDeliverable {
+  if (roleId === "buyer_psychology_audit") {
+    const doubt = deliverable.buyer_psychology_summary?.what_the_buyer_likely_doubts || "The buyer worries the answer will be generic, risky, or hard to trust.";
+    const wants = deliverable.buyer_psychology_summary?.what_the_buyer_likely_wants || `They want ${base.outcome} without adding more risk.`;
+    const fixFirst = deliverable.top_3_changes?.[0] || "Show the safest next step before asking for the sale.";
+    const headline = cleanCopyLine(deliverable.copy_paste_deliverables.find((block) => /message|headline/i.test(block.label))?.value || `${base.businessName} helps you get a clear answer before the opportunity goes cold.`);
+    const subheadline = `${base.businessName} helps ${base.customer} move from ${base.bottleneck.toLowerCase()} to ${base.outcome} with a clearer, safer next step.`;
+    const cta = buildDirectCta(base.businessName);
+    const trustLine = deliverable.psychology_findings?.trust_gaps?.[0] || `${base.businessName} uses saved business context, proof, and guardrails to make the next step easier to trust.`;
+
+    return {
+      ...deliverable,
+      title: "Buyer Psychology Result",
+      summary: `${fixFirst} ${doubt}`,
+      sections: [
+        { title: "Main Buyer Problem", items: [`${base.bottleneck} keeps buyers from getting to ${base.outcome}.`] },
+        { title: "Buyer Doubt", items: [doubt] },
+        { title: "Buyer Wants To Believe", items: [wants] },
+        { title: "Fix First", items: [fixFirst] },
+      ],
+      copy_paste_deliverables: [
+        { label: "Headline", value: headline },
+        { label: "Subheadline", value: subheadline },
+        { label: "CTA", value: cta },
+        { label: "Trust line", value: trustLine },
+      ],
+      next_3_actions: [deliverable.next_3_actions[0] || "Add the trust line near the main CTA."],
+      recommended_next_utility: "/message-builder",
+    };
+  }
+
+  if (roleId === "buyer_messaging_engine") {
+    const assets = deliverable.core_message_assets;
+    const pain = deliverable.messaging_strategy?.buyer_pain || base.bottleneck;
+    const headline = assets?.homepage_headline || `${base.businessName} helps ${base.customer} get ${base.outcome}.`;
+    const subheadline = assets?.subheadline || `Get a clearer path, a safer first step, and a practical way to move forward with ${base.offer}.`;
+    const cta = assets?.cta_options?.[0] || buildDirectCta(base.businessName);
+    const painLines = [
+      `${pain} makes the next decision harder than it should be.`,
+      "Good buyers can leave when the first answer is unclear.",
+      "Slow or vague follow-up turns interest into hesitation.",
+    ];
+    const trustLines = deliverable.objection_responses?.slice(0, 3).map((item) => item.response) ?? ["Start with the safest next step before asking for a bigger commitment."];
+    const offerLines = [
+      `${base.offer} for ${base.customer} who want ${base.outcome}.`,
+      `A clearer path from ${base.bottleneck.toLowerCase()} to ${base.outcome}.`,
+      "One practical next step instead of more guessing.",
+    ];
+
+    return {
+      ...deliverable,
+      title: "Buyer Messaging Assets",
+      summary: headline,
+      sections: [
+        { title: "Best Angles", items: [deliverable.messaging_strategy?.strongest_angle || `A safer next step from ${pain.toLowerCase()} to ${base.outcome}.`, "Clarity before commitment.", "Proof and control before action."] },
+        { title: "Pain Lines", items: painLines },
+        { title: "Trust / Safety Lines", items: trustLines },
+        { title: "Offer Lines", items: offerLines },
+        { title: "Use First", items: ["Use the homepage headline and CTA first."] },
+      ],
+      copy_paste_deliverables: [
+        { label: "Homepage headline", value: headline },
+        { label: "Subheadline", value: subheadline },
+        { label: "CTA", value: cta },
+      ],
+      next_3_actions: ["Use the homepage copy in Messaging HQ, then save the best pain lines to Audience HQ."],
+      recommended_next_utility: "/message-builder",
+    };
+  }
+
+  if (roleId === "market_demand_check") {
+    const offer = deliverable.offer_improvement;
+    const statement = offer?.sharper_offer_statement || `${base.businessName} helps ${base.customer} solve ${base.bottleneck.toLowerCase()} and get ${base.outcome}.`;
+    const promise = offer?.improved_after_offer || `A clearer, lower-risk path to ${base.outcome}.`;
+    const cta = offer?.cta || buildDirectCta(base.businessName);
+    const risk = offer?.risk_reducer || "Start with one focused review before committing to a larger plan.";
+
+    return {
+      ...deliverable,
+      title: "Offer Asset",
+      summary: statement,
+      sections: [
+        { title: "Offer Statement", items: [statement] },
+        { title: "Promise", items: [promise] },
+        { title: "Who It Is For", items: [base.customer] },
+        { title: "What They Get", items: (offer?.value_stack ?? ["A clearer diagnosis", "A stronger message", "One practical next step"]).slice(0, 5) },
+        { title: "Proof / Trust", items: [deliverable.demand_diagnosis?.what_appears_strong?.[0] || "Use visible proof close to the CTA.", deliverable.demand_diagnosis?.what_appears_strong?.[1] || "Show why the first step is low risk."] },
+        { title: "Risk Reversal", items: [risk] },
+        { title: "Use First", items: ["Use the offer statement and CTA on the homepage or main sales page first."] },
+      ],
+      copy_paste_deliverables: [
+        { label: "Offer statement", value: statement },
+        { label: "CTA", value: cta },
+        { label: "Risk reversal", value: risk },
+      ],
+      next_3_actions: ["Send this to Offer HQ and make it the current working offer."],
+      recommended_next_utility: "/offer-builder",
+    };
+  }
+
+  return {
+    ...deliverable,
+    sections: deliverable.sections.slice(0, 4).map((section) => ({ ...section, items: section.items.slice(0, 5) })),
+    next_3_actions: deliverable.next_3_actions.slice(0, 3),
+    copy_paste_deliverables: deliverable.copy_paste_deliverables.slice(0, 5),
+  };
+}
+
+function cleanCopyLine(value: string) {
+  return value.split("\n").map((line) => line.trim()).find(Boolean) ?? value;
+}
+
+function buildDirectCta(businessName: string) {
+  const shortName = businessName.replace(/^Talk to /i, "").trim();
+  return shortName && shortName !== "the business" ? `Test ${shortName} on my website` : "Get the clear next step";
 }
 
 function buildBuyerPsychologyDeliverable(
@@ -1894,7 +1635,7 @@ function buildRoleSpecificItems(roleId: PromptRoleId, answers: Record<string, st
         "Create message variants for pain, proof, objection, and CTA.",
       ];
     default:
-      return ["Use the role prompt, saved context, focused input, and output rules to produce a usable marketing asset."];
+      return ["Use the role prompt, saved context, optional refine input, and output rules to produce a usable marketing asset."];
   }
 }
 
@@ -1904,14 +1645,5 @@ function ContextRow({ label, value }: { label: string; value: string }) {
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
       <p className="mt-1 text-sm leading-6 text-slate-800">{value}</p>
     </div>
-  );
-}
-
-function InfoCard({ title, value, highlight }: { title: string; value: string; highlight?: boolean }) {
-  return (
-    <article className={`rounded-md p-4 ${highlight ? "bg-cyan-50" : "bg-slate-50"}`}>
-      <p className={`text-sm font-semibold ${highlight ? "text-cyan-950" : "text-slate-500"}`}>{title}</p>
-      <p className={`mt-2 text-sm leading-6 ${highlight ? "text-cyan-900" : "text-slate-800"}`}>{value}</p>
-    </article>
   );
 }

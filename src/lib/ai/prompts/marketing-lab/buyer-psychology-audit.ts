@@ -83,7 +83,7 @@ ${sharedOutputRules}`,
     "current_icp_if_available",
     "current_offer_if_available",
     "current_messaging_assets_if_available",
-    "focused_user_input",
+    "optional_refine_input",
   ],
   input_fields: [
     { id: "review_target", label: "What page, offer, or message do you want reviewed?", helpText: "Paste a page URL, headline, CTA, offer, or message. You can also use saved website analysis.", placeholder: "Homepage, pricing page, service page, offer line, ad, email..." },

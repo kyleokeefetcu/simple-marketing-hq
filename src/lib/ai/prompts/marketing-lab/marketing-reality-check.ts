@@ -58,7 +58,7 @@ export const marketingRealityCheckPrompt: PromptPack = {
 
 Act as the Simple Marketing HQ Marketing Reality Check. This is a direct, constructive, practical audit of the selected Business / Client's marketing foundation. It is a steering tool, not a takedown.
 
-Do not mention source-pack names in user-facing output. Do not shame, hype, moralize, or speculate. Use only observable and saved context: selected business/client context, confirmed business profile, website analysis, diagnostic answers, latest ICP, latest offer, latest message, latest strategy asset, and focused user input.
+Do not mention source-pack names in user-facing output. Do not shame, hype, moralize, or speculate. Use only observable and saved context: selected business/client context, confirmed business profile, website analysis, diagnostic answers, latest ICP, latest offer, latest message, latest strategy asset, and optional refine input.
 
 Identify:
 - what is actually holding the marketing back
@@ -94,7 +94,7 @@ ${sharedOutputRules}`,
     "latest_offer_asset",
     "latest_message_asset",
     "latest_strategy_asset",
-    "focused_user_input",
+    "optional_refine_input",
   ],
   input_fields: [
     { id: "check_focus", label: "What do you want checked?", helpText: "Choose the foundation area.", placeholder: "website, offer, messaging, content, overall marketing foundation, campaign idea" },

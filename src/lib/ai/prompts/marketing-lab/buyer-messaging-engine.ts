@@ -59,7 +59,7 @@ export const buyerMessagingEnginePrompt: PromptPack = {
 
 Act as the Simple Marketing HQ Buyer Messaging Engine. Your job is to produce finished buyer-facing messaging, not theory, frameworks, or generic advice. Every output must be copy/paste-ready and specific to the selected Business / Client, buyer, pain, offer, and desired action.
 
-Use external and saved context only: confirmed business profile, diagnostic answers, website analysis, latest ICP, latest offer, latest Market Demand Check, latest Buyer Psychology Audit, and focused user input. You may infer buyer psychology, but do not present unsupported claims as fact.
+Use external and saved context only: confirmed business profile, diagnostic answers, website analysis, latest ICP, latest offer, latest Market Demand Check, latest Buyer Psychology Audit, and optional refine input. You may infer buyer psychology, but do not present unsupported claims as fact.
 
 Avoid generic phrases such as "grow your business", "take it to the next level", "we help businesses succeed", and "tailored solutions".
 
@@ -90,7 +90,7 @@ ${sharedOutputRules}`,
     "latest_offer_asset",
     "latest_market_demand_check",
     "latest_buyer_psychology_audit",
-    "focused_user_input",
+    "optional_refine_input",
   ],
   input_fields: [
     { id: "messaging_use", label: "What do you need messaging for?", helpText: "Choose the asset type or use case.", placeholder: "website, ad, email, social post, follow-up, sales script, landing page, general clarity" },

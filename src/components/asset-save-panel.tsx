@@ -21,9 +21,11 @@ type AssetSavePanelProps = {
   output: Record<string, unknown>;
   input?: Record<string, unknown>;
   prompt?: Record<string, unknown>;
+  heading?: string;
+  saveButtonLabel?: string;
 };
 
-export function AssetSavePanel({ roleId, assetType, title, summary, output, input, prompt }: AssetSavePanelProps) {
+export function AssetSavePanel({ roleId, assetType, title, summary, output, input, prompt, heading = "Saved asset library", saveButtonLabel = "Save output" }: AssetSavePanelProps) {
   const [user, setUser] = useState<User | null>(null);
   const [businesses, setBusinesses] = useState<BusinessSummary[]>([]);
   const [selectedBusinessId, setSelectedBusinessId] = useState("");
@@ -124,7 +126,7 @@ export function AssetSavePanel({ roleId, assetType, title, summary, output, inpu
     <section className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Saved asset library</p>
+          <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">{heading}</p>
           <h2 className="mt-2 text-2xl font-semibold text-slate-950">Save this output for {selectedBusiness?.name ?? "a Business / Client"}</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">{status}</p>
         </div>
@@ -149,7 +151,7 @@ export function AssetSavePanel({ roleId, assetType, title, summary, output, inpu
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
           >
             <Save size={18} aria-hidden="true" />
-            {isSaving ? "Saving..." : "Save output"}
+            {isSaving ? "Saving..." : saveButtonLabel}
           </button>
         </div>
       </div>

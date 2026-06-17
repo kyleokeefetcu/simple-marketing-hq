@@ -77,7 +77,7 @@ ${sharedOutputRules}`,
     "current_offer_if_available",
     "prior_saved_offer_assets",
     "prior_saved_strategy_assets",
-    "focused_user_input",
+    "optional_refine_input",
   ],
   input_fields: [
     { id: "sell_promote_now", label: "What are you trying to sell or promote right now?", helpText: "Keep this short. Use the saved business context if it already says this clearly.", placeholder: "Audit, installation, consulting package, software plan, appointment..." },

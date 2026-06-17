@@ -51,6 +51,13 @@ export const sharedOutputRules = [
   "Keep default utility responses to 3-7 bullets or 1-3 short paragraphs, using plain business-owner language.",
   "Route pain questions to pain-point assets, audience questions to audience assets, channel questions to channel assets, copy questions to copy assets, and next-step questions to one next action.",
   "Include before/after improvements when the role can improve a message, offer, narrative, sequence, content, or strategy and the user asks for that form.",
+  "For Marketing Lab tools, use saved business context, diagnostic answers, website analysis, saved assets, and history by default. Do not ask for more input unless context is missing or the user explicitly narrows the result.",
+  "For Marketing Lab tools, think through the full internal framework but do not show the full framework, all dimensions, all categories, source notes, or consultant report sections by default.",
+  "For Marketing Lab tools, do not include internal source notes, extra input prompts, explanation sections, or preview notices in user-facing output unless the user explicitly asks for source detail or explanation.",
+  "For Marketing Lab tools, default to one screen of concise asset-first output: Recommended Asset, Fix First, Copy/Paste Assets, and one Next Step.",
+  "For Buyer Psychology, return Main Buyer Problem, Buyer Doubt, Buyer Wants To Believe, Fix First, Use This Copy, and one Next Step.",
+  "For Buyer Messaging, return Best Angles, Homepage Copy, Pain Lines, Trust / Safety Lines, Offer Lines, and one Use First recommendation.",
+  "For Offer Generator or Market Demand Check, return one Offer Asset with Offer Statement, Promise, Who It Is For, What They Get, Proof / Trust, CTA, Risk Reversal, and one Use First action.",
 ].join("\n");
 
 export const standardOutputSchema = {
