@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import type { FormEvent } from "react";
-import { ArrowRight, ChevronDown, FlaskConical, History, Lightbulb, Mail, MessageSquare, Sparkles, Target, Video } from "lucide-react";
+import type { FormEvent, ReactNode } from "react";
+import { ChevronDown, FlaskConical, History, Lightbulb, Mail, MessageSquare, Sparkles, Target, Video } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/app-header";
 import { getIndustryProfile, getStoredResult, type LaunchPadResult } from "@/lib/launchpad";
@@ -76,7 +76,17 @@ type QuickPrompt = {
   workBlockId: WorkBlockId;
 };
 
-type DetailView = "asset" | "history" | "tests" | "feed" | null;
+type WorkBlockPrompt = {
+  label: string;
+  prompt: string;
+};
+
+type SessionMessage = {
+  role: "assistant" | "user";
+  content: string;
+  workBlockId?: WorkBlockId;
+  prompt?: string;
+};
 
 const assetTypes: MarketingAssetType[] = [
   "icp",
@@ -225,17 +235,15 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
   const [latestDiagnostic, setLatestDiagnostic] = useState<SavedDiagnosticSummary | null>(null);
   const [priorAssets, setPriorAssets] = useState<Partial<Record<MarketingAssetType, MarketingAssetSummary>>>({});
   const [history, setHistory] = useState<MarketingAssetSummary[]>([]);
-  const [feedbackType, setFeedbackType] = useState("customer_note");
-  const [feedback, setFeedback] = useState("");
   const [deliverable, setDeliverable] = useState<Deliverable | null>(null);
   const [status, setStatus] = useState("Load or select a Business / Client to tailor this utility.");
-  const [copyStatus, setCopyStatus] = useState("");
   const [saveStatus, setSaveStatus] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [editingTraining, setEditingTraining] = useState(false);
+  const [trainingDraft, setTrainingDraft] = useState("");
   const [activeBlock, setActiveBlock] = useState<WorkBlockId>(() => firstWorkBlockId(kind));
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
-  const [detailView, setDetailView] = useState<DetailView>(null);
-  const [sessionMessages, setSessionMessages] = useState<{ role: "assistant" | "user"; content: string }[]>([]);
+  const [sessionMessages, setSessionMessages] = useState<SessionMessage[]>([]);
   const [sessionInput, setSessionInput] = useState("");
 
   const selectedBusiness = businesses.find((business) => business.id === selectedBusinessId) ?? null;
@@ -246,6 +254,7 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
   const scopedHref = (href: string) => (selectedBusinessId ? `${href}?businessId=${selectedBusinessId}` : href);
   const workBlocks = useMemo(() => getWorkBlocks(config.kind), [config.kind]);
   const activeWorkBlock = workBlocks.find((block) => block.id === activeBlock) ?? workBlocks[0];
+  const latestTrainingMessage = useMemo(() => [...sessionMessages].reverse().find((message) => message.role === "assistant" && message.workBlockId === activeBlock) ?? null, [sessionMessages, activeBlock]);
 
   const loadBusinessContext = useCallback(async (businessId: string) => {
     const supabase = createBrowserSupabaseClient();
@@ -316,20 +325,8 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
     }
   }
 
-  function handleImprove(event?: FormEvent<HTMLFormElement>) {
-    event?.preventDefault();
-    setDeliverable(buildDeliverable(config, context, { feedbackType, feedback }));
-    setStatus(feedback ? "Recommendation updated with the new information." : "Recommendation refreshed from saved context.");
-  }
-
-  async function copyCurrentAsset() {
-    const text = currentRecommendation.copyPasteBlocks.map((block) => `${block.label}\n${block.value}`).join("\n\n");
-    await navigator.clipboard.writeText(text);
-    setCopyStatus("Copied.");
-    window.setTimeout(() => setCopyStatus(""), 1800);
-  }
-
-  async function handleSaveCurrentAsset() {
+  async function handleSaveTrainingAnswer(message: SessionMessage | null, contentOverride?: string) {
+    if (!message) return;
     const supabase = createBrowserSupabaseClient();
     if (!supabase || !selectedBusinessId) {
       setSaveStatus("Log in and select a Business / Client before saving.");
@@ -338,9 +335,13 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
 
     const { data } = await supabase.auth.getUser();
     if (!data.user) {
-      setSaveStatus("Log in before saving this output.");
+      setSaveStatus("Log in before saving this answer.");
       return;
     }
+
+    const block = getWorkBlock(config.kind, message.workBlockId ?? activeBlock);
+    const answer = (contentOverride ?? message.content).trim();
+    if (!answer) return;
 
     setIsSaving(true);
     setSaveStatus("Saving...");
@@ -349,44 +350,57 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
         businessId: selectedBusinessId,
         roleId: config.roleId,
         assetType: config.assetType,
-        title: assetTitle,
-        summary: currentRecommendation.summary,
+        title: `${assetTitle} - ${block.title}`,
+        summary: summarizeTrainingAnswer(block.title, answer),
         input: {
-          feedbackType,
-          feedback,
-          activeBlock,
+          activeBlock: block.id,
+          workBlockSlug: block.id,
+          workBlockAssetType: block.assetType,
+          userQuestion: message.prompt,
           business: context.business,
           latestDiagnostic: context.latestDiagnostic,
         },
-        output: currentRecommendation as unknown as Record<string, unknown>,
-        prompt: {
-          purpose: "Save the current living utility recommendation and selected workspace state.",
+        output: {
           utility: config.navName,
-          activeBlock,
-          workBlockSlug: activeBlock,
-          workBlockAssetType: activeWorkBlock.assetType,
+          workBlockSlug: block.id,
+          assetType: block.assetType,
+          assetTitle: block.title,
+          assetContent: answer,
+        },
+        prompt: {
+          purpose: "Save this AI answer as training context for the selected work block.",
+          utility: config.navName,
+          activeBlock: block.id,
+          workBlockSlug: block.id,
+          workBlockAssetType: block.assetType,
         },
       });
       await loadBusinessContext(selectedBusinessId);
-      setSaveStatus("Saved to this Business / Client history.");
+      setEditingTraining(false);
+      setTrainingDraft("");
+      setSaveStatus(`Saved to ${block.title}. Future answers will use this.`);
     } catch (error) {
       setSaveStatus(`Could not save: ${(error as Error).message}`);
     } finally {
       setIsSaving(false);
     }
   }
-
   function handleQuickPrompt(prompt: string, workBlockId?: WorkBlockId) {
     const routedBlock = workBlockId ? getWorkBlock(config.kind, workBlockId) : getRoutedWorkBlock(config.kind, prompt, activeWorkBlock.id);
     setActiveBlock(routedBlock.id);
+    setSaveStatus("");
+    setEditingTraining(false);
+    setTrainingDraft("");
     const response = workBlockId ? buildWorkBlockAsset(config.kind, routedBlock.id, currentRecommendation) : buildSessionResponse(config, routedBlock, currentRecommendation, prompt);
-    setSessionMessages((messages) => [...messages, { role: "user", content: prompt }, { role: "assistant", content: response }]);
+    setSessionMessages((messages) => [...messages, { role: "user", content: prompt, workBlockId: routedBlock.id }, { role: "assistant", content: response, workBlockId: routedBlock.id, prompt }]);
   }
 
   function openWorkBlock(blockId: WorkBlockId) {
     setActiveBlock(blockId);
     setWorkspaceOpen(true);
-    setDetailView(null);
+    setSaveStatus("");
+    setEditingTraining(false);
+    setTrainingDraft("");
     const params = new URLSearchParams(window.location.search);
     params.set("block", blockId.replaceAll("_", "-"));
     window.history.pushState(null, "", `${window.location.pathname}?${params.toString()}`);
@@ -394,7 +408,6 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
 
   function closeWorkspace() {
     setWorkspaceOpen(false);
-    setDetailView(null);
     const params = new URLSearchParams(window.location.search);
     params.delete("block");
     const query = params.toString();
@@ -452,53 +465,13 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
                   {config.navName} / {activeWorkBlock.title}
                 </button>
                 <h2 className="mt-2 text-3xl font-semibold text-slate-950">{activeWorkBlock.title}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Working on {config.navName.replace(" HQ", "")} + {activeWorkBlock.title}. The AI session is using the selected Business / Client, latest diagnostic, and saved asset history.
-                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{getSelectedWorkBlockDescription(config.kind, activeWorkBlock.id)}</p>
               </div>
               <button type="button" onClick={closeWorkspace} className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 px-4 text-sm font-semibold text-slate-800">
                 Back to tiles
               </button>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button type="button" onClick={() => setDetailView(detailView === "asset" ? null : "asset")} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
-                Show current asset
-              </button>
-              <button type="button" onClick={() => void handleSaveCurrentAsset()} disabled={isSaving} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50 disabled:opacity-50">
-                {isSaving ? "Saving..." : "Save version"}
-              </button>
-              <button type="button" onClick={() => setDetailView(detailView === "history" ? null : "history")} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
-                View history
-              </button>
-              <button type="button" onClick={() => setDetailView(detailView === "tests" ? null : "tests")} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
-                Tests
-              </button>
-              <button type="button" onClick={() => setDetailView(detailView === "feed" ? null : "feed")} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
-                New info
-              </button>
-              <button type="button" onClick={() => void copyCurrentAsset()} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
-                Copy output
-              </button>
-            </div>
-            {copyStatus || saveStatus ? <p className="mt-3 text-sm font-semibold text-emerald-700">{copyStatus || saveStatus}</p> : null}
-
-            {detailView ? (
-              <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                {renderWorkBlock({
-                  activeBlock: detailView === "asset" ? activeBlock : detailView === "history" ? "history" : detailView === "tests" ? "tests" : "feed",
-                  config,
-                  currentRecommendation,
-                  feedback,
-                  feedbackType,
-                  history,
-                  scopedHref,
-                  setFeedback,
-                  setFeedbackType,
-                  onImprove: handleImprove,
-                })}
-              </div>
-            ) : null}
 
             <article className="mt-5 rounded-lg border border-cyan-200 bg-white p-5 shadow-sm">
               <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">AI Working Session</p>
@@ -508,6 +481,26 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
                   <ChatBubble key={`${message.role}-${index}`} role={message.role} content={message.content} />
                 ))}
               </div>
+              <TrainingActions
+                message={latestTrainingMessage}
+                saveStatus={saveStatus}
+                isSaving={isSaving}
+                isEditing={editingTraining}
+                draft={trainingDraft}
+                onAdd={() => void handleSaveTrainingAnswer(latestTrainingMessage)}
+                onEdit={() => {
+                  if (!latestTrainingMessage) return;
+                  setTrainingDraft(latestTrainingMessage.content);
+                  setEditingTraining(true);
+                  setSaveStatus("");
+                }}
+                onDraftChange={setTrainingDraft}
+                onCancel={() => {
+                  setEditingTraining(false);
+                  setTrainingDraft("");
+                }}
+                onSaveEdit={() => void handleSaveTrainingAnswer(latestTrainingMessage, trainingDraft)}
+              />
               <div className="mt-4 flex flex-wrap gap-2">
                 {getQuickPrompts(config.kind, activeBlock).map((quickPrompt) => (
                   <button key={quickPrompt.label} type="button" onClick={() => handleQuickPrompt(quickPrompt.prompt, quickPrompt.workBlockId)} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
@@ -564,6 +557,26 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
                 <ChatBubble key={`${message.role}-${index}`} role={message.role} content={message.content} />
               ))}
             </div>
+            <TrainingActions
+              message={latestTrainingMessage}
+              saveStatus={saveStatus}
+              isSaving={isSaving}
+              isEditing={editingTraining}
+              draft={trainingDraft}
+              onAdd={() => void handleSaveTrainingAnswer(latestTrainingMessage)}
+              onEdit={() => {
+                if (!latestTrainingMessage) return;
+                setTrainingDraft(latestTrainingMessage.content);
+                setEditingTraining(true);
+                setSaveStatus("");
+              }}
+              onDraftChange={setTrainingDraft}
+              onCancel={() => {
+                setEditingTraining(false);
+                setTrainingDraft("");
+              }}
+              onSaveEdit={() => void handleSaveTrainingAnswer(latestTrainingMessage, trainingDraft)}
+            />
             <div className="mt-4 flex flex-wrap gap-2">
               {getQuickPrompts(config.kind, activeBlock).map((quickPrompt) => (
                 <button key={quickPrompt.label} type="button" onClick={() => handleQuickPrompt(quickPrompt.prompt, quickPrompt.workBlockId)} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
@@ -753,6 +766,186 @@ const quickPromptRegistry: Record<UtilityKind, QuickPrompt[]> = {
   ],
 };
 
+const selectedDescriptionRegistry: Partial<Record<UtilityKind, Partial<Record<WorkBlockId, string>>>> = {
+  icp: {
+    "best-fit-customer": "Define the customers most likely to need, trust, and buy from this business.",
+    "buyer-problems": "Identify the customer pain points that make people look for a solution.",
+    "buying-triggers": "Clarify what changes when customers are ready to buy now.",
+    objections: "List the doubts, concerns, and trust issues that slow down a yes.",
+    "where-to-find-them": "Find the practical places this audience already pays attention.",
+    use: "Turn the audience insight into useful copy, offers, and outreach ideas.",
+  },
+  offer: {
+    "core-offer": "State what this business sells in plain English.",
+    "primary-promise": "Name the result customers most want from the offer.",
+    "offer-statement": "Create a simple one-sentence offer the business can use anywhere.",
+    proof: "Choose the trust points that make the offer easier to believe.",
+    cta: "Pick the clearest next step for interested customers.",
+    "packages-pricing": "Shape the offer into simple buying options.",
+    "risk-reversal": "Reduce the concern that keeps customers from saying yes.",
+  },
+  message: {
+    "one-liner": "Explain the business in one clear sentence.",
+    "homepage-headline": "Write homepage copy that tells visitors why to care and what to do next.",
+    differentiators: "Show what makes this business easier to choose.",
+    "proof-points": "Turn trust signals into short copy people can believe.",
+    "cta-copy": "Write button and follow-up language that points to one clear action.",
+    "faq-objection-copy": "Answer the common doubts that slow customers down.",
+    "before-after": "Show the clear change customers get after buying.",
+  },
+  content: {
+    "content-pillars": "Choose the main topics this business should keep showing up around.",
+    "post-ideas": "Create practical post ideas from the current audience, offer, and message.",
+    "weekly-plan": "Plan simple content the owner can publish this week.",
+    "email-ideas": "Turn customer questions and proof into useful email topics.",
+    "blog-seo-ideas": "Find search-friendly topics customers already care about.",
+    repurpose: "Turn one idea into a few useful content formats.",
+  },
+  strategy_map: {
+    "current-bottleneck": "Identify the issue most likely holding growth back right now.",
+    "growth-focus": "Pick the main priority that deserves attention first.",
+    "channel-priority": "Choose the first channel that fits the business and next action.",
+    "funnel-map": "Map the simple path from attention to lead to sale.",
+    "90-day-plan": "Turn the strategy into a realistic next 90 days.",
+    positioning: "Clarify where this business should sit in the market.",
+  },
+  marketing_schedule: {
+    "weekly-actions": "Choose the marketing actions to complete this week.",
+    "task-checklist": "Break the next action into clear steps.",
+    "campaign-plan": "Plan what to launch and in what order.",
+    "follow-up-process": "Improve how leads are handled after they raise their hand.",
+    calendar: "Put the work into a simple schedule.",
+    "progress-check-in": "Review what changed, what is stuck, and what to do next.",
+  },
+  research: {
+    "website-findings": "Summarize what the website is communicating now.",
+    "competitor-notes": "Capture useful patterns from competitors without copying them.",
+    "market-patterns": "Find common expectations and messages in this category.",
+    "customer-language": "Collect words customers are likely to use.",
+    "content-search-signals": "Find topics and questions people already care about.",
+    gaps: "Spot what is missing from the current marketing foundation.",
+  },
+  recommendation: {
+    "current-tools": "List the tools the business already appears to use.",
+    "recommended-tools": "Choose simple tools that fit the next action.",
+    "setup-steps": "Turn the tool choice into a short setup path.",
+    "cost-fit": "Decide what tool spend makes sense for this stage.",
+    integrations: "Show what should connect to what.",
+    "avoid-for-now": "Name the tools that would add too much complexity right now.",
+  },
+};
+
+const workBlockQuickPromptRegistry: Partial<Record<UtilityKind, Partial<Record<WorkBlockId, WorkBlockPrompt[]>>>> = {
+  icp: {
+    "best-fit-customer": [
+      { label: "Define best-fit customer", prompt: "Who is the best-fit customer?" },
+      { label: "Tighten the audience", prompt: "Tighten the audience." },
+      { label: "Who not to target", prompt: "Who should we not target?" },
+      { label: "Best customer signs", prompt: "What are the signs of a good customer?" },
+      { label: "Priority segment", prompt: "What segment should we prioritize?" },
+    ],
+    "buyer-problems": [
+      { label: "Top pain points", prompt: "What pain matters most?" },
+      { label: "Biggest frustration", prompt: "What is their biggest frustration?" },
+      { label: "Cost of not fixing", prompt: "What does it cost them if they do not fix it?" },
+      { label: "Pain in their words", prompt: "Say the pain in their words." },
+      { label: "One problem, one solution", prompt: "Give me one problem and one solution." },
+      { label: "Turn pain into copy", prompt: "Turn this pain into copy." },
+    ],
+    "buying-triggers": [
+      { label: "Why they buy now", prompt: "Why do they buy now?" },
+      { label: "Trigger events", prompt: "What events trigger the need?" },
+      { label: "Urgency signs", prompt: "What signs show urgency?" },
+      { label: "What changed", prompt: "What changed before they started looking?" },
+      { label: "When they start looking", prompt: "When do they start looking for a solution?" },
+    ],
+    objections: [
+      { label: "Top objections", prompt: "What objections slow them down?" },
+      { label: "Trust blockers", prompt: "What trust blockers show up?" },
+      { label: "Price concerns", prompt: "What price concerns will they have?" },
+      { label: "Risk concerns", prompt: "What risk concerns slow the decision?" },
+      { label: "Answer objections", prompt: "Answer the main objections." },
+    ],
+    "where-to-find-them": [
+      { label: "Best channels", prompt: "Where do I find them?" },
+      { label: "Online communities", prompt: "What online communities should we use?" },
+      { label: "Partner channels", prompt: "What partner channels fit?" },
+      { label: "Search topics", prompt: "What search topics should we watch?" },
+      { label: "Local channels", prompt: "What local channels fit?" },
+    ],
+  },
+  offer: {
+    "core-offer": [
+      { label: "Define the offer", prompt: "What do we sell?" },
+      { label: "Simplify the offer", prompt: "Simplify the offer." },
+      { label: "What they get", prompt: "What does the customer get?" },
+      { label: "Who it is for", prompt: "Who is this offer for?" },
+      { label: "Make it clearer", prompt: "Make the offer clearer." },
+    ],
+    "primary-promise": [
+      { label: "Main promise", prompt: "What is the main promise?" },
+      { label: "Stronger promise", prompt: "Make the promise stronger." },
+      { label: "Outcome they want", prompt: "What outcome do they want?" },
+      { label: "Before and after", prompt: "Show the before and after." },
+      { label: "Make it specific", prompt: "Make the promise more specific." },
+    ],
+  },
+  message: {
+    "homepage-headline": [
+      { label: "Write headline", prompt: "Write the homepage headline." },
+      { label: "Make it clearer", prompt: "Make the headline clearer." },
+      { label: "Make it stronger", prompt: "Make the headline stronger." },
+      { label: "Add subheadline", prompt: "Add a subheadline." },
+      { label: "CTA section", prompt: "Write the CTA section." },
+    ],
+  },
+  content: {
+    "post-ideas": [
+      { label: "Post ideas", prompt: "What should I post?" },
+      { label: "Pain point posts", prompt: "Give me pain point posts." },
+      { label: "FAQ posts", prompt: "Give me FAQ posts." },
+      { label: "Before/after posts", prompt: "Give me before and after posts." },
+      { label: "Local posts", prompt: "Give me local post ideas." },
+    ],
+  },
+  strategy_map: {
+    "current-bottleneck": [
+      { label: "Find bottleneck", prompt: "What is the current bottleneck?" },
+      { label: "What is stuck", prompt: "What is stuck?" },
+      { label: "Biggest leak", prompt: "What is the biggest leak?" },
+      { label: "Fix first", prompt: "What should we fix first?" },
+      { label: "What to ignore", prompt: "What should we ignore for now?" },
+    ],
+  },
+  marketing_schedule: {
+    "weekly-actions": [
+      { label: "This week’s actions", prompt: "What should I do this week?" },
+      { label: "Quick wins", prompt: "What quick wins should I do?" },
+      { label: "Today’s task", prompt: "What should I do today?" },
+      { label: "3-step checklist", prompt: "Give me a 3-step checklist." },
+      { label: "Owner tasks", prompt: "What tasks should the owner do?" },
+    ],
+  },
+  research: {
+    "website-findings": [
+      { label: "Website findings", prompt: "What does the website say?" },
+      { label: "Missing proof", prompt: "What proof is missing?" },
+      { label: "Confusing copy", prompt: "What copy is confusing?" },
+      { label: "CTA issues", prompt: "What CTA issues are there?" },
+      { label: "Trust gaps", prompt: "What trust gaps are there?" },
+    ],
+  },
+  recommendation: {
+    "recommended-tools": [
+      { label: "Recommended tools", prompt: "What tools should I use?" },
+      { label: "Simple setup", prompt: "How do I set it up?" },
+      { label: "What to avoid", prompt: "What should I avoid for now?" },
+      { label: "Best fit tools", prompt: "What tools fit best?" },
+      { label: "Tool priority", prompt: "Which tool matters first?" },
+    ],
+  },
+};
+
 function getWorkBlocks(kind: UtilityKind): WorkBlock[] {
   return utilityWorkBlockRegistry[kind];
 }
@@ -792,111 +985,30 @@ function matchByKeywords(kind: UtilityKind, lower: string) {
   return match ? getWorkBlock(kind, match[1]) : null;
 }
 
-function renderWorkBlock({
-  activeBlock,
-  config,
-  currentRecommendation,
-  feedback,
-  feedbackType,
-  history,
-  scopedHref,
-  setFeedback,
-  setFeedbackType,
-  onImprove,
-}: {
-  activeBlock: WorkBlockId;
-  config: UtilityConfig;
-  currentRecommendation: Deliverable;
-  feedback: string;
-  feedbackType: string;
-  history: MarketingAssetSummary[];
-  scopedHref: (href: string) => string;
-  setFeedback: (value: string) => void;
-  setFeedbackType: (value: string) => void;
-  onImprove: (event?: FormEvent<HTMLFormElement>) => void;
-}) {
-  if (activeBlock === "history") return <HistoryBlock history={history} />;
-  if (activeBlock === "feed") {
-    return (
-      <form onSubmit={onImprove} className="grid gap-4">
-        <p className="text-sm leading-6 text-slate-600">Add customer notes, objections, sales calls, reviews, campaign results, or market feedback.</p>
-        <label className="block">
-          <span className="text-sm font-semibold text-slate-700">Information type</span>
-          <select value={feedbackType} onChange={(event) => setFeedbackType(event.target.value)} className="mt-2 min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800">
-            <option value="customer_note">Customer question or sales note</option>
-            <option value="objection">Objection heard</option>
-            <option value="review">Review or testimonial</option>
-            <option value="campaign_result">Campaign result</option>
-            <option value="competitor">Competitor example</option>
-            <option value="new_offer">New service or offer detail</option>
-            <option value="not_right">What feels off</option>
-          </select>
-        </label>
-        <label className="block">
-          <span className="text-sm font-semibold text-slate-700">{config.feedLabel}</span>
-          <textarea value={feedback} onChange={(event) => setFeedback(event.target.value)} placeholder={config.feedPlaceholder} className="mt-2 min-h-32 w-full rounded-md border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100" />
-        </label>
-        <button type="submit" className="inline-flex min-h-12 w-fit items-center justify-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
-          <Sparkles size={18} aria-hidden="true" />
-          Analyze and Improve
-        </button>
-      </form>
-    );
-  }
-  if (activeBlock === "tests") {
-    return (
-      <div className="grid gap-3">
-        {currentRecommendation.tests.map((test) => (
-          <article key={test.title} className="rounded-md border border-slate-200 p-4">
-            <h3 className="text-base font-semibold text-slate-950">{test.title}</h3>
-            <div className="mt-3 grid gap-2 text-sm leading-6 text-slate-700">
-              <p><strong>Where:</strong> {test.where}</p>
-              <p><strong>Measure:</strong> {test.measure}</p>
-              <p><strong>Working signal:</strong> {test.signal}</p>
-              <p><strong>Next move:</strong> {test.nextMove}</p>
-            </div>
-          </article>
-        ))}
-      </div>
-    );
-  }
-  const block = getWorkBlock(config.kind, activeBlock);
-  const blockOutput = getBlockOutputs(config.kind, activeBlock, currentRecommendation);
-  return (
-    <div className="grid gap-4">
-      <div className="rounded-md bg-cyan-50 p-4">
-        <p className="text-sm font-semibold text-cyan-950">{block.title}</p>
-        <p className="mt-2 whitespace-pre-line text-base leading-7 text-cyan-950">{blockOutput.primary}</p>
-      </div>
-      {blockOutput.items.length ? (
-        <div className="grid gap-3">
-          {blockOutput.items.map((item) => <p key={item} className="rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-700">{item}</p>)}
-        </div>
-      ) : null}
-      {activeBlock === "use" ? (
-        <Link href={scopedHref(currentRecommendation.suggestedNextUtility.href)} className="inline-flex min-h-12 w-fit items-center justify-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
-          {currentRecommendation.suggestedNextUtility.label}
-          <ArrowRight size={18} aria-hidden="true" />
-        </Link>
-      ) : null}
-    </div>
-  );
+function getQuickPrompts(kind: UtilityKind, activeBlock: WorkBlockId): QuickPrompt[] {
+  const block = getWorkBlock(kind, activeBlock);
+  const scopedPrompts = workBlockQuickPromptRegistry[kind]?.[activeBlock];
+  const fallbackPrompt = quickPromptRegistry[kind].find((prompt) => prompt.workBlockId === activeBlock);
+  const prompts = scopedPrompts ?? (fallbackPrompt ? [{ label: fallbackPrompt.label, prompt: fallbackPrompt.prompt }] : [
+    { label: block.title, prompt: block.intentExamples[0] ?? block.title },
+    { label: "Make it clearer", prompt: `Make ${block.title.toLowerCase()} clearer.` },
+    { label: "Use it now", prompt: `Turn ${block.title.toLowerCase()} into something I can use now.` },
+  ]);
+  return prompts.slice(0, 6).map((prompt) => ({ ...prompt, workBlockId: activeBlock }));
 }
 
-function getQuickPrompts(kind: UtilityKind, activeBlock: WorkBlockId): QuickPrompt[] {
-  const prompts = quickPromptRegistry[kind];
-  const activePrompt = prompts.find((prompt) => prompt.workBlockId === activeBlock);
-  return activePrompt ? [activePrompt, ...prompts.filter((prompt) => prompt.workBlockId !== activeBlock)].slice(0, 6) : prompts;
+function getSelectedWorkBlockDescription(kind: UtilityKind, activeBlock: WorkBlockId) {
+  return selectedDescriptionRegistry[kind]?.[activeBlock] ?? getWorkBlock(kind, activeBlock).purpose;
+}
+
+function summarizeTrainingAnswer(blockTitle: string, answer: string) {
+  const firstLine = answer.split("\n").map((line) => line.replace(/^\*\s*/, "").trim()).find(Boolean) ?? answer;
+  return `${blockTitle}: ${firstLine.slice(0, 160)}`;
 }
 
 function buildSessionResponse(config: UtilityConfig, block: WorkBlock, deliverable: Deliverable, prompt: string) {
   const routedBlock = getRoutedWorkBlock(config.kind, prompt, block.id);
   return buildWorkBlockAsset(config.kind, routedBlock.id, deliverable);
-}
-
-function getBlockOutputs(kind: UtilityKind, activeBlock: WorkBlockId, deliverable: Deliverable) {
-  const asset = buildWorkBlockAsset(kind, activeBlock, deliverable);
-  return { title: getWorkBlock(kind, activeBlock).title, primary: asset, items: [] };
 }
 
 function buildWorkBlockAsset(kind: UtilityKind, blockId: WorkBlockId, deliverable: Deliverable) {
@@ -1024,26 +1136,6 @@ function bullets(items: string[], quote = false) {
   return items.map((item) => `* ${quote ? `“${item.replace(/^“|”$/g, "")}”` : item}`).join("\n");
 }
 
-function HistoryBlock({ history }: { history: MarketingAssetSummary[] }) {
-  return (
-    <div className="grid gap-3">
-      {history.length ? (
-        history.map((asset) => (
-          <details key={asset.id} className="rounded-md border border-slate-200 p-4">
-            <summary className="cursor-pointer text-sm font-semibold text-slate-950">
-              {asset.title} <span className="font-normal text-slate-500">- {new Date(asset.updatedAt).toLocaleDateString()}</span>
-            </summary>
-            <p className="mt-2 text-sm leading-6 text-slate-600">{asset.summary}</p>
-            <pre className="mt-3 max-h-72 overflow-auto rounded-md bg-slate-950 p-4 text-xs leading-5 text-slate-50">{JSON.stringify(asset.output, null, 2)}</pre>
-          </details>
-        ))
-      ) : (
-        <p className="rounded-md bg-slate-50 p-4 text-sm leading-6 text-slate-600">No saved versions yet. Save the current recommendation when it is ready to become part of this business’s history.</p>
-      )}
-    </div>
-  );
-}
-
 function WorkBlockIcon({ icon }: { icon: WorkBlock["icon"] }) {
   if (icon === "target") return <Target size={18} aria-hidden="true" />;
   if (icon === "message") return <MessageSquare size={18} aria-hidden="true" />;
@@ -1059,7 +1151,95 @@ function ChatBubble({ role, content }: { role: "assistant" | "user"; content: st
   return (
     <div className={`rounded-lg p-4 ${role === "assistant" ? "bg-cyan-50 text-cyan-950" : "bg-slate-100 text-slate-800"}`}>
       <p className="text-xs font-semibold uppercase tracking-wide">{role === "assistant" ? "Simple Marketing HQ" : "You"}</p>
-      <p className="mt-2 whitespace-pre-line text-sm leading-6">{content}</p>
+      <FormattedMessage content={content} />
+    </div>
+  );
+}
+
+function FormattedMessage({ content }: { content: string }) {
+  const lines = content.split("\n");
+  const elements: ReactNode[] = [];
+  let bullets: string[] = [];
+
+  function flushBullets() {
+    if (!bullets.length) return;
+    const group = bullets;
+    bullets = [];
+    elements.push(
+      <ul key={`bullets-${elements.length}`} className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6">
+        {group.map((item) => <li key={item}>{item}</li>)}
+      </ul>,
+    );
+  }
+
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      flushBullets();
+      return;
+    }
+    if (trimmed.startsWith("* ")) {
+      bullets.push(trimmed.replace(/^\*\s+/, ""));
+      return;
+    }
+    flushBullets();
+    elements.push(<p key={`line-${index}`} className="mt-2 whitespace-pre-line text-sm leading-6">{trimmed}</p>);
+  });
+  flushBullets();
+
+  return <>{elements}</>;
+}
+
+function TrainingActions({
+  message,
+  saveStatus,
+  isSaving,
+  isEditing,
+  draft,
+  onAdd,
+  onEdit,
+  onDraftChange,
+  onCancel,
+  onSaveEdit,
+}: {
+  message: SessionMessage | null;
+  saveStatus: string;
+  isSaving: boolean;
+  isEditing: boolean;
+  draft: string;
+  onAdd: () => void;
+  onEdit: () => void;
+  onDraftChange: (value: string) => void;
+  onCancel: () => void;
+  onSaveEdit: () => void;
+}) {
+  if (!message) return null;
+
+  return (
+    <div className="mt-3 rounded-md border border-cyan-100 bg-cyan-50/60 p-3">
+      {isEditing ? (
+        <div className="grid gap-3">
+          <textarea value={draft} onChange={(event) => onDraftChange(event.target.value)} className="min-h-32 rounded-md border border-cyan-200 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100" />
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={onSaveEdit} disabled={isSaving} className="rounded-md bg-cyan-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">
+              {isSaving ? "Saving..." : "Save to AI training"}
+            </button>
+            <button type="button" onClick={onCancel} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={onAdd} disabled={isSaving} className="rounded-md bg-cyan-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">
+            {isSaving ? "Saving..." : "+ Add to AI training"}
+          </button>
+          <button type="button" onClick={onEdit} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+            Edit first
+          </button>
+        </div>
+      )}
+      {saveStatus ? <p className="mt-2 text-sm font-semibold text-emerald-700">{saveStatus}</p> : null}
     </div>
   );
 }
