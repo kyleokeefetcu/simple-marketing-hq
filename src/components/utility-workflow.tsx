@@ -246,8 +246,6 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
   const scopedHref = (href: string) => (selectedBusinessId ? `${href}?businessId=${selectedBusinessId}` : href);
   const workBlocks = useMemo(() => getWorkBlocks(config.kind), [config.kind]);
   const activeWorkBlock = workBlocks.find((block) => block.id === activeBlock) ?? workBlocks[0];
-  const nextStep = getNextStepSuggestion(config, activeBlock, currentRecommendation);
-  const assistantIntro = buildWorkBlockAsset(config.kind, activeWorkBlock.id, currentRecommendation);
 
   const loadBusinessContext = useCallback(async (businessId: string) => {
     const supabase = createBrowserSupabaseClient();
@@ -504,9 +502,8 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
 
             <article className="mt-5 rounded-lg border border-cyan-200 bg-white p-5 shadow-sm">
               <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">AI Working Session</p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-950">{activeWorkBlock.title}</h2>
+              <h2 className="mt-2 text-2xl font-semibold text-slate-950">Ask AI</h2>
               <div className="mt-4 grid gap-3">
-                <ChatBubble role="assistant" content={assistantIntro} />
                 {sessionMessages.map((message, index) => (
                   <ChatBubble key={`${message.role}-${index}`} role={message.role} content={message.content} />
                 ))}
@@ -522,7 +519,7 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
                 <input
                   value={sessionInput}
                   onChange={(event) => setSessionInput(event.target.value)}
-                  placeholder={`Ask ${config.navName} to create, improve, or choose the next action...`}
+                  placeholder="Ask AI..."
                   className="min-h-12 flex-1 rounded-md border border-slate-300 px-4 text-sm outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100"
                 />
                 <button type="submit" className="inline-flex min-h-12 items-center justify-center rounded-md bg-cyan-900 px-5 font-semibold text-white">
@@ -558,29 +555,11 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
           </div>
         </section>
 
-        <section className="mt-5 rounded-lg border border-cyan-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Next best move</p>
-              <ul className="mt-2 space-y-1 text-sm leading-6 text-slate-700">
-                <li>{nextStep.title}</li>
-                <li><strong>Output:</strong> {nextStep.output}</li>
-                <li><strong>Why:</strong> {nextStep.why}</li>
-              </ul>
-            </div>
-            <button type="button" onClick={() => openWorkBlock(nextStep.blockId)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
-              {nextStep.button}
-              <ArrowRight size={18} aria-hidden="true" />
-            </button>
-          </div>
-        </section>
-
         <section className="mt-5">
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">AI Working Session</p>
-            <h2 className="mt-2 text-2xl font-semibold text-slate-950">Ask what to work on next.</h2>
+            <h2 className="mt-2 text-2xl font-semibold text-slate-950">Ask AI</h2>
             <div className="mt-4 grid gap-3">
-              <ChatBubble role="assistant" content={assistantIntro} />
               {sessionMessages.map((message, index) => (
                 <ChatBubble key={`${message.role}-${index}`} role={message.role} content={message.content} />
               ))}
@@ -596,7 +575,7 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
               <input
                 value={sessionInput}
                 onChange={(event) => setSessionInput(event.target.value)}
-                placeholder={`Ask ${config.navName} what to do next...`}
+                placeholder="Ask AI..."
                 className="min-h-12 flex-1 rounded-md border border-slate-300 px-4 text-sm outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100"
               />
               <button type="submit" className="inline-flex min-h-12 items-center justify-center rounded-md bg-cyan-900 px-5 font-semibold text-white">
@@ -902,28 +881,6 @@ function renderWorkBlock({
       ) : null}
     </div>
   );
-}
-
-function getNextStepSuggestion(config: UtilityConfig, activeBlock: WorkBlockId, deliverable: Deliverable) {
-  const blockId = activeBlock === "history" || activeBlock === "feed" ? firstWorkBlockId(config.kind) : activeBlock;
-  return { title: getShortNextAction(config, deliverable), why: getShortWhy(deliverable), output: getWorkBlock(config.kind, blockId).assetType.replaceAll("_", " "), button: `Open ${getWorkBlock(config.kind, blockId).title}`, blockId };
-}
-
-function getShortNextAction(config: UtilityConfig, deliverable: Deliverable) {
-  if (config.kind === "offer") return "Use this offer to create clearer homepage or sales copy.";
-  if (config.kind === "message") return "Turn the clearest message into one useful content asset.";
-  if (config.kind === "icp") return "Use the audience asset to sharpen the offer.";
-  if (config.kind === "strategy_map") return "Turn the priority into this week’s plan.";
-  if (config.kind === "marketing_schedule") return "Complete the first task this week.";
-  if (config.kind === "research") return "Turn the strongest insight into messaging.";
-  if (config.kind === "recommendation") return "Choose one tool only after the next action is clear.";
-  return deliverable.actionSteps[0];
-}
-
-function getShortWhy(deliverable: Deliverable) {
-  const bottleneck = deliverable.cmoRecommendation.customerProblem;
-  if (bottleneck.length > 80) return "It matches the current bottleneck.";
-  return `${bottleneck} is the current bottleneck.`;
 }
 
 function getQuickPrompts(kind: UtilityKind, activeBlock: WorkBlockId): QuickPrompt[] {
