@@ -4,7 +4,8 @@ import type { User } from "@supabase/supabase-js";
 import { Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { getBusinesses, type BusinessSummary } from "@/lib/supabase/diagnostics";
+import { getBusinesses,
+  getBusinessDisplayName, type BusinessSummary } from "@/lib/supabase/diagnostics";
 import {
   getMarketingAssets,
   saveMarketingAsset,
@@ -140,7 +141,7 @@ export function AssetSavePanel({ roleId, assetType, title, summary, output, inpu
             <option value="">Select Business / Client</option>
             {businesses.map((business) => (
               <option key={business.id} value={business.id}>
-                {business.name}
+                {getBusinessDisplayName(business, businesses)}
               </option>
             ))}
           </select>

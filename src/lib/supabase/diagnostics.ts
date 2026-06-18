@@ -125,7 +125,8 @@ export async function saveLaunchPadResultToSupabase(
         service_area: result.answers.serviceArea ?? null,
         description: result.customerDesiredOutcome ?? result.answers.messagingClarityNotes ?? null,
       })
-      .eq("id", businessId);
+      .eq("id", businessId)
+      .eq("owner_id", user.id);
 
     if (updateBusinessError) throw updateBusinessError;
   } else {
@@ -296,9 +297,14 @@ export async function savePendingDiagnosticForUser(supabase: SupabaseClient) {
 }
 
 export async function getBusinesses(supabase: SupabaseClient): Promise<BusinessSummary[]> {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!authData.user) return [];
+
   const { data, error } = await supabase
     .from("businesses")
     .select("id, name, website_url, description, services, ideal_customer, created_at")
+    .eq("owner_id", authData.user.id)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
@@ -315,6 +321,10 @@ export async function getBusinesses(supabase: SupabaseClient): Promise<BusinessS
 }
 
 export async function updateBusinessBrain(supabase: SupabaseClient, businessId: string, input: BusinessBrainInput) {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!authData.user) throw new Error("Log in before updating Business Brain.");
+
   const { error } = await supabase
     .from("businesses")
     .update({
@@ -324,7 +334,8 @@ export async function updateBusinessBrain(supabase: SupabaseClient, businessId: 
       services: input.services || null,
       ideal_customer: input.idealCustomer || null,
     })
-    .eq("id", businessId);
+    .eq("id", businessId)
+    .eq("owner_id", authData.user.id);
 
   if (error) throw error;
 }
@@ -348,6 +359,13 @@ type WebsiteAnalysisRow = {
 };
 
 export async function getWebsiteAnalyses(supabase: SupabaseClient, businessId: string): Promise<WebsiteAnalysisSummary[]> {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!authData.user) return [];
+
+  const ownedBusinesses = await getBusinesses(supabase);
+  if (!ownedBusinesses.some((business) => business.id === businessId)) return [];
+
   const { data, error } = await supabase
     .from("website_analyses")
     .select("id, business_id, diagnostic_id, website_url, analysis, created_at")
@@ -387,9 +405,14 @@ export async function createBusiness(supabase: SupabaseClient, user: User, name:
 }
 
 export async function getSavedDiagnostics(supabase: SupabaseClient, businessId?: string | null): Promise<SavedDiagnosticSummary[]> {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!authData.user) return [];
+
   let query = supabase
     .from("launchpad_diagnostics")
     .select("id, business_id, website_url, completed_at, created_at, summary")
+    .eq("user_id", authData.user.id)
     .order("created_at", { ascending: false });
 
   if (businessId) {
@@ -419,10 +442,15 @@ export async function getSavedDiagnostics(supabase: SupabaseClient, businessId?:
 }
 
 export async function getSavedDiagnosticById(supabase: SupabaseClient, diagnosticId: string): Promise<SavedDiagnosticSummary | null> {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!authData.user) return null;
+
   const { data, error } = await supabase
     .from("launchpad_diagnostics")
     .select("id, business_id, website_url, completed_at, created_at, summary")
     .eq("id", diagnosticId)
+    .eq("user_id", authData.user.id)
     .maybeSingle();
 
   if (error) throw error;
@@ -448,9 +476,14 @@ export async function getSavedDiagnosticById(supabase: SupabaseClient, diagnosti
 }
 
 export async function getSavedCheckIns(supabase: SupabaseClient, businessId?: string | null): Promise<SavedCheckInSummary[]> {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!authData.user) return [];
+
   let query = supabase
     .from("check_ins")
     .select("id, business_id, leads_count, booked_calls_count, referrals_count, created_at")
+    .eq("user_id", authData.user.id)
     .order("created_at", { ascending: false })
     .limit(8);
 
@@ -530,4 +563,11 @@ export async function saveReferralProfileToSupabase(supabase: SupabaseClient, us
 function toNumber(value: string) {
   const parsed = Number.parseInt(value || "0", 10);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function getBusinessDisplayName(business: BusinessSummary, businesses: BusinessSummary[]) {
+  const duplicateName = businesses.filter((item) => item.name.trim().toLowerCase() === business.name.trim().toLowerCase()).length > 1;
+  if (!duplicateName) return business.name;
+  if (business.websiteUrl) return business.name + " · " + business.websiteUrl.replace(/^https?:\/\//i, "").replace(/\/$/, "");
+  return business.name + " · " + new Date(business.createdAt).toLocaleDateString();
 }

@@ -127,10 +127,15 @@ export async function getMarketingAssets(
   assetType: MarketingAssetType,
   roleId?: PromptRoleId,
 ): Promise<MarketingAssetSummary[]> {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!authData.user) return [];
+
   let query = supabase
     .from("marketing_assets")
     .select("id, business_id, role_id, asset_type, title, summary, status, output, created_at, updated_at")
     .eq("business_id", businessId)
+    .eq("user_id", authData.user.id)
     .eq("asset_type", assetType)
     .order("updated_at", { ascending: false });
 
@@ -206,10 +211,15 @@ export async function saveAdvisorThread(
 }
 
 export async function getAdvisorThreads(supabase: SupabaseClient, businessId: string): Promise<AdvisorThreadSummary[]> {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!authData.user) return [];
+
   const { data: threads, error: threadError } = await supabase
     .from("advisor_threads")
     .select("id, business_id, title, status, context, created_at, updated_at")
     .eq("business_id", businessId)
+    .eq("user_id", authData.user.id)
     .order("updated_at", { ascending: false });
 
   if (threadError) throw threadError;
@@ -222,6 +232,7 @@ export async function getAdvisorThreads(supabase: SupabaseClient, businessId: st
     .from("advisor_messages")
     .select("id, thread_id, role, content, metadata, created_at")
     .in("thread_id", threadIds)
+    .eq("user_id", authData.user.id)
     .order("created_at", { ascending: true });
 
   if (messageError) throw messageError;

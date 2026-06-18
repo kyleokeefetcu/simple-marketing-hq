@@ -8,7 +8,8 @@ import { AppHeader } from "@/components/app-header";
 import { getIndustryProfile, getStoredResult, type LaunchPadResult } from "@/lib/launchpad";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getMarketingAssets, saveMarketingAsset, type MarketingAssetSummary, type MarketingAssetType } from "@/lib/supabase/assets";
-import { getBusinesses, getSavedDiagnostics, type BusinessSummary, type SavedDiagnosticSummary } from "@/lib/supabase/diagnostics";
+import { getBusinesses,
+  getBusinessDisplayName, getSavedDiagnostics, type BusinessSummary, type SavedDiagnosticSummary } from "@/lib/supabase/diagnostics";
 import type { PromptRoleId } from "@/lib/ai/prompts/shared-output-rules";
 import { buildOfferHqResponse, extractOfferFoundation, extractRecommendedOfferStatement, type OfferHqContext } from "@/lib/offer-hq-ai";
 import { buildMarketingUtilityAnswer, getDefaultGuidedAction, getGuidedActions, type MarketingUtilityContext, type MarketingUtilityId } from "@/lib/ai/marketing-utility-contracts";
@@ -228,9 +229,24 @@ const configs: Record<UtilityKind, UtilityConfig> = {
     cmoTitle: "Tool stack recommendation",
     feedLabel: "Tool idea, channel question, bottleneck, or deployment note",
     feedPlaceholder: "Paste a tool you are considering, a channel question, a bottleneck, or what you already have ready.",
-    nextHref: "/strategy-map",
-    nextLabel: "Review Launch Order",
-    nextOutput: "readiness check + channel order",
+    nextHref: "/channel-deployment",
+    nextLabel: "Plan Deployment",
+    nextOutput: "channel playbook + operating rhythm",
+  },
+  channel_deployment: {
+    kind: "channel_deployment",
+    roleId: "buyer_messaging_engine",
+    assetType: "recommendation",
+    navName: "Channel Deployment HQ",
+    title: "Channel deployment plan.",
+    promise: "Simple Marketing HQ recommends where to deploy first and how to execute through outside channels and tools.",
+    currentAssetTitle: "Current Channel Playbook",
+    cmoTitle: "Channel deployment recommendation",
+    feedLabel: "Channel result, question, or deployment note",
+    feedPlaceholder: "Paste a channel result, question, constraint, or note about what you are ready to deploy.",
+    nextHref: "/marketing-schedule",
+    nextLabel: "Build Weekly Plan",
+    nextOutput: "weekly deployment rhythm",
   },
 };
 
@@ -555,7 +571,7 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
                 <option value="">Business: local diagnostic context</option>
                 {businesses.map((business) => (
                   <option key={business.id} value={business.id}>
-                    Business: {business.name}
+                    Business: {getBusinessDisplayName(business, businesses)}
                   </option>
                 ))}
               </select>
@@ -760,6 +776,22 @@ const utilityWorkBlockRegistry: Record<UtilityKind, WorkBlock[]> = {
     createWorkBlock({ id: "feed", title: "Tool Notes", subtitle: "Add context.", purpose: "Add tool ideas, channel questions, bottlenecks, or deployment notes.", assetType: "tool_feedback", intentExamples: ["new info", "tool note", "channel question"], icon: "spark" }),
     createWorkBlock({ id: "history", title: "History", subtitle: "Saved versions.", purpose: "Show saved versions and changes over time.", assetType: "tool_history", intentExamples: ["history", "saved versions"], icon: "history" }),
   ],
+  channel_deployment: [
+    createWorkBlock({ id: "best-first-channel", title: "Best First Channel", subtitle: "Where to deploy first.", purpose: "Recommend the best first deployment channel and why it fits now.", assetType: "best_first_channel", intentExamples: ["best first channel", "deploy first", "first channel"], icon: "target" }),
+    createWorkBlock({ id: "youtube", title: "YouTube", subtitle: "Video playbook.", purpose: "Create a YouTube deployment playbook.", assetType: "youtube_playbook", intentExamples: ["youtube", "video"], icon: "video" }),
+    createWorkBlock({ id: "linkedin", title: "LinkedIn", subtitle: "B2B playbook.", purpose: "Create a LinkedIn deployment playbook.", assetType: "linkedin_playbook", intentExamples: ["linkedin"], icon: "message" }),
+    createWorkBlock({ id: "cold-email", title: "Cold Email", subtitle: "Outreach playbook.", purpose: "Create a cold email deployment playbook.", assetType: "cold_email_playbook", intentExamples: ["cold email", "outreach"], icon: "mail" }),
+    createWorkBlock({ id: "facebook-ads", title: "Facebook Ads", subtitle: "Ad playbook.", purpose: "Create a Facebook Ads deployment playbook.", assetType: "facebook_ads_playbook", intentExamples: ["facebook ads", "paid social"], icon: "spark" }),
+    createWorkBlock({ id: "google-search-seo", title: "Google Search / SEO", subtitle: "Search playbook.", purpose: "Create a Google Search / SEO deployment playbook.", assetType: "search_seo_playbook", intentExamples: ["seo", "google search"], icon: "target" }),
+    createWorkBlock({ id: "direct-mail", title: "Direct Mail", subtitle: "Mail playbook.", purpose: "Create a direct mail deployment playbook.", assetType: "direct_mail_playbook", intentExamples: ["direct mail"], icon: "mail" }),
+    createWorkBlock({ id: "door-hangers-local-print", title: "Door Hangers / Local Print", subtitle: "Local print.", purpose: "Create a door hanger or local print deployment playbook.", assetType: "local_print_playbook", intentExamples: ["door hangers", "local print"], icon: "idea" }),
+    createWorkBlock({ id: "call-center-outbound-calls", title: "Call Center / Outbound Calls", subtitle: "Call playbook.", purpose: "Create an outbound call deployment playbook.", assetType: "outbound_calls_playbook", intentExamples: ["outbound calls", "call center"], icon: "message" }),
+    createWorkBlock({ id: "partnerships", title: "Partnerships", subtitle: "Partner playbook.", purpose: "Create a partnerships deployment playbook.", assetType: "partnerships_playbook", intentExamples: ["partnerships", "partners"], icon: "spark" }),
+    createWorkBlock({ id: "website-conversion", title: "Website Conversion", subtitle: "Site conversion.", purpose: "Create a website conversion deployment playbook.", assetType: "website_conversion_playbook", intentExamples: ["website conversion", "site conversion"], icon: "target" }),
+    createWorkBlock({ id: "retargeting", title: "Retargeting", subtitle: "Retargeting playbook.", purpose: "Create a retargeting deployment playbook.", assetType: "retargeting_playbook", intentExamples: ["retargeting"], icon: "spark" }),
+    createWorkBlock({ id: "use", title: "Use It Now", subtitle: "Deploy this week.", purpose: "Turn the channel playbook into owner-ready actions.", assetType: "channel_activation", intentExamples: ["use it now", "what should i do next"], icon: "spark" }),
+    createWorkBlock({ id: "history", title: "History", subtitle: "Saved versions.", purpose: "Show saved versions and changes over time.", assetType: "channel_history", intentExamples: ["history", "saved versions"], icon: "history" }),
+  ],
 };
 
 const quickPromptRegistry: Record<UtilityKind, QuickPrompt[]> = {
@@ -815,6 +847,12 @@ const quickPromptRegistry: Record<UtilityKind, QuickPrompt[]> = {
     { label: "Avoid", prompt: "What should I avoid for now?", workBlockId: "avoid-for-now" },
     { label: "Setup", prompt: "How do I set it up?", workBlockId: "setup-steps" },
     { label: "Integrations", prompt: "What connects to what?", workBlockId: "integrations" },
+  ],
+  channel_deployment: [
+    { label: "Best first channel", prompt: "What channel should we deploy first?", workBlockId: "best-first-channel" },
+    { label: "Cold email", prompt: "Give me the cold email playbook.", workBlockId: "cold-email" },
+    { label: "YouTube", prompt: "Give me the YouTube playbook.", workBlockId: "youtube" },
+    { label: "Website", prompt: "Give me the website conversion playbook.", workBlockId: "website-conversion" },
   ],
 };
 
@@ -1164,17 +1202,33 @@ function buildWorkBlockAsset(kind: UtilityKind, blockId: WorkBlockId, deliverabl
     },
     recommendation: {
       "current-tools": bullets(["Website or CMS", "Contact form or booking path", "Email or CRM follow-up", "Analytics or lead source notes"]),
-      "recommended-tools": bullets(["Website lead capture tool", "CRM or simple lead inbox", "Email/SMS follow-up tool", "Call tracking if missed calls are common"]),
-      "setup-steps": bullets(["Start with one high-value website page", "Add approved answers to common questions", "Capture lead details and urgency", "Send the handoff to the right person", "Review lead quality weekly"]),
-      "cost-fit": "Use the lightest tool that improves response speed and lead handoff. Avoid expensive automation until the offer, CTA, and follow-up path are clear.",
-      integrations: bullets(["Website form to CRM", "Chat or question capture to email/SMS alert", "CRM to follow-up reminders", "Analytics to lead-source review"]),
+      "recommended-tools": bullets(["CRM / lead tracker", "Booking calendar", "Website analytics", "Demo recording tool", "Email/outreach tool"]),
+      "setup-steps": bullets(["Connect Fred conversations to a lead destination", "Add one clear demo CTA", "Track source and page", "Set a same-day follow-up rule", "Review visitor questions weekly"]),
+      "cost-fit": "Keep the stack lean: existing website, simple CRM or spreadsheet, booking calendar, analytics, and demo recorder. Avoid expensive automation until the demo and lead path convert.",
+      integrations: bullets(["Website to Fred conversation", "Fred conversation to lead tracker", "Lead tracker to follow-up", "Calendar to booked calls", "Analytics to weekly decisions"]),
       "avoid-for-now": bullets(["Complex marketing automation", "Paid ads before the CTA is clear", "Multiple new channels at once", "Tools that require heavy setup before proving lead quality"]),
-      use: bullets(["Pick one website page", "Set one CTA", "Capture the question and urgency", "Send the handoff to the team", "Review leads after one week"]),
+      use: bullets(["Pick one lead destination", "Set one CTA", "Capture the question and urgency", "Send the handoff to the team", "Review leads after one week"]),
       feed: "Add a tool idea, channel question, current stack detail, or deployment note.",
       history: "Open saved tool stack versions and compare what changed.",
     },
+    channel_deployment: {
+      "best-first-channel": "Start with website conversion plus targeted agency/service-business outreach after the demo, CTA, and lead handoff are clear.",
+      youtube: bullets(["Demo approved-content answers", "Show generic chatbot risk", "Explain the lead handoff", "Use one CTA", "Review demo engagement weekly"]),
+      linkedin: bullets(["Post agency/service-business proof", "Show before/after website questions", "Invite a low-risk demo", "Track replies and booked calls"]),
+      "cold-email": bullets(["Target agencies and service businesses", "Lead with website-question leakage", "Show the approved-answer demo", "Invite one-page test", "Track replies and demos"]),
+      "facebook-ads": "Use only after the demo page, proof, CTA, and follow-up path are converting from warmer traffic.",
+      "google-search-seo": bullets(["Own questions around safe AI website assistants", "Create comparison content", "Show approved-content proof", "Capture demo requests"]),
+      "direct-mail": "Use direct mail only for highly local service niches where the offer has a clear demo and follow-up owner.",
+      "door-hangers-local-print": "Use local print only when the buyer is geographically concentrated and the CTA points to a simple demo.",
+      "call-center-outbound-calls": "Use outbound calls only with a tight buyer list, a demo opener, and clear compliance/trust talking points.",
+      partnerships: bullets(["Website agencies", "SEO consultants", "CRM partners", "Call tracking providers", "Lead management communities"]),
+      "website-conversion": bullets(["Approved-content demo", "Guardrail proof block", "Clear CTA", "Lead handoff example", "Weekly question review"]),
+      retargeting: "Use retargeting after enough qualified website visitors have seen the demo or offer page.",
+      use: "Do today: choose the first channel, prep the demo asset, set one CTA, and define what counts as a qualified conversation.",
+      history: "Open saved channel deployment versions and compare what changed.",
+    },
   };
-  return assets[kind][blockId] ?? assets[kind][firstWorkBlockId(kind)];
+  return assets[kind]?.[blockId] ?? assets[kind]?.[firstWorkBlockId(kind)] ?? "Select a work block to generate the next useful asset.";
 }
 
 function buildAssetProfile(deliverable: Deliverable) {
@@ -1516,12 +1570,20 @@ function buildCurrentAsset(kind: UtilityKind, input: Record<string, string>) {
       ];
     case "recommendation":
       return [
-        { label: "Recommended tool/channel", value: channel },
-        { label: "Why now / why not yet", value: `Use it after ${offer}, message, proof, CTA, and follow-up are ready.` },
-        { label: "Tool category", value: "External deployment channel, not the foundation itself." },
+        { label: "Recommended tool stack", value: "CRM / lead tracker, booking calendar, analytics, demo recorder, and outreach tool." },
+        { label: "Why now / why not yet", value: `Use tools after ${offer}, message, proof, CTA, and follow-up are ready.` },
+        { label: "Tool category", value: "Lean execution stack, not a complex automation suite." },
         { label: "Readiness check", value: nextMove },
       ];
+    case "channel_deployment":
+      return [
+        { label: "Best first channel", value: "Website conversion plus targeted agency/service-business outreach." },
+        { label: "Why now", value: "It lets buyers see approved-content AI working before a sales call." },
+        { label: "Assets needed", value: "Demo proof, clear CTA, trust explanation, and lead handoff path." },
+        { label: "Track", value: "Demo views, replies, booked calls, and qualified conversations." },
+      ];
   }
+  return [{ label: "Current asset", value: `${businessName} should use ${channel} only after the offer, proof, CTA, and follow-up path are clear.` }];
 }
 
 function buildCopyBlocks(kind: UtilityKind, input: Record<string, string>) {
@@ -1563,16 +1625,22 @@ function buildCopyBlocks(kind: UtilityKind, input: Record<string, string>) {
       ];
     case "recommendation":
       return [
-        { label: "Tool recommendation", value: `Based on the current foundation, consider ${channel} only after the offer, message, proof, CTA, and follow-up are ready.` },
-        { label: "Readiness reminder", value: `Prepare the rocket ship before takeoff: ${proof}, clear message, and one next step.` },
+        { label: "Tool recommendation", value: "Use a lean stack: CRM / lead tracker, booking calendar, analytics, demo recorder, and outreach tool." },
+        { label: "Readiness reminder", value: `Do not buy complex tools before ${proof}, clear message, and one next step are ready.` },
+      ];
+    case "channel_deployment":
+      return [
+        { label: "Deployment recommendation", value: `Use ${channel} only after the demo, proof, CTA, and lead handoff are ready.` },
+        { label: "Operating rhythm", value: "Run one focused channel test weekly, review qualified conversations, and improve the message from real buyer questions." },
       ];
   }
+  return [{ label: "Recommendation", value: `${businessName} should connect ${offer} to ${outcome} with one clear next step.` }];
 }
 
 function buildWhy(kind: UtilityKind, input: Record<string, string>) {
   const { problem, outcome, bottleneck, channel } = input;
   const base = `This keeps the business focused on ${problem} and ${outcome} instead of asking the owner to invent a marketing strategy from scratch.`;
-  if (kind === "strategy_map" || kind === "recommendation") return `${base} It also prevents premature channel deployment through ${channel}.`;
+  if (kind === "strategy_map" || kind === "recommendation" || kind === "channel_deployment") return `${base} It also prevents premature channel deployment through ${channel}.`;
   if (kind === "marketing_schedule") return `${base} The work becomes a repeatable weekly rhythm instead of scattered tasks.`;
   if (kind === "research") return `${base} Raw notes become market intelligence that improves offer, message, and content decisions.`;
   return `${base} It addresses the current bottleneck: ${bottleneck}.`;
@@ -1586,6 +1654,7 @@ function buildNextAction(config: UtilityConfig, input: Record<string, string>) {
   if (config.kind === "strategy_map") return "Turn the priority into this week’s execution plan.";
   if (config.kind === "marketing_schedule") return "Complete the first task and add the result back here.";
   if (config.kind === "research") return "Turn the strongest insight into a message angle.";
+  if (config.kind === "channel_deployment") return "Run one focused channel test and review qualified conversations.";
   return `Review readiness before deploying through ${input.channel}.`;
 }
 
@@ -1600,8 +1669,9 @@ function buildTests(kind: UtilityKind, input: Record<string, string>) {
     strategy_map: "Priority order test",
     marketing_schedule: "Weekly rhythm test",
     research: "Customer language test",
-    recommendation: "Channel readiness test",
-  }[kind];
+    recommendation: "Tool stack readiness test",
+    channel_deployment: "Channel deployment test",
+  }[kind] ?? "Utility output test";
   return [
     {
       title: testName,
@@ -1630,8 +1700,11 @@ function buildUseItNow(kind: UtilityKind) {
     case "research":
       return ["Message Builder", "Offer Builder", "Content Engine", "FAQ section", "sales scripts"];
     case "recommendation":
-      return ["tool selection", "channel planning", "partner recommendation", "budget discussion", "launch readiness review"];
+      return ["tool selection", "stack setup", "budget discussion", "integration planning", "launch readiness review"];
+    case "channel_deployment":
+      return ["channel playbook", "weekly operating rhythm", "deployment checklist", "success metrics", "next channel decision"];
   }
+  return ["current asset", "next action", "owner review"];
 }
 
 function inferCustomerWant(problem: string, target: string) {

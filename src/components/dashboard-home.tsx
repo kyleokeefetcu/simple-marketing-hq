@@ -58,7 +58,8 @@ const navItems: Utility[] = [
   { title: "Execution HQ", shortTitle: "Schedule", href: "/marketing-schedule", body: "Create a practical weekly rhythm.", icon: <CalendarDays size={19} />, accent: "bg-lime-700 text-white" },
   { title: "Research HQ", shortTitle: "Research", href: "/research-hub", body: "Research pains, competitors, FAQs, and angles.", icon: <Search size={19} />, accent: "bg-violet-700 text-white" },
   { title: "LaunchPad Advisor", shortTitle: "Advisor", href: "/advisor", body: "Get the next action and execution steps.", icon: <Bot size={19} />, accent: "bg-cyan-800 text-white" },
-  { title: "Tool Stack HQ", shortTitle: "Recs", href: "/recommendations", body: "Choose outside tools after the foundation is clear.", icon: <Lightbulb size={19} />, accent: "bg-amber-700 text-white" },
+  { title: "Tool Stack HQ", shortTitle: "Tools", href: "/recommendations", body: "Choose outside tools after the foundation is clear.", icon: <Lightbulb size={19} />, accent: "bg-amber-700 text-white" },
+  { title: "Channel Deployment HQ", shortTitle: "Deploy", href: "/channel-deployment", body: "Choose where to deploy first and how to run it outside the app.", icon: <Rocket size={19} />, accent: "bg-stone-700 text-white" },
   { title: "Visitor Intelligence", shortTitle: "Visitors", href: "/dashboard/website", body: "Review conversion and visitor-intel readiness.", icon: <Users size={19} />, accent: "bg-slate-700 text-white" },
   { title: "Referrals", shortTitle: "Referrals", href: "/dashboard/referrals", body: "Build referral-ready business profiles.", icon: <Building2 size={19} />, accent: "bg-rose-700 text-white" },
   { title: "Settings / Billing", shortTitle: "Settings", href: "/settings", body: "Manage account and plan readiness.", icon: <Settings size={19} />, accent: "bg-slate-800 text-white" },
@@ -74,6 +75,7 @@ const utilityCards = [
   "Research HQ",
   "Ask Advisor",
   "Tool Stack HQ",
+  "Channel Deployment HQ",
 ] as const;
 
 const utilityMap: Record<(typeof utilityCards)[number], Utility> = {
@@ -86,6 +88,7 @@ const utilityMap: Record<(typeof utilityCards)[number], Utility> = {
   "Research HQ": navItems.find((item) => item.href === "/research-hub")!,
   "Ask Advisor": navItems.find((item) => item.href === "/advisor")!,
   "Tool Stack HQ": navItems.find((item) => item.href === "/recommendations")!,
+  "Channel Deployment HQ": navItems.find((item) => item.href === "/channel-deployment")!,
 };
 
 const utilityLabels: Record<(typeof utilityCards)[number], string> = {
@@ -98,6 +101,7 @@ const utilityLabels: Record<(typeof utilityCards)[number], string> = {
   "Research HQ": "Learn pains and objections.",
   "Ask Advisor": "Get the next move.",
   "Tool Stack HQ": "Choose tools when ready.",
+  "Channel Deployment HQ": "Plan where to deploy first.",
 };
 
 export function DashboardHome() {

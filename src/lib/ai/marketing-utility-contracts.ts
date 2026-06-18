@@ -1,4 +1,4 @@
-export type MarketingUtilityId = "icp" | "offer" | "message" | "content" | "strategy_map" | "marketing_schedule" | "research" | "recommendation";
+export type MarketingUtilityId = "icp" | "offer" | "message" | "content" | "strategy_map" | "marketing_schedule" | "research" | "recommendation" | "channel_deployment";
 
 export type MarketingUtilityContext = {
   businessName: string;
@@ -187,7 +187,72 @@ const utilityContracts: MarketingUtilityContract[] = [
   utility("strategy_map", "Strategy HQ", "Strategic growth team", "Choose what to fix first, what to ignore, and what sequence to follow.", strategyBlocks),
   utility("marketing_schedule", "Execution HQ", "Execution operator", "Turn strategy into concrete weekly actions.", ["weekly-actions", "task-checklist", "campaign-plan", "follow-up-process", "calendar", "progress-check-in", "use", "feed", "history"].map((id) => simpleBlock(id, titleize(id), ...defaultActionsFor(id)))),
   utility("research", "Research HQ", "Market researcher", "Convert website, customer, and market signals into usable insights.", ["website-findings", "competitor-notes", "market-patterns", "customer-language", "content-search-signals", "gaps", "use", "feed", "history"].map((id) => simpleBlock(id, titleize(id), ...defaultActionsFor(id)))),
-  utility("recommendation", "Tool Stack HQ", "Tool stack strategist", "Recommend only the tools that fit the next practical action.", ["current-tools", "recommended-tools", "setup-steps", "cost-fit", "integrations", "avoid-for-now", "use", "feed", "history"].map((id) => simpleBlock(id, titleize(id), ...defaultActionsFor(id)))),
+  utility("recommendation", "Tool Stack HQ", "Tool stack strategist", "Help the business choose the few tools needed to execute the recommended marketing plan without overbuilding.", [
+    block("current-tools", "Current Tools", "Tool inventory strategist", "Identify what tools the business likely already has or needs to confirm.", [
+      ["known_tools", "Known tools", "What tools do we already know about?", "current known tools"],
+      ["missing_categories", "Missing categories", "What tool categories are missing?", "missing tool categories"],
+      ["what_to_confirm", "What to confirm", "What should we confirm?", "what to confirm"],
+    ]),
+    block("recommended-tools", "Recommended Tools", "Lean stack strategist", "Recommend only the tool categories needed now.", [
+      ["recommended_categories", "Recommended tools", "What tools should I use?", "3-5 recommended tool categories"],
+      ["simple_options", "Simple options", "What are the simple options?", "low-cost/simple options"],
+      ["upgrade_later", "Upgrade later", "When should we upgrade?", "when to upgrade"],
+    ]),
+    block("setup-steps", "Setup Steps", "Implementation operator", "Give setup instructions for the lean tool stack.", [
+      ["setup_sequence", "Setup steps", "How do I set it up?", "step-by-step setup instructions"],
+      ["connect_first", "Connect first", "What should connect first?", "what to connect first"],
+      ["what_can_wait", "What can wait", "What can wait?", "what can wait"],
+      ["test_setup", "Test setup", "What should we test?", "what to test"],
+    ]),
+    block("cost-fit", "Cost Fit", "Budget-fit strategist", "Match tools to the business stage and budget.", [
+      ["stage_stack", "Cost fit", "What fits our stage?", "free/low-cost starting stack"],
+      ["worth_paying", "Worth paying for", "What is worth paying for now?", "what is worth paying for now"],
+      ["too_early", "Too early", "What is too early?", "what is too early"],
+      ["upgrade_trigger", "Upgrade trigger", "When should we upgrade?", "upgrade trigger"],
+    ]),
+    block("integrations", "Integrations", "Systems connector", "Explain what needs to connect so leads do not disappear.", [
+      ["connection_map", "Connection map", "What connects to what?", "connection map"],
+      ["lead_flow", "Lead flow", "How should leads move?", "lead flow"],
+      ["tracking_loop", "Tracking loop", "How should tracking work?", "tracking loop"],
+    ]),
+    block("avoid-for-now", "Avoid For Now", "Complexity reducer", "Identify tools that would create complexity too early.", [
+      ["avoid_tools", "Avoid tools", "What should I avoid for now?", "tools to avoid"],
+      ["why_avoid", "Why avoid", "Why avoid those tools?", "why to avoid them"],
+      ["later_when", "Later when", "When might they make sense later?", "when they might make sense later"],
+    ]),
+    block("use", "Use It Now", "Setup coach", "Give a practical setup checklist.", [
+      ["today", "Today", "What should I do today?", "today"],
+      ["this_week", "This week", "What should I do this week?", "this week"],
+      ["after_first_leads", "After first leads", "What should happen after first leads?", "after first leads"],
+      ["owner_delegate", "Owner/delegate", "What should the owner do or delegate?", "owner/delegate split"],
+    ]),
+    block("feed", "Tool Notes", "Tool context organizer", "Capture user-provided tool context and turn it into structured Business Brain notes.", [
+      ["capture_note", "Capture note", "Capture this tool note.", "tool note"],
+      ["update_stack", "Update stack", "How does this update the stack?", "stack update"],
+      ["save_to_brain", "Save to brain", "Should this be saved?", "whether to save to Business Brain"],
+    ]),
+    simpleBlock("history", "History", ["previous_summary", "Previous summary"], ["what_changed", "What changed"], ["what_to_keep", "What to keep"], ["what_to_replace", "What to replace"], ["best_current", "Best current"]),
+  ]),
+  utility("channel_deployment", "Channel Deployment HQ", "Channel deployment strategist", "Recommend the best deployment channel, assets, steps, rhythm, metrics, mistakes, and next channel without pretending to deploy for the user.", [
+    channelBlock("best-first-channel", "Best First Channel", "Choose the strongest first deployment channel for the selected business."),
+    channelBlock("youtube", "YouTube", "Create a YouTube deployment playbook."),
+    channelBlock("linkedin", "LinkedIn", "Create a LinkedIn deployment playbook."),
+    channelBlock("cold-email", "Cold Email", "Create a cold email deployment playbook."),
+    channelBlock("facebook-ads", "Facebook Ads", "Create a Facebook Ads deployment playbook."),
+    channelBlock("google-search-seo", "Google Search / SEO", "Create a Google Search / SEO deployment playbook."),
+    channelBlock("direct-mail", "Direct Mail", "Create a direct mail deployment playbook."),
+    channelBlock("door-hangers-local-print", "Door Hangers / Local Print", "Create a local print deployment playbook."),
+    channelBlock("call-center-outbound-calls", "Call Center / Outbound Calls", "Create an outbound call deployment playbook."),
+    channelBlock("partnerships", "Partnerships", "Create a partnerships deployment playbook."),
+    channelBlock("website-conversion", "Website Conversion", "Create a website conversion deployment playbook."),
+    channelBlock("retargeting", "Retargeting", "Create a retargeting deployment playbook."),
+    block("use", "Use It Now", "Deployment action coach", "Turn the channel plan into next actions.", [
+      ["do_today", "Do today", "What should I do today?", "today's deployment action"],
+      ["this_week", "This week", "What should I do this week?", "this week's deployment action"],
+      ["owner_action", "Owner action", "What should the owner do?", "owner action"],
+    ]),
+    simpleBlock("history", "History", ["previous_summary", "Previous summary"], ["what_changed", "What changed"], ["what_to_keep", "What to keep"], ["what_to_replace", "What to replace"], ["best_current", "Best current"]),
+  ]),
 ];
 
 function utility(utilityId: MarketingUtilityId, utilityName: string, expertRole: string, utilityJob: string, workBlocks: WorkBlockContract[]): MarketingUtilityContract {
@@ -208,6 +273,17 @@ function block(workBlockId: string, label: string, expertFrame: string, primaryD
 
 function simpleBlock(workBlockId: string, label: string, ...actionDefs: Array<[string, string]>): WorkBlockContract {
   return block(workBlockId, label, `${label} expert`, `Produce the ${label.toLowerCase()} decision for this business.`, actionDefs.map(([actionId, buttonLabel]) => [actionId, buttonLabel, `${buttonLabel}.`, `${buttonLabel.toLowerCase()} decision`]));
+}
+
+function channelBlock(workBlockId: string, label: string, primaryDecision: string): WorkBlockContract {
+  return block(workBlockId, label, "Channel deployment strategist", primaryDecision, [
+    ["playbook", label, `Give me the ${label} playbook.`, "channel-specific playbook"],
+    ["who_to_target", "Who to target", "Who should this channel target?", "who to target"],
+    ["assets_needed", "Assets needed", "What assets are needed?", "assets needed"],
+    ["weekly_rhythm", "Weekly rhythm", "What is the weekly rhythm?", "weekly rhythm"],
+    ["what_to_track", "What to track", "What should we track?", "success metrics"],
+    ["avoid_mistakes", "Avoid mistakes", "What mistakes should we avoid?", "common mistakes"],
+  ]);
 }
 
 function defaultActionsFor(workBlockId: string): Array<[string, string]> {
@@ -274,6 +350,8 @@ function inferManualAction(prompt: string, workBlockContract?: WorkBlockContract
 function buildUtilityAnswer(utilityContract: MarketingUtilityContract, blockContract: WorkBlockContract, actionContract: GuidedActionContract, context: Required<MarketingUtilityContext>) {
   if (utilityContract.utilityId === "icp") return buildAudienceAnswer(blockContract, actionContract, context);
   if (utilityContract.utilityId === "strategy_map") return buildStrategyAnswer(blockContract, actionContract, context);
+  if (utilityContract.utilityId === "recommendation") return buildToolStackAnswer(blockContract, actionContract, context);
+  if (utilityContract.utilityId === "channel_deployment") return buildChannelDeploymentAnswer(blockContract, actionContract, context);
   if (utilityContract.utilityId === "offer" && blockContract.workBlockId === "core-offer") return buildCoreOfferAnswer(actionContract, context);
   return buildFinishedUtilityAnswer(utilityContract, blockContract, actionContract, context);
 }
@@ -334,8 +412,35 @@ function buildCoreOfferAnswer(actionContract: GuidedActionContract, c: Required<
 
 function buildStrategyAnswer(blockContract: WorkBlockContract, actionContract: GuidedActionContract, context: Required<MarketingUtilityContext>) {
   if (blockContract.workBlockId === "current-bottleneck") return buildCurrentBottleneckAnswer(actionContract.actionId, context);
+  if (blockContract.workBlockId === "channel-priority") return buildStrategyChannelPriorityAnswer(actionContract.actionId, context);
   const lead = leadForAction(actionContract.buttonLabel, context);
-  return `${actionContract.buttonLabel}: ${lead}\n\n* Selected business: ${context.businessName}.\n* Buyer context: ${context.audience}.\n* Decision: ${actionContract.mustAnswer} for ${blockContract.label}, not a generic channel or lead-volume suggestion.`;
+  return `${actionContract.buttonLabel}: ${lead}
+
+* ${context.businessName} should keep this tied to ${context.audience} and the approved-content proof path.
+* This answer is for ${blockContract.label} and should stay more specific than a generic traffic or lead-volume recommendation.`;
+}
+
+function buildStrategyChannelPriorityAnswer(actionId: string, c: Required<MarketingUtilityContext>) {
+  if (actionId === "why_this_channel") return `Why this channel: ${c.businessName} should prioritize website conversion first because the buyer needs to see approved-content AI safely answer visitor questions before trusting it with live leads.
+
+* It uses existing website intent instead of chasing colder traffic.
+* It creates proof for later outreach, partnerships, and paid tests.`;
+  if (actionId === "channel_to_avoid") return `Channel to avoid: ${c.businessName} should avoid broad paid traffic until the approved-content demo, CTA, and lead handoff are clear.
+
+* More clicks will not solve trust uncertainty.
+* Spend should wait until the website can turn questions into qualified conversations.`;
+  if (actionId === "fastest_test") return `Fastest test: show a short approved-content Fred demo to agencies and service businesses, then invite them to test one page.
+
+* Track replies, demo clicks, and booked calls.
+* Use the questions prospects ask to improve the proof block and CTA.`;
+  if (actionId === "next_channel") return `Next channel: targeted cold email or partner outreach should come after ${c.businessName} has a clear website demo and lead handoff proof.
+
+* Agencies need a concrete example they can picture for clients.
+* Service businesses need to see the safe answer path before a sales call.`;
+  return `First channel: ${c.businessName} should prioritize website conversion first, then use targeted outreach once the demo path proves approved-content AI can turn visitor questions into qualified leads.
+
+* The buyer is ${c.audience}.
+* The channel should prove safety, lead capture, CTA clarity, and handoff quality before scaling traffic.`;
 }
 
 function buildCurrentBottleneckAnswer(actionId: string, c: Required<MarketingUtilityContext>) {
@@ -348,11 +453,362 @@ function buildCurrentBottleneckAnswer(actionId: string, c: Required<MarketingUti
   return `Current bottleneck: ${bottleneck}`;
 }
 
+function buildToolStackAnswer(blockContract: WorkBlockContract, actionContract: GuidedActionContract, c: Required<MarketingUtilityContext>) {
+  const focused = (body: string) => blockContract.label + "\n\n" + actionContract.buttonLabel + " for " + c.businessName + ":\n\n" + body;
+  if (blockContract.workBlockId === "current-tools" && actionContract.actionId === "missing_categories") return focused("Missing tool categories:\n\n1. Lead destination for captured Fred conversations.\n2. Source tracking for page and channel.\n3. Demo recording for approved-content proof.\n4. Same-day follow-up owner.");
+  if (blockContract.workBlockId === "current-tools" && actionContract.actionId === "what_to_confirm") return focused("Confirm these before adding tools:\n\n1. Where captured leads land.\n2. Who follows up.\n3. Which CTA starts a demo or sales call.\n4. Which page or channel created the conversation.");
+  if (blockContract.workBlockId === "recommended-tools" && actionContract.actionId === "simple_options") return focused("Simple starting options:\n\n1. CRM or spreadsheet for leads.\n2. Existing booking calendar.\n3. Basic website analytics.\n4. Loom-style demo recorder.\n5. Lightweight email outreach tool once targeting is clear.");
+  if (blockContract.workBlockId === "recommended-tools" && actionContract.actionId === "upgrade_later") return focused("Upgrade only when:\n\n1. Fred conversations are producing qualified opportunities.\n2. Follow-up volume is too high for manual tracking.\n3. Channel tests are creating enough data to justify better attribution or automation.");
+  if (blockContract.workBlockId === "setup-steps" && actionContract.actionId === "connect_first") return focused("Connect first:\n\n1. Fred conversation -> CRM, inbox, or spreadsheet.\n2. Lead destination -> same-day follow-up owner.\n3. Booking calendar -> demo CTA.\n\nLeave advanced automation until qualified conversations are flowing.");
+  if (blockContract.workBlockId === "setup-steps" && actionContract.actionId === "what_can_wait") return focused("What can wait:\n\n1. Multi-step automation.\n2. Enterprise integrations.\n3. Paid attribution tooling.\n4. Multiple content tools.\n\nProve the demo, CTA, and handoff first.");
+  if (blockContract.workBlockId === "setup-steps" && actionContract.actionId === "test_setup") return focused("Test this setup:\n\n1. Ask Fred a buying question.\n2. Confirm the approved-content answer.\n3. Submit lead details.\n4. Check the CRM/inbox handoff.\n5. Confirm follow-up happens the same day.");
+  if (blockContract.workBlockId === "cost-fit" && actionContract.actionId === "worth_paying") return focused("Worth paying for now:\n\n1. CRM or booking if it prevents missed follow-up.\n2. Outreach tool once the target list is clear.\n3. Analytics if channel testing begins.\n\nDo not pay for complexity before the conversion path works.");
+  if (blockContract.workBlockId === "cost-fit" && actionContract.actionId === "too_early") return focused("Too early:\n\n1. Expensive ad stack.\n2. Complex marketing automation suite.\n3. Multiple content tools.\n4. Enterprise integrations before demand is proven.");
+  if (blockContract.workBlockId === "cost-fit" && actionContract.actionId === "upgrade_trigger") return focused("Upgrade trigger:\n\nUpgrade when Fred conversations create enough qualified leads that manual tracking, follow-up, or reporting starts causing missed opportunities.");
+  if (blockContract.workBlockId === "integrations" && actionContract.actionId === "lead_flow") return focused("Lead flow:\n\nWebsite visitor question -> Fred approved-content answer -> captured lead details -> CRM/inbox -> same-day follow-up -> booked demo or sales call.");
+  if (blockContract.workBlockId === "integrations" && actionContract.actionId === "tracking_loop") return focused("Tracking loop:\n\nTrack page, source, question, lead quality, follow-up status, and booked call. Review weekly to improve approved content and the demo CTA.");
+  if (blockContract.workBlockId === "avoid-for-now" && actionContract.actionId === "why_avoid") return focused("Avoid them because they create setup work before the proof path is converting. " + c.businessName + " needs a clear demo, CTA, and lead handoff before more software.");
+  if (blockContract.workBlockId === "avoid-for-now" && actionContract.actionId === "later_when") return focused("They may make sense later when qualified conversations are consistent, follow-up volume is growing, and the team needs automation or reporting to prevent missed opportunities.");
+  if (blockContract.workBlockId === "use" && actionContract.actionId === "this_week") return focused("This week:\n\n1. Connect Fred conversations to one lead destination.\n2. Add the demo CTA.\n3. Track source and page.\n4. Set same-day follow-up.\n5. Review the top visitor questions.");
+  if (blockContract.workBlockId === "use" && actionContract.actionId === "after_first_leads") return focused("After first leads:\n\n1. Check lead quality.\n2. Review the questions visitors asked.\n3. Update weak approved-content answers.\n4. Improve the CTA or handoff if follow-up is slow.");
+  if (blockContract.workBlockId === "use" && actionContract.actionId === "owner_delegate") return focused("Owner/delegate split:\n\nOwner confirms the sales path, CTA, and follow-up promise. A teammate or agency can connect CRM, analytics, booking, and demo recording.");
+  if (blockContract.workBlockId === "current-tools") return `Current Tools
+
+${c.businessName} should inventory the tools that already touch the lead path.
+
+Known or likely tools:
+1. Website or CMS where Fred is installed or demonstrated.
+2. Inbox, CRM, or spreadsheet where captured leads should land.
+3. Calendar or sales call booking path.
+
+Missing categories to confirm:
+* Lead destination
+* Source tracking
+* Demo recording
+* Same-day follow-up owner`;
+  if (blockContract.workBlockId === "recommended-tools") return `Recommended Tools
+
+${c.businessName} needs a lean stack that proves the AI assistant can turn website questions into qualified conversations.
+
+1. CRM / lead tracker
+   Use this to capture every Fred conversation, source, contact, and next step.
+
+2. Booking calendar
+   Use this to turn qualified website conversations into scheduled demos or sales calls.
+
+3. Website analytics
+   Use this to see which pages and channels produce the best Fred conversations.
+
+4. Demo recording tool
+   Use this to show agencies and business owners exactly how Fred answers from approved content.
+
+5. Email/outreach tool
+   Use this to test agency and service-business outreach without starting with paid ads.
+
+Avoid for now:
+Do not add a complex marketing automation stack until the demo path, CTA, and lead routing are clear.`;
+  if (blockContract.workBlockId === "setup-steps") return `Setup Steps
+
+${c.businessName} should set up the stack around one job: turning approved-content Fred conversations into visible, followed-up leads.
+
+1. Connect Fred conversations to a lead destination.
+   Route captured leads into a CRM, inbox, or spreadsheet so no conversation disappears.
+
+2. Add one clear demo CTA.
+   Use a simple CTA such as "See Fred answer from your website content."
+
+3. Track source and page.
+   Tag whether the lead came from homepage, pricing, guardrails, agency outreach, or content.
+
+4. Set a follow-up rule.
+   Every qualified Fred conversation should trigger a same-day email, call, or booking reminder.
+
+5. Review weekly.
+   Look at which questions visitors ask most and update approved content where answers are weak.`;
+  if (blockContract.workBlockId === "cost-fit") return `Cost Fit
+
+${c.businessName} should keep the tool stack lean until the core demo and lead path are converting.
+
+Use now:
+* existing website
+* simple CRM or spreadsheet
+* booking calendar
+* analytics
+* demo recorder
+
+Worth paying for:
+* CRM/booking if it reduces missed follow-up
+* outreach tool once targeting is clear
+* analytics if channel testing begins
+
+Avoid for now:
+* expensive ad stack
+* complex automation suite
+* multiple content tools
+* enterprise integrations before demand is proven`;
+  if (blockContract.workBlockId === "integrations") return `Integrations
+
+${c.businessName} needs the lead path connected before adding more tools.
+
+1. Website -> Fred conversation
+   Visitor questions start the conversion path.
+
+2. Fred conversation -> lead tracker
+   Captured contact, question, urgency, and source must land somewhere visible.
+
+3. Lead tracker -> follow-up
+   Qualified conversations should trigger same-day email, call, or booking outreach.
+
+4. Calendar -> booked calls
+   The CTA should move qualified buyers into a demo or sales call.
+
+5. Analytics -> weekly decision
+   Track which page, channel, and question type creates the best opportunities.`;
+  if (blockContract.workBlockId === "avoid-for-now") return `Avoid For Now
+
+${c.businessName} should avoid tools that add complexity before the demo, CTA, and lead handoff are clear.
+
+1. Enterprise automation suites
+   Too much setup before the lead path is proven.
+
+2. Multi-channel ad tooling
+   Paid traffic will not fix a weak proof or demo path.
+
+3. Too many content tools
+   One clear demo and outreach path matters more than production volume.
+
+4. Custom integrations for every edge case
+   Wait until qualified conversations show which integrations buyers actually need.`;
+  if (blockContract.workBlockId === "use") return `Use It Now
+
+${c.businessName} should keep this setup simple and tied to qualified conversations.
+
+Today:
+1. Pick one lead destination for every Fred conversation.
+2. Write one demo CTA tied to approved-content answers.
+
+This week:
+1. Connect source tracking.
+2. Set a same-day follow-up rule.
+3. Review the top visitor questions and update approved content.
+
+Owner/delegate split:
+The owner confirms the sales path; a teammate or agency can connect the tools.`;
+  return buildFinishedUtilityAnswer({ ...marketingUtilityContracts.recommendation, utilityId: "recommendation" }, blockContract, actionContract, c);
+}
+
+function buildChannelDeploymentAnswer(blockContract: WorkBlockContract, actionContract: GuidedActionContract, c: Required<MarketingUtilityContext>) {
+  const channel = blockContract.label;
+  if (actionContract.actionId === "who_to_target") return `${channel} Targeting
+
+${c.businessName} should target ${c.audience} that already have website visitors asking buying questions.
+
+1. Prioritize buyers with traffic and slow or inconsistent answers.
+2. Look for trust-sensitive categories where generic AI feels risky.
+3. Avoid audiences with no website demand or no clear follow-up owner.`;
+  if (actionContract.actionId === "assets_needed") return `${channel} Assets Needed
+
+${c.businessName} needs these assets before using ${channel}:
+
+1. Approved-content demo.
+2. Clear offer statement.
+3. Trust and guardrail proof block.
+4. One CTA tied to testing Fred on website content.
+5. Lead handoff path into CRM, inbox, or booking.`;
+  if (actionContract.actionId === "weekly_rhythm") return `${channel} Weekly Rhythm
+
+${c.businessName} should run one focused ${channel} test per week.
+
+1. Publish or send one proof-backed asset.
+2. Review replies, demo views, and booked calls.
+3. Update approved answers from the questions buyers ask.`;
+  if (actionContract.actionId === "what_to_track") return `${channel} Metrics
+
+${c.businessName} should track qualified conversations, not vanity activity.
+
+1. Demo clicks or views.
+2. Replies from service businesses or agencies.
+3. Booked calls.
+4. Visitor questions captured.
+5. Leads routed for same-day follow-up.`;
+  if (actionContract.actionId === "avoid_mistakes") return `${channel} Mistakes To Avoid
+
+${c.businessName} should avoid turning ${channel} into generic AI promotion.
+
+1. Do not lead with vague automation claims.
+2. Do not skip proof that answers stay inside approved content.
+3. Do not drive traffic before the CTA and lead handoff are clear.`;
+  if (blockContract.workBlockId === "use") {
+    if (actionContract.actionId === "this_week") return `Use It Now
+
+This week for ${c.businessName}:
+
+1. Pick the first deployment channel.
+2. Prep the approved-content demo asset.
+3. Set one CTA for testing Fred on website content.
+4. Decide what counts as a qualified conversation.
+5. Review replies, booked calls, and captured questions.`;
+    if (actionContract.actionId === "owner_action") return `Use It Now
+
+Owner action for ${c.businessName}:
+
+Confirm the offer, proof, CTA, and follow-up owner before any channel push.
+
+* The owner should approve the demo promise.
+* A teammate or agency can execute the channel steps.
+* Keep the channel focused on qualified conversations, not vanity activity.`;
+    return `Use It Now
+
+Today for ${c.businessName}:
+
+1. Choose the first channel.
+2. Write the demo CTA.
+3. Confirm where captured leads go.
+4. Pick one metric: qualified conversations.`;
+  }
+  if (blockContract.workBlockId === "history") {
+    if (actionContract.actionId === "what_changed") return `History
+
+What changed for ${c.businessName}:
+
+The current channel plan should stay tied to the approved-content demo, lead handoff, and buyer trust proof.
+
+* Replace broad deployment ideas with focused channel tests.
+* Keep the channel sequence based on qualified conversations.`;
+    if (actionContract.actionId === "what_to_keep") return `History
+
+What to keep for ${c.businessName}:
+
+Keep the channel plan centered on website questions, approved-content answers, and qualified lead handoff.
+
+* Keep demo proof.
+* Keep one clear CTA.
+* Keep weekly review of captured questions.`;
+    if (actionContract.actionId === "what_to_replace") return `History
+
+What to replace for ${c.businessName}:
+
+Replace generic channel activity with channel tests that prove Fred can safely turn visitor questions into qualified leads.
+
+* Replace broad traffic goals.
+* Replace vague AI claims.
+* Replace untracked activity.`;
+    if (actionContract.actionId === "best_current") return `History
+
+Best current version for ${c.businessName}:
+
+Website conversion first, then targeted outreach once the demo and lead handoff are proven.
+
+* This keeps deployment tied to trust and conversion.
+* It avoids spending before the offer path is ready.`;
+    return `History
+
+Previous summary for ${c.businessName}:
+
+Review saved channel plans against the current proof, CTA, and follow-up path before reusing them.`;
+  }
+  if (blockContract.workBlockId === "best-first-channel") return `Best First Channel
+
+${c.businessName} should start with website conversion plus targeted agency/service-business outreach, not broad paid traffic.
+
+Why this fits now:
+* The buyer needs proof that approved-content AI can answer website questions safely.
+* The best channel should let prospects see the product in action before a sales call.
+* Outreach can target agencies and service businesses that already care about website leads.
+
+Prepare first:
+1. A short demo showing Fred answering from approved content.
+2. A clear CTA: "See Fred answer from your website content."
+3. A lead handoff path into CRM, inbox, or booking.
+
+Track:
+Demo views, replies, booked calls, qualified conversations, and questions that reveal buyer objections.`;
+  if (blockContract.workBlockId === "cold-email") return `Cold Email Playbook
+
+Who to target:
+Website agencies, SEO agencies, and service businesses with lead-generating sites.
+
+Subject angle:
+Your client sites may be losing visitors after the first question.
+
+Outreach promise:
+${c.businessName} helps turn website questions into qualified leads with AI that only answers from approved content.
+
+3-step sequence:
+1. Send a specific website-question leak observation.
+2. Show a short approved-answer demo.
+3. Invite them to test Fred on one page.
+
+Demo / CTA:
+See Fred answer from your website content.
+
+Compliance warning:
+Do not lead with generic AI automation. Lead with safe answers, guardrails, and lead handoff quality.
+
+Track:
+Reply rate, demo clicks, booked calls, and qualified agency conversations.`;
+  if (blockContract.workBlockId === "youtube") return `YouTube Playbook
+
+Best content angle:
+Show how website visitors ask buying questions and how approved-content AI answers without going off-brand.
+
+5 video topics:
+1. Why website visitors leave before contacting you.
+2. Generic chatbot vs approved-content AI.
+3. How Fred handles questions it should not answer.
+4. What a qualified lead handoff looks like.
+5. How agencies can add safer AI to client websites.
+
+CTA:
+Test Fred on your website content.
+
+Weekly cadence:
+One demo-style video each week, clipped into shorter posts.
+
+Avoid:
+Do not make broad AI thought-leadership videos before the demo proof is clear.`;
+  if (blockContract.workBlockId === "website-conversion") return `Website Conversion Playbook
+
+First job:
+Make the website prove that ${c.businessName} answers visitor questions from approved content and captures qualified leads.
+
+Assets needed:
+1. Approved-content demo.
+2. Guardrail proof block.
+3. Clear CTA.
+4. Example lead handoff.
+
+Weekly rhythm:
+Review visitor questions, update weak approved answers, and test one CTA or proof block.
+
+Success metrics:
+Started conversations, captured leads, booked demos, and qualified handoffs.`;
+  return `${channel} Playbook
+
+Best use for ${c.businessName}:
+Use this channel only after the approved-content demo, CTA, and lead handoff are clear.
+
+Who to target:
+${c.audience}.
+
+Assets needed:
+1. Demo proof.
+2. Clear offer statement.
+3. Trust/safety explanation.
+4. Follow-up path.
+
+Weekly rhythm:
+Run one focused test, review qualified conversations, and update the message from real buyer questions.
+
+Avoid:
+Do not use this channel to chase generic traffic before the conversion path is ready.`;
+}
+
 function buildFinishedUtilityAnswer(utilityContract: MarketingUtilityContract, blockContract: WorkBlockContract, actionContract: GuidedActionContract, context: Required<MarketingUtilityContext>) {
   const label = actionContract.buttonLabel.toLowerCase();
   const heading = actionContract.buttonLabel === "Primary answer" ? "" : actionContract.buttonLabel + "\n\n";
   const base = context.businessName + " already sells " + context.offer + " to " + context.audience + ".";
-  const buyerNeed = "The buyer needs a clearer path from " + context.buyerPain + " to " + context.outcome + ".";
+  const buyerNeed = context.businessName + " should connect the buyer pain to a concrete outcome: " + context.buyerPain + " -> " + context.outcome + ".";
 
   if (/^(use|use-it-now)$/i.test(blockContract.workBlockId)) return blockContract.label + "\n\n" + heading + leadForAction(actionContract.buttonLabel, context);
   if (label.includes("avoid") || label.includes("ignore") || label.includes("wait")) return blockContract.label + "\n\n" + heading + "Avoid for now:\n\n1. Do not add more channels before the offer, proof, and CTA are clear.\n2. Do not use generic AI claims when the buyer needs approved-content trust.\n3. Do not distract from the existing product's core job: turning website questions into qualified opportunities.";
@@ -363,7 +819,7 @@ function buildFinishedUtilityAnswer(utilityContract: MarketingUtilityContract, b
   if (label.includes("keep")) return blockContract.label + "\n\n" + heading + "Keep this:\n\nKeep the approved-content trust mechanism, the website-question problem, and the qualified-lead outcome visible in the asset.";
   if (label.includes("replace")) return blockContract.label + "\n\n" + heading + "Replace this:\n\nReplace generic AI or traffic language with specific proof that " + context.businessName + " answers from approved content and captures better lead context.";
   if (label.includes("current") || label.includes("summary")) return blockContract.label + "\n\n" + heading + "Current version:\n\n" + base + "\n\n" + buyerNeed;
-  return blockContract.label + "\n\n" + heading + base + "\n\n" + buyerNeed + "\n\nStrong output:\nA short, specific asset that helps the buyer understand why approved-content answers are safer than a generic chatbot.";
+  return blockContract.label + "\n\n" + heading + base + "\n\n" + buyerNeed + "\n\nMake this useful by naming the buyer, the pain, the asset to create, and the next practical step.";
 }
 
 function leadForAction(label: string, c: Required<MarketingUtilityContext>) {

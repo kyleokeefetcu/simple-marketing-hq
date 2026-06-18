@@ -67,6 +67,12 @@ export const commandCenterModules = [
     href: "/recommendations",
     body: "Recommend outside tools and channels only after the foundation is clear enough for takeoff.",
   },
+  {
+    slug: "channel-deployment",
+    title: "Channel Deployment HQ",
+    href: "/channel-deployment",
+    body: "Choose the first deployment channel, required assets, outside execution steps, rhythm, metrics, and what to avoid.",
+  },
 ];
 
 export function buildIcpStarter(result: LaunchPadResult | null) {

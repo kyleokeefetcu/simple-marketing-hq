@@ -37,7 +37,7 @@ function normalize(value) {
 }
 
 const forbiddenMain = /^(not enough leads|need more leads|need more traffic|improve marketing|create more content|run ads|build awareness|increase conversions|get more customers|better messaging|follow up more)\.?$/i;
-const forbiddenOutput = /should make|should build|should create|could make|consider making|Audience HQ decision|Offer HQ decision|Messaging HQ decision|Strategy HQ decision|top pain points decision|Business context:|the selected business should/i;
+const forbiddenOutput = /should make|should build|should create|could make|consider making|Audience HQ decision|Offer HQ decision|Messaging HQ decision|Strategy HQ decision|Tool Stack HQ decision|top pain points decision|Business context:|Strong output:|The buyer needs a clearer path|the selected business should/i;
 let contractCount = 0;
 let actionCount = 0;
 
@@ -83,6 +83,11 @@ const talkToFredChecks = [
   ["Audience Objections", "icp", "objections", "top_objections", /make up answers|fit our website|hurt trust/i, /approved content|qualified opportunity/i, /hard to manage|industry/i],
   ["Strategy Current Bottleneck", "strategy_map", "current-bottleneck", "find_bottleneck", /safe conversion path|approved-content/i, /qualified leads|visitor questions/i, /not just raw lead volume|trust/i],
   ["Offer Core Offer", "offer", "core-offer", "define_offer", /approved-content AI website assistant/i, /visitor questions|qualified opportunities/i, /off-brand|risky|safe/i],
+  ["Tool Stack Recommended Tools", "recommendation", "recommended-tools", "recommended_categories", /CRM|lead tracker|booking calendar|analytics|demo recording/i, /outreach tool|recommended tools/i, /avoid for now|automation stack/i],
+  ["Tool Stack Setup Steps", "recommendation", "setup-steps", "setup_sequence", /Connect Fred conversations|lead destination/i, /Track source|follow-up rule|Review weekly/i, /Step|1\.|2\./i],
+  ["Tool Stack Cost Fit", "recommendation", "cost-fit", "stage_stack", /lean|low-cost|Use now/i, /Worth paying for|Avoid for now/i, /expensive ad stack|complex automation/i],
+  ["Channel Deployment Best First Channel", "channel_deployment", "best-first-channel", "playbook", /website conversion|targeted agency|service-business outreach/i, /approved-content AI|demo|lead handoff/i, /Track|booked calls|qualified conversations/i],
+  ["Strategy Channel Priority", "strategy_map", "channel-priority", "first_channel", /website conversion|channel/i, /Talk to Fred|service businesses|approved-content/i, /not a generic|proof|CTA/i],
 ];
 
 for (const [name, utilityId, workBlockId, actionId, mustA, mustB, mustC] of talkToFredChecks) {
@@ -112,3 +117,26 @@ const bottleneckOutputs = strategyActions.map(([actionId, prompt]) => buildMarke
 assert("Strategy Current Bottleneck buttons are distinct", new Set(bottleneckOutputs.map(normalize)).size === bottleneckOutputs.length);
 assert("Contract coverage count", contractCount >= 70, `contracts=${contractCount}`);
 assert("Guided action coverage count", actionCount >= 300, `actions=${actionCount}`);
+
+const repeatedWorkBlockUtilities = ["icp", "offer", "message", "content", "strategy_map", "marketing_schedule", "research", "recommendation", "channel_deployment"];
+for (const utilityId of repeatedWorkBlockUtilities) {
+  const contract = marketingUtilityContracts[utilityId];
+  const defaultOutputs = contract.workBlocks.map((block) => {
+    const defaultAction = getDefaultGuidedAction(utilityId, block.workBlockId);
+    return defaultAction ? buildMarketingUtilityAnswer({ utilityId, workBlockId: block.workBlockId, actionId: defaultAction.actionId, prompt: defaultAction.userFacingPrompt, context }).content : "";
+  }).filter(Boolean);
+  assert(utilityId + " default work-block outputs are distinct", new Set(defaultOutputs.map(normalize)).size === defaultOutputs.length, defaultOutputs.join("\n---\n"));
+}
+
+const toolStackRecommended = buildMarketingUtilityAnswer({ utilityId: "recommendation", workBlockId: "recommended-tools", actionId: "recommended_categories", prompt: "What tools should I use?", context }).content;
+assert("Tool Stack recommended tools names real tool categories", /CRM \/ lead tracker|Booking calendar|Website analytics|Demo recording tool|Email\/outreach tool/i.test(toolStackRecommended), toolStackRecommended);
+assert("Tool Stack recommended tools is not just business summary", !/^Recommended Tools\s+Talk to Fred already sells/im.test(toolStackRecommended), toolStackRecommended);
+
+const toolStackSetup = buildMarketingUtilityAnswer({ utilityId: "recommendation", workBlockId: "setup-steps", actionId: "setup_sequence", prompt: "How do I set it up?", context }).content;
+assert("Tool Stack setup gives actual numbered steps", /1\. Connect Fred conversations|2\. Add one clear demo CTA|3\. Track source/i.test(toolStackSetup), toolStackSetup);
+
+const toolStackCost = buildMarketingUtilityAnswer({ utilityId: "recommendation", workBlockId: "cost-fit", actionId: "stage_stack", prompt: "What fits our stage?", context }).content;
+assert("Tool Stack cost fit gives stage and pricing guidance", /Use now:|Worth paying for:|Avoid for now:/i.test(toolStackCost), toolStackCost);
+
+const channelFirst = buildMarketingUtilityAnswer({ utilityId: "channel_deployment", workBlockId: "best-first-channel", actionId: "playbook", prompt: "What channel should we deploy first?", context }).content;
+assert("Channel Deployment best first channel is a playbook", /Prepare first:|Track:|Why this fits now:/i.test(channelFirst), channelFirst);

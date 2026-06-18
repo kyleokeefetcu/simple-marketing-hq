@@ -5,7 +5,8 @@ import { ArrowRight, ClipboardList, GitCompareArrows, History, Play, RotateCcw }
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/app-header";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { getBusinesses, getSavedDiagnostics, type BusinessSummary, type SavedDiagnosticSummary } from "@/lib/supabase/diagnostics";
+import { getBusinesses,
+  getBusinessDisplayName, getSavedDiagnostics, type BusinessSummary, type SavedDiagnosticSummary } from "@/lib/supabase/diagnostics";
 
 type DiagnosticDraft = {
   phase?: string;
@@ -108,7 +109,7 @@ export function DiagnosticHQ() {
               <option value="">Select Business / Client</option>
               {businesses.map((business) => (
                 <option key={business.id} value={business.id}>
-                  {business.name}
+                  {getBusinessDisplayName(business, businesses)}
                 </option>
               ))}
             </select>

@@ -7,6 +7,7 @@ import { AppHeader } from "@/components/app-header";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import {
   getBusinesses,
+  getBusinessDisplayName,
   getSavedDiagnostics,
   getWebsiteAnalyses,
   updateBusinessBrain,
@@ -16,6 +17,27 @@ import {
   type WebsiteAnalysisSummary,
 } from "@/lib/supabase/diagnostics";
 import { getMarketingAssets, saveMarketingAsset, type MarketingAssetSummary, type MarketingAssetType } from "@/lib/supabase/assets";
+
+type BusinessBrainForm = BusinessBrainInput & {
+  currentBottleneck: string;
+  recommendedFirstChannel: string;
+  cta: string;
+  proofTrustPoints: string;
+  mainPainProblem: string;
+};
+
+const emptyBrainForm: BusinessBrainForm = {
+  name: "",
+  websiteUrl: "",
+  description: "",
+  services: "",
+  idealCustomer: "",
+  currentBottleneck: "",
+  recommendedFirstChannel: "",
+  cta: "",
+  proofTrustPoints: "",
+  mainPainProblem: "",
+};
 
 const assetTypes: MarketingAssetType[] = [
   "icp",
@@ -40,7 +62,7 @@ export default function BusinessBrainPage() {
   const [diagnostic, setDiagnostic] = useState<SavedDiagnosticSummary | null>(null);
   const [analyses, setAnalyses] = useState<WebsiteAnalysisSummary[]>([]);
   const [assets, setAssets] = useState<MarketingAssetSummary[]>([]);
-  const [form, setForm] = useState<BusinessBrainInput>({ name: "", websiteUrl: "", description: "", services: "", idealCustomer: "" });
+  const [form, setForm] = useState<BusinessBrainForm>(emptyBrainForm);
   const [status, setStatus] = useState("Loading Business Brain...");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -82,16 +104,19 @@ export default function BusinessBrainPage() {
     const supabase = createBrowserSupabaseClient();
     if (!supabase || !businessId) return;
     const business = knownBusinesses.find((item) => item.id === businessId) ?? null;
-    if (business) setForm(toBrainForm(business));
     window.localStorage.setItem("simple-marketing-hq:selected-business-id", businessId);
     const [diagnostics, websiteAnalyses, assetGroups] = await Promise.all([
       getSavedDiagnostics(supabase, businessId),
       getWebsiteAnalyses(supabase, businessId),
       Promise.all(assetTypes.map((assetType) => getMarketingAssets(supabase, businessId, assetType))),
     ]);
+    const flatAssets = assetGroups.flat().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    const savedBrain = flatAssets.find((asset) => asset.title === "Business Brain Confirmation" || asset.title === "Business Brain Saved");
+    const snapshot = extractBrainSnapshot(savedBrain);
+    if (business) setForm(toBrainForm(business, diagnostics[0] ?? null, snapshot));
     setDiagnostic(diagnostics[0] ?? null);
     setAnalyses(websiteAnalyses);
-    setAssets(assetGroups.flat().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()));
+    setAssets(flatAssets);
   }
 
   async function handleBusinessChange(businessId: string) {
@@ -108,7 +133,19 @@ export default function BusinessBrainPage() {
     setIsSaving(true);
     setStatus("Saving Business Brain...");
     try {
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) throw new Error("Log in before saving Business Brain.");
       await updateBusinessBrain(supabase, selectedBusinessId, form);
+      await saveMarketingAsset(supabase, data.user, {
+        businessId: selectedBusinessId,
+        roleId: "research_hub",
+        assetType: "research",
+        title: "Business Brain Saved",
+        summary: `Business Brain saved for ${form.name || selectedBusiness?.name || "this business"}.`,
+        output: { savedAt: new Date().toISOString(), snapshot: form, latestDiagnostic: diagnostic, latestWebsiteAnalysis: latestAnalysis },
+        input: { source: "business_brain" },
+        prompt: { purpose: "Save Business Brain source of truth fields." },
+      });
       const savedBusinesses = await getBusinesses(supabase);
       setBusinesses(savedBusinesses);
       await loadBusiness(selectedBusinessId, savedBusinesses);
@@ -161,7 +198,7 @@ export default function BusinessBrainPage() {
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
             <select value={selectedBusinessId} onChange={(event) => void handleBusinessChange(event.target.value)} className="min-h-11 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800">
               <option value="">Select Business / Client</option>
-              {businesses.map((business) => <option key={business.id} value={business.id}>{business.name}</option>)}
+              {businesses.map((business) => <option key={business.id} value={business.id}>{getBusinessDisplayName(business, businesses)}</option>)}
             </select>
             <span className="text-sm font-semibold text-emerald-700">{status}</span>
           </div>
@@ -181,11 +218,11 @@ export default function BusinessBrainPage() {
             <BrainField label="Industry/category" value={form.description} onChange={(value) => setForm((current) => ({ ...current, description: value }))} />
             <BrainField label="What they sell / Main offer" value={form.services} onChange={(value) => setForm((current) => ({ ...current, services: value }))} />
             <BrainField label="Primary audience" value={form.idealCustomer} onChange={(value) => setForm((current) => ({ ...current, idealCustomer: value }))} />
-            <ReadOnlyBrainField label="Current bottleneck" value={diagnostic?.biggestBottleneck ?? "No saved diagnostic yet."} />
-            <ReadOnlyBrainField label="Recommended first channel" value={diagnostic?.recommendedFirstChannel || "No recommendation saved yet."} />
-            <ReadOnlyBrainField label="CTA" value={extractDiagnosticValue(diagnostic, "primaryCta") || "No CTA saved yet."} />
-            <ReadOnlyBrainField label="Proof/trust points" value={extractDiagnosticValue(diagnostic, "trustSignals") || "No proof saved yet."} />
-            <ReadOnlyBrainField label="Main pain/problem solved" value={diagnostic?.nextMove ?? "No problem statement saved yet."} />
+            <BrainField label="Current bottleneck" value={form.currentBottleneck} onChange={(value) => setForm((current) => ({ ...current, currentBottleneck: value }))} />
+            <BrainField label="Recommended first channel" value={form.recommendedFirstChannel} onChange={(value) => setForm((current) => ({ ...current, recommendedFirstChannel: value }))} />
+            <BrainField label="CTA" value={form.cta} onChange={(value) => setForm((current) => ({ ...current, cta: value }))} />
+            <BrainField label="Proof/trust points" value={form.proofTrustPoints} onChange={(value) => setForm((current) => ({ ...current, proofTrustPoints: value }))} />
+            <BrainField label="Main pain/problem solved" value={form.mainPainProblem} onChange={(value) => setForm((current) => ({ ...current, mainPainProblem: value }))} />
           </div>
         </form>
 
@@ -229,16 +266,24 @@ export default function BusinessBrainPage() {
   );
 }
 
-function toBrainForm(business: BusinessSummary): BusinessBrainInput {
-  return { name: business.name, websiteUrl: business.websiteUrl, description: business.description, services: business.services, idealCustomer: business.idealCustomer };
+function toBrainForm(business: BusinessSummary, diagnostic: SavedDiagnosticSummary | null, snapshot?: Partial<BusinessBrainForm>): BusinessBrainForm {
+  return {
+    ...emptyBrainForm,
+    name: snapshot?.name ?? business.name,
+    websiteUrl: snapshot?.websiteUrl ?? business.websiteUrl,
+    description: snapshot?.description ?? business.description,
+    services: snapshot?.services ?? business.services,
+    idealCustomer: snapshot?.idealCustomer ?? business.idealCustomer,
+    currentBottleneck: snapshot?.currentBottleneck ?? diagnostic?.biggestBottleneck ?? "",
+    recommendedFirstChannel: snapshot?.recommendedFirstChannel ?? diagnostic?.recommendedFirstChannel ?? "",
+    cta: snapshot?.cta ?? extractDiagnosticValue(diagnostic, "primaryCta") ?? "",
+    proofTrustPoints: snapshot?.proofTrustPoints ?? extractDiagnosticValue(diagnostic, "trustSignals") ?? "",
+    mainPainProblem: snapshot?.mainPainProblem ?? diagnostic?.nextMove ?? "",
+  };
 }
 
 function BrainField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return <label className="block"><span className="text-sm font-semibold text-slate-700">{label}</span><input value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 min-h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100" /></label>;
-}
-
-function ReadOnlyBrainField({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-md bg-slate-50 p-3"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p><p className="mt-1 text-sm leading-6 text-slate-800">{value}</p></div>;
 }
 
 function StatusRow({ label, value }: { label: string; value: string }) {
@@ -247,6 +292,11 @@ function StatusRow({ label, value }: { label: string; value: string }) {
 
 function formatDate(value?: string) {
   return value ? new Date(value).toLocaleString() : "Not saved yet.";
+}
+
+function extractBrainSnapshot(asset?: MarketingAssetSummary): Partial<BusinessBrainForm> | undefined {
+  const snapshot = asset?.output?.snapshot;
+  return snapshot && typeof snapshot === "object" ? snapshot as Partial<BusinessBrainForm> : undefined;
 }
 
 function extractDiagnosticValue(diagnostic: SavedDiagnosticSummary | null, key: string) {
