@@ -10,8 +10,10 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getMarketingAssets, saveMarketingAsset, type MarketingAssetSummary, type MarketingAssetType } from "@/lib/supabase/assets";
 import { getBusinesses, getSavedDiagnostics, type BusinessSummary, type SavedDiagnosticSummary } from "@/lib/supabase/diagnostics";
 import type { PromptRoleId } from "@/lib/ai/prompts/shared-output-rules";
+import { buildOfferHqResponse, extractOfferFoundation, extractRecommendedOfferStatement, type OfferHqContext } from "@/lib/offer-hq-ai";
+import { buildMarketingUtilityAnswer, getGuidedActions, type MarketingUtilityContext, type MarketingUtilityId } from "@/lib/ai/marketing-utility-contracts";
 
-type UtilityKind = "icp" | "offer" | "message" | "content" | "strategy_map" | "marketing_schedule" | "research" | "recommendation";
+type UtilityKind = MarketingUtilityId;
 
 type UtilityConfig = {
   kind: UtilityKind;
@@ -74,11 +76,13 @@ type QuickPrompt = {
   label: string;
   prompt: string;
   workBlockId: WorkBlockId;
+  actionId?: string;
 };
 
 type WorkBlockPrompt = {
   label: string;
   prompt: string;
+  actionId?: string;
 };
 
 type SessionMessage = {
@@ -86,6 +90,8 @@ type SessionMessage = {
   content: string;
   workBlockId?: WorkBlockId;
   prompt?: string;
+  actionId?: string;
+  actionLabel?: string;
 };
 
 const assetTypes: MarketingAssetType[] = [
@@ -355,14 +361,19 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
         input: {
           activeBlock: block.id,
           workBlockSlug: block.id,
+          actionId: message.actionId,
+          actionLabel: message.actionLabel,
           workBlockAssetType: block.assetType,
           userQuestion: message.prompt,
+          utilityId: config.kind,
           business: context.business,
           latestDiagnostic: context.latestDiagnostic,
         },
         output: {
           utility: config.navName,
           workBlockSlug: block.id,
+          actionId: message.actionId,
+          actionLabel: message.actionLabel,
           assetType: block.assetType,
           assetTitle: block.title,
           assetContent: answer,
@@ -372,6 +383,8 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
           utility: config.navName,
           activeBlock: block.id,
           workBlockSlug: block.id,
+          actionId: message.actionId,
+          actionLabel: message.actionLabel,
           workBlockAssetType: block.assetType,
         },
       });
@@ -385,14 +398,98 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
       setIsSaving(false);
     }
   }
-  function handleQuickPrompt(prompt: string, workBlockId?: WorkBlockId) {
+  async function handleSetCurrentCoreOffer(message: SessionMessage | null) {
+    if (!message) return;
+    const supabase = createBrowserSupabaseClient();
+    if (!supabase || !selectedBusinessId) {
+      setSaveStatus("Log in and select a Business / Client before saving.");
+      return;
+    }
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+      setSaveStatus("Log in before saving this offer.");
+      return;
+    }
+    const statement = extractRecommendedOfferStatement(message.content);
+    const foundation = extractOfferFoundation(message.content);
+    setIsSaving(true);
+    setSaveStatus("Saving current core offer...");
+    try {
+      await saveMarketingAsset(supabase, data.user, {
+        businessId: selectedBusinessId,
+        roleId: config.roleId,
+        assetType: config.assetType,
+        title: `${assetTitle} - Current Core Offer`,
+        summary: `Current Core Offer: ${statement.slice(0, 160)}`,
+        input: {
+          activeBlock: "core-offer",
+          source: "Offer HQ",
+          tool: "Core Offer",
+          userQuestion: message.prompt,
+          utilityId: config.kind,
+          actionId: message.actionId,
+          actionLabel: message.actionLabel,
+          business: context.business,
+          latestDiagnostic: context.latestDiagnostic,
+        },
+        output: {
+          utility: config.navName,
+          workBlockSlug: "core-offer",
+          assetType: "core_offer",
+          assetTitle: "Current Core Offer",
+          recommendedCoreOffer: foundation.recommendedCoreOffer || statement,
+          bestFitBuyer: foundation.bestFitBuyer,
+          buyerProblem: foundation.buyerProblem,
+          result: foundation.result,
+          uniqueMechanism: foundation.uniqueMechanism,
+          riskReversal: foundation.riskReversal,
+          cta: foundation.cta,
+          saveWorthyFoundation: {
+            primaryBuyer: foundation.primaryBuyer,
+            primaryPain: foundation.primaryPain,
+            desiredResult: foundation.desiredResult,
+            coreOffer: foundation.coreOffer || statement,
+            uniqueMechanism: foundation.uniqueMechanism,
+            keyObjections: foundation.keyObjections,
+            riskReversal: foundation.riskReversal,
+            proofNeeded: foundation.proofNeeded,
+            cta: foundation.cta,
+          },
+        },
+        prompt: { purpose: "Set this Offer HQ answer as the current core offer.", utility: config.navName, activeBlock: "core-offer" },
+      });
+      await loadBusinessContext(selectedBusinessId);
+      setSaveStatus("Set as Current Core Offer. Future answers will use this.");
+    } catch (error) {
+      setSaveStatus(`Could not save current offer: ${(error as Error).message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  function handleQuickPrompt(prompt: string, workBlockId?: WorkBlockId, actionId?: string, actionLabel?: string) {
     const routedBlock = workBlockId ? getWorkBlock(config.kind, workBlockId) : getRoutedWorkBlock(config.kind, prompt, activeWorkBlock.id);
     setActiveBlock(routedBlock.id);
     setSaveStatus("");
     setEditingTraining(false);
     setTrainingDraft("");
-    const response = workBlockId ? buildWorkBlockAsset(config.kind, routedBlock.id, currentRecommendation) : buildSessionResponse(config, routedBlock, currentRecommendation, prompt);
-    setSessionMessages((messages) => [...messages, { role: "user", content: prompt, workBlockId: routedBlock.id }, { role: "assistant", content: response, workBlockId: routedBlock.id, prompt }]);
+    const previousAssistant = [...sessionMessages].reverse().find((message) => message.role === "assistant")?.content;
+    const response = config.kind === "offer"
+      ? buildOfferHqResponse({ prompt, context: buildOfferHqContext(context, currentRecommendation), history: sessionMessages, previousAssistant, forceMaster: /generate offer options|build offer system|master offer|offer system/i.test(prompt) }).content
+      : buildMarketingUtilityAnswer({ utilityId: config.kind, workBlockId: routedBlock.id, actionId, prompt, context: buildMarketingUtilityContext(context, currentRecommendation), previousAssistant }).content;
+    setSessionMessages((messages) => [...messages, { role: "user", content: prompt, workBlockId: routedBlock.id, actionId, actionLabel }, { role: "assistant", content: response, workBlockId: routedBlock.id, prompt, actionId, actionLabel }]);
+  }
+
+  function handleBuildOfferSystem() {
+    const prompt = "Build Offer System";
+    const routedBlock = getWorkBlock(config.kind, "core-offer");
+    setActiveBlock(routedBlock.id);
+    setSaveStatus("");
+    setEditingTraining(false);
+    setTrainingDraft("");
+    const previousAssistant = [...sessionMessages].reverse().find((message) => message.role === "assistant")?.content;
+    const response = buildOfferHqResponse({ prompt, context: buildOfferHqContext(context, currentRecommendation), history: sessionMessages, previousAssistant, forceMaster: true }).content;
+    setSessionMessages((messages) => [...messages, { role: "user", content: prompt, workBlockId: routedBlock.id, actionId: "offer_options", actionLabel: "Build Offer System" }, { role: "assistant", content: response, workBlockId: routedBlock.id, prompt, actionId: "offer_options", actionLabel: "Build Offer System" }]);
   }
 
   function openWorkBlock(blockId: WorkBlockId) {
@@ -501,9 +598,21 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
                 }}
                 onSaveEdit={() => void handleSaveTrainingAnswer(latestTrainingMessage, trainingDraft)}
               />
+              {config.kind === "offer" && activeBlock === "core-offer" ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button type="button" onClick={handleBuildOfferSystem} className="rounded-md border border-cyan-200 bg-white px-3 py-2 text-xs font-semibold text-cyan-900 hover:bg-cyan-50">
+                    Build Offer System
+                  </button>
+                  {latestTrainingMessage ? (
+                    <button type="button" onClick={() => void handleSetCurrentCoreOffer(latestTrainingMessage)} disabled={isSaving} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-50">
+                      Set as Current Core Offer
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="mt-4 flex flex-wrap gap-2">
                 {getQuickPrompts(config.kind, activeBlock).map((quickPrompt) => (
-                  <button key={quickPrompt.label} type="button" onClick={() => handleQuickPrompt(quickPrompt.prompt, quickPrompt.workBlockId)} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
+                  <button key={quickPrompt.label} type="button" onClick={() => handleQuickPrompt(quickPrompt.prompt, quickPrompt.workBlockId, quickPrompt.actionId, quickPrompt.label)} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
                     {quickPrompt.label}
                   </button>
                 ))}
@@ -577,9 +686,21 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
               }}
               onSaveEdit={() => void handleSaveTrainingAnswer(latestTrainingMessage, trainingDraft)}
             />
+            {config.kind === "offer" && activeBlock === "core-offer" ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" onClick={handleBuildOfferSystem} className="rounded-md border border-cyan-200 bg-white px-3 py-2 text-xs font-semibold text-cyan-900 hover:bg-cyan-50">
+                  Build Offer System
+                </button>
+                {latestTrainingMessage ? (
+                  <button type="button" onClick={() => void handleSetCurrentCoreOffer(latestTrainingMessage)} disabled={isSaving} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-50">
+                    Set as Current Core Offer
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
             <div className="mt-4 flex flex-wrap gap-2">
               {getQuickPrompts(config.kind, activeBlock).map((quickPrompt) => (
-                <button key={quickPrompt.label} type="button" onClick={() => handleQuickPrompt(quickPrompt.prompt, quickPrompt.workBlockId)} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
+                <button key={quickPrompt.label} type="button" onClick={() => handleQuickPrompt(quickPrompt.prompt, quickPrompt.workBlockId, quickPrompt.actionId, quickPrompt.label)} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
                   {quickPrompt.label}
                 </button>
               ))}
@@ -876,11 +997,12 @@ const workBlockQuickPromptRegistry: Partial<Record<UtilityKind, Partial<Record<W
   },
   offer: {
     "core-offer": [
-      { label: "Define the offer", prompt: "What do we sell?" },
-      { label: "Simplify the offer", prompt: "Simplify the offer." },
-      { label: "What they get", prompt: "What does the customer get?" },
-      { label: "Who it is for", prompt: "Who is this offer for?" },
-      { label: "Make it clearer", prompt: "Make the offer clearer." },
+      { label: "Define the offer", prompt: "Using the selected business context, define the strongest core offer. Include buyer, pain, result, unique mechanism, objection removed, risk reversal, and a recommended one-sentence offer." },
+      { label: "Simplify the offer", prompt: "Simplify the current offer into plain English. Give me: 1 short version, 1 homepage hero version, 1 sales conversation version, and 1 version a non-marketer would immediately understand." },
+      { label: "What they get", prompt: "Break down what the buyer actually gets. Separate outcomes, deliverables, features, process, support, and first win." },
+      { label: "Who it is for", prompt: "Define who this offer is for. Include best-fit buyers, secondary buyers, wrong-fit buyers, urgent pain signals, and buying triggers." },
+      { label: "Make it clearer", prompt: "Diagnose what is unclear about the current offer and rewrite it into a clearer version. Include before/after and explain why the new version is stronger." },
+      { label: "Offer options", prompt: "Build Offer System" },
     ],
     "primary-promise": [
       { label: "Main promise", prompt: "What is the main promise?" },
@@ -986,6 +1108,18 @@ function matchByKeywords(kind: UtilityKind, lower: string) {
 }
 
 function getQuickPrompts(kind: UtilityKind, activeBlock: WorkBlockId): QuickPrompt[] {
+  const contractActions = getGuidedActions(kind, activeBlock);
+  if (contractActions.length) {
+    return contractActions.slice(0, 6).map((guidedAction) => ({
+      label: guidedAction.buttonLabel,
+      prompt: guidedAction.userFacingPrompt,
+      workBlockId: activeBlock,
+      actionId: guidedAction.actionId,
+    }));
+  }
+
+  if (process.env.NODE_ENV !== "production") throw new Error(`Missing AI contract for ${kind}/${activeBlock}`);
+
   const block = getWorkBlock(kind, activeBlock);
   const scopedPrompts = workBlockQuickPromptRegistry[kind]?.[activeBlock];
   const fallbackPrompt = quickPromptRegistry[kind].find((prompt) => prompt.workBlockId === activeBlock);
@@ -994,7 +1128,7 @@ function getQuickPrompts(kind: UtilityKind, activeBlock: WorkBlockId): QuickProm
     { label: "Make it clearer", prompt: `Make ${block.title.toLowerCase()} clearer.` },
     { label: "Use it now", prompt: `Turn ${block.title.toLowerCase()} into something I can use now.` },
   ]);
-  return prompts.slice(0, 6).map((prompt) => ({ ...prompt, workBlockId: activeBlock }));
+  return prompts.slice(0, 6).map((prompt) => ({ ...prompt, workBlockId: activeBlock, actionId: prompt.actionId ?? normalizeIntent(prompt.label).replaceAll(" ", "_") }));
 }
 
 function getSelectedWorkBlockDescription(kind: UtilityKind, activeBlock: WorkBlockId) {
@@ -1128,6 +1262,51 @@ function buildAssetProfile(deliverable: Deliverable) {
   };
 }
 
+function buildMarketingUtilityContext(context: UtilityContext, deliverable: Deliverable): MarketingUtilityContext {
+  const profile = buildAssetProfile(deliverable);
+  const savedAssets = Object.entries(context.priorAssets)
+    .filter(([, asset]) => Boolean(asset))
+    .map(([assetType, asset]) => `${assetType}: ${asset?.summary ?? "saved asset"}`);
+  const answers = context.result?.answers;
+  return {
+    businessName: context.business?.name || context.result?.businessName || profile.businessName,
+    website: context.business?.websiteUrl || context.latestDiagnostic?.websiteUrl || context.result?.websiteUrl || answers?.websiteUrl,
+    industry: answers?.industryCategory || context.result?.industryFit,
+    offer: context.priorAssets.offer?.summary || answers?.whatSelling || context.business?.services || profile.offer,
+    audience: context.priorAssets.icp?.summary || answers?.targetCustomer || context.business?.idealCustomer || profile.target,
+    buyerPain: answers?.urgentProblem || answers?.marketingFrustration || context.latestDiagnostic?.biggestBottleneck || context.result?.biggestBottleneck || profile.problem,
+    outcome: context.result?.customerDesiredOutcome || profile.outcome,
+    proof: answers?.trustFactor || profile.proof,
+    channel: context.latestDiagnostic?.recommendedFirstChannel || context.result?.recommendedFirstChannel || profile.channel,
+    currentAsset: deliverable.cmoRecommendation.recommendation,
+    savedAssets,
+  };
+}
+
+function buildOfferHqContext(context: UtilityContext, deliverable: Deliverable): OfferHqContext {
+  const profile = buildAssetProfile(deliverable);
+  const savedAssets = Object.entries(context.priorAssets)
+    .filter(([, asset]) => Boolean(asset))
+    .map(([assetType, asset]) => `${assetType}: ${asset?.summary ?? "saved asset"}`);
+  const answers = context.result?.answers;
+  return {
+    businessName: context.business?.name || context.result?.businessName || profile.businessName,
+    website: context.business?.websiteUrl || context.latestDiagnostic?.websiteUrl || context.result?.websiteUrl || answers?.websiteUrl,
+    industry: answers?.industryCategory || context.result?.industryFit,
+    whatTheySell: context.priorAssets.offer?.summary || answers?.whatSelling || context.business?.services || profile.offer,
+    primaryAudience: context.priorAssets.icp?.summary || answers?.targetCustomer || context.business?.idealCustomer || profile.target,
+    buyerPain: answers?.urgentProblem || answers?.marketingFrustration || context.latestDiagnostic?.biggestBottleneck || context.result?.biggestBottleneck || profile.problem,
+    desiredOutcome: context.result?.customerDesiredOutcome || profile.outcome,
+    currentCta: answers?.primaryCta || profile.channel,
+    proofSignals: answers?.trustFactor || profile.proof,
+    websiteAnalysis: context.result?.websiteFindings?.join(" ") || context.latestDiagnostic?.nextMove || context.latestDiagnostic?.channelRecommendationWhy,
+    diagnosticSummary: context.latestDiagnostic?.nextMove || context.latestDiagnostic?.biggestBottleneck || context.result?.nextMove || context.result?.biggestBottleneck,
+    businessBrainSummary: context.business ? `${context.business.name}: ${context.business.services || "services not confirmed"}. ${context.business.idealCustomer || "Audience not confirmed"}.` : undefined,
+    savedAssets,
+    currentOffer: profile.offer,
+  };
+}
+
 function cleanAssetPhrase(value: string) {
   return value.replace(/^(Audience statement|Offer statement|Best-fit customer|Current bottleneck):\s*/i, "").replace(/\s+/g, " ").trim();
 }
@@ -1157,6 +1336,37 @@ function ChatBubble({ role, content }: { role: "assistant" | "user"; content: st
 }
 
 function FormattedMessage({ content }: { content: string }) {
+  const detailBlocks: ReactNode[] = [];
+  const visibleParts: string[] = [];
+  const detailPattern = /:::details\s+([^\n]+)\n([\s\S]*?)\n:::/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = detailPattern.exec(content)) !== null) {
+    visibleParts.push(content.slice(lastIndex, match.index));
+    const label = match[1].trim();
+    const body = match[2].trim();
+    detailBlocks.push(
+      <details key={`detail-${detailBlocks.length}`} className="mt-3 rounded-md border border-slate-200 bg-white p-3">
+        <summary className="cursor-pointer text-sm font-semibold text-slate-800">{label}</summary>
+        <div className="mt-2 text-slate-700">
+          <FormattedPlainText content={body} />
+        </div>
+      </details>,
+    );
+    lastIndex = detailPattern.lastIndex;
+  }
+  visibleParts.push(content.slice(lastIndex));
+
+  return (
+    <>
+      <FormattedPlainText content={visibleParts.join("\n").trim()} />
+      {detailBlocks}
+    </>
+  );
+}
+
+function FormattedPlainText({ content }: { content: string }) {
   const lines = content.split("\n");
   const elements: ReactNode[] = [];
   let bullets: string[] = [];
@@ -1178,8 +1388,18 @@ function FormattedMessage({ content }: { content: string }) {
       flushBullets();
       return;
     }
-    if (trimmed.startsWith("* ")) {
-      bullets.push(trimmed.replace(/^\*\s+/, ""));
+    if (trimmed.startsWith("# ")) {
+      flushBullets();
+      elements.push(<h3 key={`heading-${index}`} className="mt-4 text-base font-semibold text-slate-950">{trimmed.replace(/^#\s+/, "")}</h3>);
+      return;
+    }
+    if (trimmed.startsWith("## ")) {
+      flushBullets();
+      elements.push(<h4 key={`subheading-${index}`} className="mt-3 text-sm font-semibold text-slate-900">{trimmed.replace(/^##\s+/, "")}</h4>);
+      return;
+    }
+    if (trimmed.startsWith("* ") || trimmed.startsWith("- ")) {
+      bullets.push(trimmed.replace(/^[-*]\s+/, ""));
       return;
     }
     flushBullets();
