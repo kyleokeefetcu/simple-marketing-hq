@@ -2,15 +2,14 @@
 
 import Link from "next/link";
 import type { FormEvent } from "react";
-import { Copy, Sparkles } from "lucide-react";
+import { Copy } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { AppHeader } from "@/components/app-header";
-import { AssetSavePanel } from "@/components/asset-save-panel";
 import { promptRegistry } from "@/lib/ai/prompts/registry";
 import type { PromptPack, PromptRoleId } from "@/lib/ai/prompts/shared-output-rules";
 import { getStoredResult, type LaunchPadResult } from "@/lib/launchpad";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { getMarketingAssets, type MarketingAssetSummary, type MarketingAssetType } from "@/lib/supabase/assets";
+import { getMarketingAssets, saveMarketingAsset, type MarketingAssetSummary, type MarketingAssetType } from "@/lib/supabase/assets";
 import { getBusinesses, getSavedDiagnostics, type BusinessSummary, type SavedDiagnosticSummary } from "@/lib/supabase/diagnostics";
 
 type LabDeliverable = {
@@ -268,8 +267,11 @@ export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
   const [priorAssets, setPriorAssets] = useState<Partial<Record<MarketingAssetType, MarketingAssetSummary>>>({});
   const [answers, setAnswers] = useState<Record<string, string>>(() => Object.fromEntries(prompt.input_fields.map((field) => [field.id, ""])));
   const [deliverable, setDeliverable] = useState<LabDeliverable | null>(null);
-  const [status, setStatus] = useState("Load or select a Business / Client to tailor this tool.");
   const [showRefineInput, setShowRefineInput] = useState(false);
+  const [isBuilding, setIsBuilding] = useState(false);
+  const [saveStatus, setSaveStatus] = useState("");
+  const [aiInput, setAiInput] = useState("");
+  const [aiMessages, setAiMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
 
   const selectedBusiness = businesses.find((business) => business.id === selectedBusinessId) ?? null;
   const businessName = selectedBusiness?.name || result?.businessName || "Selected business";
@@ -296,13 +298,11 @@ export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
       setResult(getStoredResult());
       const supabase = createBrowserSupabaseClient();
       if (!supabase) {
-        setStatus("Connect Supabase to load saved business context. You can still generate from local diagnostic context.");
         return;
       }
 
       const { data } = await supabase.auth.getUser();
       if (!data.user) {
-        setStatus("Log in to load saved business context and history.");
         return;
       }
 
@@ -315,48 +315,82 @@ export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
         setSelectedBusinessId(nextBusinessId);
 
         if (!nextBusinessId) {
-          setStatus("Create or select a Business / Client to tailor this tool.");
           return;
         }
 
         window.localStorage.setItem("simple-marketing-hq:selected-business-id", nextBusinessId);
         await loadBusinessContext(nextBusinessId);
-        setStatus("Saved business context loaded.");
+
       } catch (error) {
-        setStatus(`Could not load full context: ${(error as Error).message}`);
+        console.warn(`Could not load full context: ${(error as Error).message}`);
       }
     }
 
     void loadContext();
   }, [loadBusinessContext]);
 
-  async function handleBusinessChange(businessId: string) {
-    setSelectedBusinessId(businessId);
-    setDeliverable(null);
-    window.localStorage.setItem("simple-marketing-hq:selected-business-id", businessId);
-    if (!businessId) return;
+  const hasSavedContext = Boolean(selectedBusiness || result || latestDiagnostic || Object.values(priorAssets).some(Boolean));
+  const generated = deliverable;
 
+  useEffect(() => {
+    if (!hasSavedContext || deliverable) return;
+    const saved = priorAssets[prompt.asset_type];
+    const timeout = window.setTimeout(() => {
+      setIsBuilding(true);
+      if (saved?.output && isLabDeliverable(saved.output)) {
+        setDeliverable(compactLabDeliverable(prompt.role_id, saved.output, getBaseContext(prompt, { answers, result, business: selectedBusiness, latestDiagnostic, priorAssets })));
+      } else {
+        setDeliverable(buildLabDeliverable(prompt, { answers, result, business: selectedBusiness, latestDiagnostic, priorAssets }));
+      }
+      setIsBuilding(false);
+    }, 120);
+    return () => window.clearTimeout(timeout);
+  }, [answers, deliverable, hasSavedContext, latestDiagnostic, priorAssets, prompt, result, selectedBusiness]);
+
+  async function handleSaveToTraining() {
+    if (!deliverable || !selectedBusinessId) return;
+    const supabase = createBrowserSupabaseClient();
+    if (!supabase) return;
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+      setSaveStatus("Log in before saving.");
+      return;
+    }
+    setSaveStatus("Saving...");
     try {
-      await loadBusinessContext(businessId);
-      setStatus("Switched business context.");
+      await saveMarketingAsset(supabase, data.user, {
+        businessId: selectedBusinessId,
+        roleId: prompt.role_id,
+        assetType: prompt.asset_type,
+        title: `${businessName} ${deliverable.title}`,
+        summary: deliverable.summary,
+        input: { answers, business: selectedBusiness, latestDiagnostic, businessBrain: selectedBusiness },
+        output: deliverable as unknown as Record<string, unknown>,
+        prompt: { role_id: prompt.role_id, purpose: prompt.purpose, businessBrainFirst: true },
+      });
+      setSaveStatus("Saved. Future answers will use this.");
     } catch (error) {
-      setStatus(`Could not switch context: ${(error as Error).message}`);
+      setSaveStatus(`Could not save: ${(error as Error).message}`);
     }
   }
 
-  function handleGenerate(event: FormEvent<HTMLFormElement>) {
+  function handleAskAi(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setDeliverable(buildLabDeliverable(prompt, {
-      answers,
-      result,
-      business: selectedBusiness,
-      latestDiagnostic,
-      priorAssets,
-    }));
+    const question = aiInput.trim();
+    if (!question || !deliverable) return;
+    const answer = buildLabAiResponse(question, deliverable, prompt.role_id, businessName);
+    setAiMessages((messages) => [...messages, { role: "user", content: question }, { role: "assistant", content: answer }]);
+    setAiInput("");
   }
 
-  const hasSavedContext = Boolean(selectedBusiness || result || latestDiagnostic || Object.values(priorAssets).some(Boolean));
-  const generated = deliverable;
+  function handleRefresh() {
+    setIsBuilding(true);
+    setSaveStatus("");
+    window.setTimeout(() => {
+      setDeliverable(buildLabDeliverable(prompt, { answers, result, business: selectedBusiness, latestDiagnostic, priorAssets }));
+      setIsBuilding(false);
+    }, 120);
+  }
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -366,117 +400,94 @@ export function MarketingLabWorkflow({ roleId }: { roleId: PromptRoleId }) {
           Back to Marketing Lab
         </Link>
 
-        <div className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Marketing Lab</p>
-          <h1 className="mt-3 text-3xl font-semibold text-slate-950 sm:text-4xl">{prompt.display_name}</h1>
-          <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">{prompt.purpose}</p>
+        <div className="mt-5 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-start sm:justify-between sm:p-6">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Marketing Lab</p>
+            <h1 className="mt-3 text-3xl font-semibold text-slate-950 sm:text-4xl">{prompt.display_name}</h1>
+            <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">{prompt.purpose}</p>
+          </div>
+          <button type="button" onClick={handleRefresh} className="inline-flex min-h-11 items-center justify-center rounded-md border border-cyan-900 px-4 text-sm font-semibold text-cyan-900">Refresh with latest Business Brain</button>
         </div>
 
-        <section className="mt-5 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Selected context</p>
-            <h2 className="mt-2 text-2xl font-semibold text-slate-950">{businessName}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">{getContextSourceLine(businessName, hasSavedContext)}</p>
-            <div className="mt-4 grid gap-3">
-              <ContextRow label="Industry/category" value={result?.industryFit || result?.answers.industryLabel || "Not confirmed yet"} />
-              <ContextRow label="What they sell" value={result?.answers.whatSelling || selectedBusiness?.services || "Not confirmed yet"} />
-              <ContextRow label="Current bottleneck" value={latestDiagnostic?.biggestBottleneck || result?.biggestBottleneck || "Run or update the diagnostic"} />
-              <ContextRow label="Recommended first channel" value={result?.recommendedFirstChannel || "Run the updated diagnostic for this recommendation"} />
+        <section className="mt-5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-950">Using latest Business Brain for {businessName}.</p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">{hasSavedContext ? getContextSourceLine(businessName, hasSavedContext) : "Run a diagnostic or add Business Brain details first."}</p>
             </div>
-            <label className="mt-4 block text-sm font-semibold text-slate-700" htmlFor="lab-business">
-              Business / Client
-            </label>
-            <select
-              id="lab-business"
-              value={selectedBusinessId}
-              onChange={(event) => void handleBusinessChange(event.target.value)}
-              className="mt-2 min-h-12 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800"
-            >
-              <option value="">Use local diagnostic context</option>
-              {businesses.map((business) => (
-                <option key={business.id} value={business.id}>
-                  {business.name}
-                </option>
-              ))}
-            </select>
-            <p className="mt-2 text-sm leading-6 text-slate-600">{status}</p>
-            {!hasSavedContext ? <p className="mt-3 rounded-md bg-amber-50 p-3 text-sm leading-6 text-amber-900">Run a diagnostic first or add a page/message to review.</p> : null}
-          </article>
-
-          <form onSubmit={handleGenerate} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Generate</p>
-            <h2 className="mt-2 text-2xl font-semibold text-slate-950">Get the usable asset.</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">Simple Marketing HQ will use the selected business, saved diagnostic, website analysis, and saved assets by default.</p>
-            <button type="submit" className="mt-5 inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-cyan-900 px-5 py-3 font-semibold text-white">
-              <Sparkles size={18} aria-hidden="true" />
-              Generate
-            </button>
-            <button type="button" onClick={() => setShowRefineInput((current) => !current)} className="mt-4 block text-sm font-semibold text-cyan-800">
-              Optional: narrow the result
-            </button>
-            {showRefineInput || !hasSavedContext ? (
-              <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm leading-6 text-slate-600">Use this only if you want to focus the output on a specific page, buyer, or action.</p>
-                <div className="mt-4 grid gap-4">
-                  {prompt.input_fields.map((field) => (
-                    <label key={field.id} className="block">
-                      <span className="text-sm font-semibold text-slate-700">{field.label}</span>
-                      <span className="mt-1 block text-xs leading-5 text-slate-500">{field.helpText}</span>
-                      <input
-                        value={answers[field.id] ?? ""}
-                        onChange={(event) => setAnswers((current) => ({ ...current, [field.id]: event.target.value }))}
-                        placeholder={field.placeholder}
-                        className="mt-2 min-h-12 w-full rounded-md border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100"
-                      />
-                    </label>
-                  ))}
-                </div>
+            <Link href={scopedHref("/business-brain")} className="text-sm font-semibold text-cyan-800">View / edit Business Brain</Link>
+          </div>
+          <button type="button" onClick={() => setShowRefineInput((current) => !current)} className="mt-3 text-sm font-semibold text-cyan-800">Optional: narrow the result</button>
+          {showRefineInput || !hasSavedContext ? (
+            <form onSubmit={(event) => { event.preventDefault(); handleRefresh(); }} className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm leading-6 text-slate-600">Use this only if you want to focus the output on a specific page, buyer, or action.</p>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                {prompt.input_fields.map((field) => (
+                  <label key={field.id} className="block">
+                    <span className="text-sm font-semibold text-slate-700">{field.label}</span>
+                    <input value={answers[field.id] ?? ""} onChange={(event) => setAnswers((current) => ({ ...current, [field.id]: event.target.value }))} placeholder={field.placeholder} className="mt-2 min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100" />
+                  </label>
+                ))}
               </div>
-            ) : null}
-          </form>
+              <button className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-cyan-900 px-4 text-sm font-semibold text-white">Refresh with this focus</button>
+            </form>
+          ) : null}
         </section>
 
-        {generated ? <LabResultCard deliverable={generated} roleId={prompt.role_id} businessName={businessName} scopedHref={scopedHref} /> : null}
+        {isBuilding ? <section className="mt-5 rounded-lg border border-cyan-200 bg-white p-5 text-sm font-semibold text-cyan-900 shadow-sm">Building this from your latest Business Brain...</section> : null}
 
-        {deliverable ? (
-          <AssetSavePanel
-            saveButtonLabel="Save to AI training"
-            heading="Save to AI training"
-            roleId={prompt.role_id}
-            assetType={prompt.asset_type}
-            title={`${businessName} ${prompt.display_name}`}
-            summary={deliverable.summary}
-            input={{ answers, business: selectedBusiness, latestDiagnostic, launchpadResult: result }}
-            output={deliverable as unknown as Record<string, unknown>}
-            prompt={{
-              role_id: prompt.role_id,
-              display_name: prompt.display_name,
-              purpose: prompt.purpose,
-              required_context: prompt.required_context,
-              output_schema: prompt.output_schema,
-            }}
-          />
-        ) : null}
+        {generated ? <LabResultCard deliverable={generated} roleId={prompt.role_id} businessName={businessName} scopedHref={scopedHref} onSave={handleSaveToTraining} saveStatus={saveStatus} aiInput={aiInput} aiMessages={aiMessages} onAiInputChange={setAiInput} onAskAi={handleAskAi} onQuickAsk={(question) => { const answer = buildLabAiResponse(question, generated, prompt.role_id, businessName); setAiMessages((messages) => [...messages, { role: "user", content: question }, { role: "assistant", content: answer }]); }} /> : null}
+
+
       </section>
     </main>
   );
 }
 
-function LabResultCard({ deliverable, roleId, businessName, scopedHref }: { deliverable: LabDeliverable; roleId: PromptRoleId; businessName: string; scopedHref: (href: string) => string }) {
+function LabResultCard({
+  deliverable,
+  roleId,
+  businessName,
+  scopedHref,
+  onSave,
+  saveStatus,
+  aiInput,
+  aiMessages,
+  onAiInputChange,
+  onAskAi,
+  onQuickAsk,
+}: {
+  deliverable: LabDeliverable;
+  roleId: PromptRoleId;
+  businessName: string;
+  scopedHref: (href: string) => string;
+  onSave: () => void;
+  saveStatus: string;
+  aiInput: string;
+  aiMessages: { role: "user" | "assistant"; content: string }[];
+  onAiInputChange: (value: string) => void;
+  onAskAi: (event: FormEvent<HTMLFormElement>) => void;
+  onQuickAsk: (question: string) => void;
+}) {
   const actions = getLabActions(roleId, deliverable.recommended_next_utility);
+  const chips = getAskAiChips(roleId);
   return (
     <section className="mt-5 rounded-lg border border-cyan-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Result</p>
           <h2 className="mt-2 text-2xl font-semibold text-slate-950">{deliverable.title}</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">Using saved website analysis for {businessName}.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Using latest Business Brain for {businessName}.</p>
         </div>
-        <button type="button" onClick={() => void copyLabOutput(deliverable)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-slate-300 px-4 text-sm font-semibold text-slate-800">
-          <Copy size={16} aria-hidden="true" />
-          Copy
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={onSave} className="inline-flex min-h-11 items-center justify-center rounded-md bg-cyan-900 px-4 text-sm font-semibold text-white">Save to AI training</button>
+          <button type="button" onClick={() => void copyLabOutput(deliverable)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-slate-300 px-4 text-sm font-semibold text-slate-800">
+            <Copy size={16} aria-hidden="true" />
+            Copy
+          </button>
+        </div>
       </div>
+      {saveStatus ? <p className="mt-3 text-sm font-semibold text-emerald-700">{saveStatus}</p> : null}
 
       <div className="mt-5 grid gap-4">
         {deliverable.sections.map((section) => (
@@ -484,39 +495,39 @@ function LabResultCard({ deliverable, roleId, businessName, scopedHref }: { deli
             <h3 className="text-base font-semibold text-slate-950">{section.title}</h3>
             <div className="mt-3 grid gap-2">
               {section.items.map((item) => (
-                <p key={item} className="text-sm leading-6 text-slate-700">{item}</p>
+                <p key={item} className="whitespace-pre-line text-sm leading-6 text-slate-700">{item}</p>
               ))}
             </div>
           </article>
         ))}
       </div>
 
-      {deliverable.copy_paste_deliverables.length ? (
-        <article className="mt-4 rounded-md bg-cyan-50 p-4">
-          <h3 className="text-base font-semibold text-cyan-950">Copy/Paste Assets</h3>
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
-            {deliverable.copy_paste_deliverables.map((block) => (
-              <div key={block.label} className="rounded-md bg-white p-3">
-                <p className="text-sm font-semibold text-slate-500">{block.label}</p>
-                <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-900">{block.value}</p>
-              </div>
-            ))}
-          </div>
-        </article>
-      ) : null}
-
-      <article className="mt-4 rounded-md border border-slate-200 p-4">
-        <h3 className="text-base font-semibold text-slate-950">Next Step</h3>
-        <p className="mt-2 text-sm leading-6 text-slate-700">{deliverable.next_3_actions[0]}</p>
-      </article>
-
       <div className="mt-4 flex flex-wrap gap-2">
         {actions.map((action) => (
-          <Link key={action.label} href={scopedHref(action.href)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-cyan-900 px-4 text-sm font-semibold text-cyan-900">
+          <Link key={action.label} href={scopedHref(action.href)} className="inline-flex min-h-11 items-center justify-center rounded-md border border-cyan-900 px-4 text-sm font-semibold text-cyan-900">
             {action.label}
           </Link>
         ))}
       </div>
+
+      <article className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <h3 className="text-xl font-semibold text-slate-950">Ask AI</h3>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {chips.map((chip) => <button key={chip} type="button" onClick={() => onQuickAsk(chip)} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">{chip}</button>)}
+        </div>
+        <div className="mt-4 grid gap-3">
+          {aiMessages.map((message, index) => (
+            <div key={`${message.role}-${index}`} className={`rounded-md p-3 ${message.role === "assistant" ? "bg-cyan-50 text-cyan-950" : "bg-white text-slate-800"}`}>
+              <p className="text-xs font-semibold uppercase tracking-wide">{message.role === "assistant" ? "Simple Marketing HQ" : "You"}</p>
+              <p className="mt-2 whitespace-pre-line text-sm leading-6">{message.content}</p>
+            </div>
+          ))}
+        </div>
+        <form onSubmit={onAskAi} className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <input value={aiInput} onChange={(event) => onAiInputChange(event.target.value)} placeholder="Ask AI what to create from this..." className="min-h-12 flex-1 rounded-md border border-slate-300 bg-white px-4 text-sm outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100" />
+          <button className="inline-flex min-h-12 items-center justify-center rounded-md bg-cyan-900 px-5 text-sm font-semibold text-white">Ask</button>
+        </form>
+      </article>
     </section>
   );
 }
@@ -543,7 +554,7 @@ function getLabActions(roleId: PromptRoleId, recommendedHref: string) {
       { label: "Send to Execution HQ", href: "/marketing-schedule" },
     ];
   }
-  return [{ label: "Open matching HQ", href: recommendedHref }];
+  return [{ label: "Send to matching HQ", href: recommendedHref }];
 }
 
 async function copyLabOutput(deliverable: LabDeliverable) {
@@ -554,6 +565,44 @@ async function copyLabOutput(deliverable: LabDeliverable) {
 
 function getContextSourceLine(businessName: string, hasSavedContext: boolean) {
   return hasSavedContext ? `Using saved website analysis for ${businessName}.` : "Run a diagnostic first or add a page/message to review.";
+}
+
+function getAskAiChips(roleId: PromptRoleId) {
+  if (roleId === "messaging_sequence_builder") return ["Write email", "Make social post", "Create landing copy", "Turn into text message", "Make it shorter", "Save to Messaging HQ"];
+  if (roleId === "buyer_psychology_audit") return ["Turn into homepage copy", "Create objections section", "Write proof block", "Make CTA stronger", "Save to Research HQ"];
+  if (roleId === "market_demand_check") return ["Make offer stronger", "Add guarantee", "Create homepage section", "Write sales email", "Save to Offer HQ"];
+  if (roleId === "buyer_messaging_engine") return ["Give me homepage copy", "More pain lines", "More CTA ideas", "More trust lines", "Turn into ad copy", "Save to Messaging HQ"];
+  return ["Make it simpler", "Create homepage copy", "Write email", "Make social post", "What should I do next?"];
+}
+
+function buildLabAiResponse(question: string, deliverable: LabDeliverable, roleId: PromptRoleId, businessName: string) {
+  const lower = question.toLowerCase();
+  const resultText = deliverable.sections.flatMap((section) => section.items).join(" ");
+  const headline = deliverable.copy_paste_deliverables.find((block) => /headline|offer statement|message/i.test(block.label))?.value || deliverable.summary;
+  const cta = deliverable.copy_paste_deliverables.find((block) => /cta/i.test(block.label))?.value || "Get the clear next step";
+  if (lower.includes("email")) return `Subject: A clearer next step\n\nIf ${resultText.slice(0, 120).toLowerCase()}, the next move should feel simple and safe.\n\n${headline}\n\n${cta}`;
+  if (lower.includes("social") || lower.includes("post")) return `${headline}\n\nMost buyers do not need more noise. They need one clear reason to trust the next step.\n\n${cta}`;
+  if (lower.includes("homepage") || lower.includes("landing")) return `Headline:\n${headline}\n\nSubheadline:\n${deliverable.summary}\n\nCTA:\n${cta}`;
+  if (lower.includes("shorter") || lower.includes("simpler")) return `${headline}\n\n${cta}`;
+  if (lower.includes("save")) return roleId === "market_demand_check" ? "Send this to Offer HQ and save it as the current offer asset." : roleId === "buyer_psychology_audit" ? "Save this to Research HQ, then send the copy lines to Messaging HQ." : "Save this to Messaging HQ so future answers use it.";
+  return `${businessName} should use this result first:\n\n${headline}\n\nThen use this CTA:\n${cta}`;
+}
+
+function isLabDeliverable(output: Record<string, unknown>): output is LabDeliverable {
+  return typeof output.title === "string" && Array.isArray(output.sections) && Array.isArray(output.next_3_actions);
+}
+
+function getBaseContext(
+  prompt: PromptPack,
+  context: { answers: Record<string, string>; result: LaunchPadResult | null; business: BusinessSummary | null; latestDiagnostic: SavedDiagnosticSummary | null; priorAssets: Partial<Record<MarketingAssetType, MarketingAssetSummary>> },
+) {
+  const businessName = context.business?.name || context.result?.businessName || "the business";
+  const offer = context.result?.answers.whatSelling || context.business?.services || "the core offer";
+  const customer = context.result?.answers.targetCustomer || context.business?.idealCustomer || "best-fit customers";
+  const bottleneck = context.latestDiagnostic?.biggestBottleneck || context.result?.biggestBottleneck || "the foundation needs clearer priority";
+  const outcome = context.result?.customerDesiredOutcome || "a clear answer, less risk, and a next step they can trust";
+  const primaryInput = Object.values(context.answers).find((value) => value.trim()) || bottleneck || prompt.display_name;
+  return { businessName, offer, customer, bottleneck, outcome, primaryInput };
 }
 
 function buildLabDeliverable(
@@ -627,7 +676,7 @@ function buildLabDeliverable(
         ],
       },
       {
-        title: "Copy/Paste Assets",
+        title: "Use First",
         items: buildRoleSpecificItems(prompt.role_id, context.answers, { businessName, offer, customer, outcome, bottleneck }),
       },
     ],
@@ -669,13 +718,13 @@ function compactLabDeliverable(roleId: PromptRoleId, deliverable: LabDeliverable
         { title: "Buyer Doubt", items: [doubt] },
         { title: "Buyer Wants To Believe", items: [wants] },
         { title: "Fix First", items: [fixFirst] },
+        { title: "Use This Copy", items: [`Headline:
+${headline}`, `Subheadline:
+${subheadline}`, `CTA:
+${cta}`, `Trust line:
+${trustLine}`] },
       ],
-      copy_paste_deliverables: [
-        { label: "Headline", value: headline },
-        { label: "Subheadline", value: subheadline },
-        { label: "CTA", value: cta },
-        { label: "Trust line", value: trustLine },
-      ],
+      copy_paste_deliverables: [],
       next_3_actions: [deliverable.next_3_actions[0] || "Add the trust line near the main CTA."],
       recommended_next_utility: "/message-builder",
     };
@@ -708,13 +757,13 @@ function compactLabDeliverable(roleId: PromptRoleId, deliverable: LabDeliverable
         { title: "Pain Lines", items: painLines },
         { title: "Trust / Safety Lines", items: trustLines },
         { title: "Offer Lines", items: offerLines },
+        { title: "Homepage Copy", items: [`Headline:
+${headline}`, `Subheadline:
+${subheadline}`, `CTA:
+${cta}`] },
         { title: "Use First", items: ["Use the homepage headline and CTA first."] },
       ],
-      copy_paste_deliverables: [
-        { label: "Homepage headline", value: headline },
-        { label: "Subheadline", value: subheadline },
-        { label: "CTA", value: cta },
-      ],
+      copy_paste_deliverables: [],
       next_3_actions: ["Use the homepage copy in Messaging HQ, then save the best pain lines to Audience HQ."],
       recommended_next_utility: "/message-builder",
     };
@@ -737,14 +786,11 @@ function compactLabDeliverable(roleId: PromptRoleId, deliverable: LabDeliverable
         { title: "Who It Is For", items: [base.customer] },
         { title: "What They Get", items: (offer?.value_stack ?? ["A clearer diagnosis", "A stronger message", "One practical next step"]).slice(0, 5) },
         { title: "Proof / Trust", items: [deliverable.demand_diagnosis?.what_appears_strong?.[0] || "Use visible proof close to the CTA.", deliverable.demand_diagnosis?.what_appears_strong?.[1] || "Show why the first step is low risk."] },
+        { title: "CTA", items: [cta] },
         { title: "Risk Reversal", items: [risk] },
         { title: "Use First", items: ["Use the offer statement and CTA on the homepage or main sales page first."] },
       ],
-      copy_paste_deliverables: [
-        { label: "Offer statement", value: statement },
-        { label: "CTA", value: cta },
-        { label: "Risk reversal", value: risk },
-      ],
+      copy_paste_deliverables: [],
       next_3_actions: ["Send this to Offer HQ and make it the current working offer."],
       recommended_next_utility: "/offer-builder",
     };
@@ -1639,11 +1685,3 @@ function buildRoleSpecificItems(roleId: PromptRoleId, answers: Record<string, st
   }
 }
 
-function ContextRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md bg-slate-50 p-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-sm leading-6 text-slate-800">{value}</p>
-    </div>
-  );
-}

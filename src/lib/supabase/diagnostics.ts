@@ -30,6 +30,14 @@ export type BusinessSummary = {
   createdAt: string;
 };
 
+export type BusinessBrainInput = {
+  name: string;
+  websiteUrl: string;
+  description: string;
+  services: string;
+  idealCustomer: string;
+};
+
 export type SavedCheckInSummary = {
   id: string;
   businessId: string | null;
@@ -302,6 +310,58 @@ export async function getBusinesses(supabase: SupabaseClient): Promise<BusinessS
     description: row.description ?? "",
     services: row.services ?? "",
     idealCustomer: row.ideal_customer ?? "",
+    createdAt: row.created_at,
+  }));
+}
+
+export async function updateBusinessBrain(supabase: SupabaseClient, businessId: string, input: BusinessBrainInput) {
+  const { error } = await supabase
+    .from("businesses")
+    .update({
+      name: input.name,
+      website_url: input.websiteUrl || null,
+      description: input.description || null,
+      services: input.services || null,
+      ideal_customer: input.idealCustomer || null,
+    })
+    .eq("id", businessId);
+
+  if (error) throw error;
+}
+
+export type WebsiteAnalysisSummary = {
+  id: string;
+  businessId: string | null;
+  diagnosticId: string | null;
+  websiteUrl: string;
+  analysis: Record<string, unknown>;
+  createdAt: string;
+};
+
+type WebsiteAnalysisRow = {
+  id: string;
+  business_id: string | null;
+  diagnostic_id: string | null;
+  website_url: string | null;
+  analysis: Record<string, unknown> | null;
+  created_at: string;
+};
+
+export async function getWebsiteAnalyses(supabase: SupabaseClient, businessId: string): Promise<WebsiteAnalysisSummary[]> {
+  const { data, error } = await supabase
+    .from("website_analyses")
+    .select("id, business_id, diagnostic_id, website_url, analysis, created_at")
+    .eq("business_id", businessId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return ((data ?? []) as WebsiteAnalysisRow[]).map((row) => ({
+    id: row.id,
+    businessId: row.business_id,
+    diagnosticId: row.diagnostic_id,
+    websiteUrl: row.website_url ?? "",
+    analysis: row.analysis ?? {},
     createdAt: row.created_at,
   }));
 }
