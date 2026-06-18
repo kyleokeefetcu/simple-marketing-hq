@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { FormEvent, ReactNode } from "react";
 import { ChevronDown, FlaskConical, History, Lightbulb, Mail, MessageSquare, Sparkles, Target, Video } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useEffect, useRef, useState } from "react";
 import { AppHeader } from "@/components/app-header";
 import { getIndustryProfile, getStoredResult, type LaunchPadResult } from "@/lib/launchpad";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -11,7 +11,7 @@ import { getMarketingAssets, saveMarketingAsset, type MarketingAssetSummary, typ
 import { getBusinesses, getSavedDiagnostics, type BusinessSummary, type SavedDiagnosticSummary } from "@/lib/supabase/diagnostics";
 import type { PromptRoleId } from "@/lib/ai/prompts/shared-output-rules";
 import { buildOfferHqResponse, extractOfferFoundation, extractRecommendedOfferStatement, type OfferHqContext } from "@/lib/offer-hq-ai";
-import { buildMarketingUtilityAnswer, getGuidedActions, type MarketingUtilityContext, type MarketingUtilityId } from "@/lib/ai/marketing-utility-contracts";
+import { buildMarketingUtilityAnswer, getDefaultGuidedAction, getGuidedActions, type MarketingUtilityContext, type MarketingUtilityId } from "@/lib/ai/marketing-utility-contracts";
 
 type UtilityKind = MarketingUtilityId;
 
@@ -92,6 +92,7 @@ type SessionMessage = {
   prompt?: string;
   actionId?: string;
   actionLabel?: string;
+  cacheKey?: string;
 };
 
 const assetTypes: MarketingAssetType[] = [
@@ -248,9 +249,10 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
   const [editingTraining, setEditingTraining] = useState(false);
   const [trainingDraft, setTrainingDraft] = useState("");
   const [activeBlock, setActiveBlock] = useState<WorkBlockId>(() => firstWorkBlockId(kind));
-  const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [sessionMessages, setSessionMessages] = useState<SessionMessage[]>([]);
   const [sessionInput, setSessionInput] = useState("");
+  const [blockResultCache, setBlockResultCache] = useState<Record<string, SessionMessage>>({});
+  const aiSessionRef = useRef<HTMLElement | null>(null);
 
   const selectedBusiness = businesses.find((business) => business.id === selectedBusinessId) ?? null;
   const context = useMemo<UtilityContext>(() => ({ result, business: selectedBusiness, latestDiagnostic, priorAssets }), [result, selectedBusiness, latestDiagnostic, priorAssets]);
@@ -260,6 +262,7 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
   const scopedHref = (href: string) => (selectedBusinessId ? `${href}?businessId=${selectedBusinessId}` : href);
   const workBlocks = useMemo(() => getWorkBlocks(config.kind), [config.kind]);
   const activeWorkBlock = workBlocks.find((block) => block.id === activeBlock) ?? workBlocks[0];
+  const visibleSessionMessages = useMemo(() => sessionMessages.filter((message) => (message.workBlockId ?? activeBlock) === activeBlock), [sessionMessages, activeBlock]);
   const latestTrainingMessage = useMemo(() => [...sessionMessages].reverse().find((message) => message.role === "assistant" && message.workBlockId === activeBlock) ?? null, [sessionMessages, activeBlock]);
 
   const loadBusinessContext = useCallback(async (businessId: string) => {
@@ -492,23 +495,36 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
     setSessionMessages((messages) => [...messages, { role: "user", content: prompt, workBlockId: routedBlock.id, actionId: "offer_options", actionLabel: "Build Offer System" }, { role: "assistant", content: response, workBlockId: routedBlock.id, prompt, actionId: "offer_options", actionLabel: "Build Offer System" }]);
   }
 
-  function openWorkBlock(blockId: WorkBlockId) {
+  function getDefaultPromptForBlock(blockId: WorkBlockId) {
+    const defaultAction = getDefaultGuidedAction(config.kind, blockId);
+    if (!defaultAction) throw new Error(`Missing default AI contract for ${config.kind}/${blockId}`);
+    return defaultAction;
+  }
+
+  function buildDefaultResultCacheKey(blockId: WorkBlockId, actionId: string) {
+    return [selectedBusinessId || "local", config.kind, blockId, actionId].join(":");
+  }
+
+  function handleWorkBlockSelect(blockId: WorkBlockId) {
+    const defaultAction = getDefaultPromptForBlock(blockId);
+    const cacheKey = buildDefaultResultCacheKey(blockId, defaultAction.actionId);
     setActiveBlock(blockId);
-    setWorkspaceOpen(true);
     setSaveStatus("");
     setEditingTraining(false);
     setTrainingDraft("");
-    const params = new URLSearchParams(window.location.search);
-    params.set("block", blockId.replaceAll("_", "-"));
-    window.history.pushState(null, "", `${window.location.pathname}?${params.toString()}`);
-  }
 
-  function closeWorkspace() {
-    setWorkspaceOpen(false);
-    const params = new URLSearchParams(window.location.search);
-    params.delete("block");
-    const query = params.toString();
-    window.history.pushState(null, "", query ? `${window.location.pathname}?${query}` : window.location.pathname);
+    const hasResult = Boolean(blockResultCache[cacheKey]) || sessionMessages.some((message) => message.role === "assistant" && message.cacheKey === cacheKey);
+    if (!hasResult) {
+      const previousAssistant = [...sessionMessages].reverse().find((message) => message.role === "assistant")?.content;
+      const response = config.kind === "offer"
+        ? buildOfferHqResponse({ prompt: defaultAction.userFacingPrompt, context: buildOfferHqContext(context, currentRecommendation), history: sessionMessages, previousAssistant, forceMaster: defaultAction.actionId === "offer_options" }).content
+        : buildMarketingUtilityAnswer({ utilityId: config.kind, workBlockId: blockId, actionId: defaultAction.actionId, prompt: defaultAction.userFacingPrompt, context: buildMarketingUtilityContext(context, currentRecommendation), previousAssistant }).content;
+      const assistantMessage: SessionMessage = { role: "assistant", content: response, workBlockId: blockId, prompt: defaultAction.userFacingPrompt, actionId: defaultAction.actionId, actionLabel: defaultAction.buttonLabel, cacheKey };
+      setSessionMessages((messages) => [...messages, assistantMessage]);
+      setBlockResultCache((cache) => ({ ...cache, [cacheKey]: assistantMessage }));
+    }
+
+    window.setTimeout(() => aiSessionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   }
 
   function handleSessionSubmit(event: FormEvent<HTMLFormElement>) {
@@ -549,89 +565,9 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
         </div>
 
         <header className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">{config.navName}</p>
-          <h1 className="mt-2 text-3xl font-semibold text-slate-950 sm:text-4xl">{config.title}</h1>
-          <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">{config.promise}</p>
+          <h1 className="text-3xl font-semibold text-slate-950 sm:text-4xl">{config.navName}</h1>
         </header>
 
-        {workspaceOpen ? (
-          <section className="mt-5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-            <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <button type="button" onClick={closeWorkspace} className="text-sm font-semibold text-cyan-800">
-                  {config.navName} / {activeWorkBlock.title}
-                </button>
-                <h2 className="mt-2 text-3xl font-semibold text-slate-950">{activeWorkBlock.title}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{getSelectedWorkBlockDescription(config.kind, activeWorkBlock.id)}</p>
-              </div>
-              <button type="button" onClick={closeWorkspace} className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 px-4 text-sm font-semibold text-slate-800">
-                Back to tiles
-              </button>
-            </div>
-
-
-            <article className="mt-5 rounded-lg border border-cyan-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">AI Working Session</p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-950">Ask AI</h2>
-              <div className="mt-4 grid gap-3">
-                {sessionMessages.map((message, index) => (
-                  <ChatBubble key={`${message.role}-${index}`} role={message.role} content={message.content} />
-                ))}
-              </div>
-              <TrainingActions
-                message={latestTrainingMessage}
-                saveStatus={saveStatus}
-                isSaving={isSaving}
-                isEditing={editingTraining}
-                draft={trainingDraft}
-                onAdd={() => void handleSaveTrainingAnswer(latestTrainingMessage)}
-                onEdit={() => {
-                  if (!latestTrainingMessage) return;
-                  setTrainingDraft(latestTrainingMessage.content);
-                  setEditingTraining(true);
-                  setSaveStatus("");
-                }}
-                onDraftChange={setTrainingDraft}
-                onCancel={() => {
-                  setEditingTraining(false);
-                  setTrainingDraft("");
-                }}
-                onSaveEdit={() => void handleSaveTrainingAnswer(latestTrainingMessage, trainingDraft)}
-              />
-              {config.kind === "offer" && activeBlock === "core-offer" ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button type="button" onClick={handleBuildOfferSystem} className="rounded-md border border-cyan-200 bg-white px-3 py-2 text-xs font-semibold text-cyan-900 hover:bg-cyan-50">
-                    Build Offer System
-                  </button>
-                  {latestTrainingMessage ? (
-                    <button type="button" onClick={() => void handleSetCurrentCoreOffer(latestTrainingMessage)} disabled={isSaving} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-50">
-                      Set as Current Core Offer
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
-              <div className="mt-4 flex flex-wrap gap-2">
-                {getQuickPrompts(config.kind, activeBlock).map((quickPrompt) => (
-                  <button key={quickPrompt.label} type="button" onClick={() => handleQuickPrompt(quickPrompt.prompt, quickPrompt.workBlockId, quickPrompt.actionId, quickPrompt.label)} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
-                    {quickPrompt.label}
-                  </button>
-                ))}
-              </div>
-              <form onSubmit={handleSessionSubmit} className="mt-4 flex flex-col gap-3 sm:flex-row">
-                <input
-                  value={sessionInput}
-                  onChange={(event) => setSessionInput(event.target.value)}
-                  placeholder="Ask AI..."
-                  className="min-h-12 flex-1 rounded-md border border-slate-300 px-4 text-sm outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100"
-                />
-                <button type="submit" className="inline-flex min-h-12 items-center justify-center rounded-md bg-cyan-900 px-5 font-semibold text-white">
-                  Ask
-                </button>
-              </form>
-            </article>
-          </section>
-        ) : (
-          <>
         <section className="mt-5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Work blocks</p>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -641,7 +577,7 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
                 <button
                   key={block.id}
                   type="button"
-                  onClick={() => openWorkBlock(block.id)}
+                  onClick={() => handleWorkBlockSelect(block.id)}
                   className={`min-h-24 rounded-lg border p-3 text-left transition ${
                     active ? "border-cyan-800 bg-cyan-50 shadow-sm" : "border-slate-200 bg-white hover:border-cyan-300 hover:bg-cyan-50"
                   }`}
@@ -657,14 +593,18 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
           </div>
         </section>
 
-        <section className="mt-5">
+        <section ref={aiSessionRef} className="mt-5">
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">AI Working Session</p>
+            <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">{activeWorkBlock.title}</p>
             <h2 className="mt-2 text-2xl font-semibold text-slate-950">Ask AI</h2>
             <div className="mt-4 grid gap-3">
-              {sessionMessages.map((message, index) => (
-                <ChatBubble key={`${message.role}-${index}`} role={message.role} content={message.content} />
-              ))}
+              {visibleSessionMessages.length ? (
+                visibleSessionMessages.map((message, index) => (
+                  <ChatBubble key={`${message.role}-${message.workBlockId ?? "block"}-${index}`} role={message.role} content={message.content} />
+                ))
+              ) : (
+                <p className="rounded-md border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">Choose a work block above to generate the first answer.</p>
+              )}
             </div>
             <TrainingActions
               message={latestTrainingMessage}
@@ -698,13 +638,6 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
                 ) : null}
               </div>
             ) : null}
-            <div className="mt-4 flex flex-wrap gap-2">
-              {getQuickPrompts(config.kind, activeBlock).map((quickPrompt) => (
-                <button key={quickPrompt.label} type="button" onClick={() => handleQuickPrompt(quickPrompt.prompt, quickPrompt.workBlockId, quickPrompt.actionId, quickPrompt.label)} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-300 hover:bg-cyan-50">
-                  {quickPrompt.label}
-                </button>
-              ))}
-            </div>
             <form onSubmit={handleSessionSubmit} className="mt-4 flex flex-col gap-3 sm:flex-row">
               <input
                 value={sessionInput}
@@ -718,8 +651,6 @@ export function UtilityWorkflow({ kind }: { kind: UtilityKind }) {
             </form>
           </article>
         </section>
-          </>
-        )}
       </section>
     </main>
   );
@@ -1107,6 +1038,7 @@ function matchByKeywords(kind: UtilityKind, lower: string) {
   return match ? getWorkBlock(kind, match[1]) : null;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getQuickPrompts(kind: UtilityKind, activeBlock: WorkBlockId): QuickPrompt[] {
   const contractActions = getGuidedActions(kind, activeBlock);
   if (contractActions.length) {
@@ -1131,6 +1063,7 @@ function getQuickPrompts(kind: UtilityKind, activeBlock: WorkBlockId): QuickProm
   return prompts.slice(0, 6).map((prompt) => ({ ...prompt, workBlockId: activeBlock, actionId: prompt.actionId ?? normalizeIntent(prompt.label).replaceAll(" ", "_") }));
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getSelectedWorkBlockDescription(kind: UtilityKind, activeBlock: WorkBlockId) {
   return selectedDescriptionRegistry[kind]?.[activeBlock] ?? getWorkBlock(kind, activeBlock).purpose;
 }
@@ -1140,6 +1073,7 @@ function summarizeTrainingAnswer(blockTitle: string, answer: string) {
   return `${blockTitle}: ${firstLine.slice(0, 160)}`;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function buildSessionResponse(config: UtilityConfig, block: WorkBlock, deliverable: Deliverable, prompt: string) {
   const routedBlock = getRoutedWorkBlock(config.kind, prompt, block.id);
   return buildWorkBlockAsset(config.kind, routedBlock.id, deliverable);

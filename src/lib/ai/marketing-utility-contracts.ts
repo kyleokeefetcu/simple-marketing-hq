@@ -30,6 +30,7 @@ export type WorkBlockContract = {
   label: string;
   expertFrame: string;
   primaryDecision: string;
+  defaultActionId: string;
   guidedActions: GuidedActionContract[];
 };
 
@@ -96,6 +97,7 @@ const strategyBlocks: WorkBlockContract[] = [
     label: "Current Bottleneck",
     expertFrame: "World-class growth strategist diagnosing the single biggest constraint between current attention and revenue.",
     primaryDecision: "Find what is actually stuck right now underneath the symptom.",
+    defaultActionId: "find_bottleneck",
     guidedActions: [
       action("find_bottleneck", "Find bottleneck", "What is the current bottleneck?", "the one current growth bottleneck", "One sentence, then 2 supporting bullets"),
       action("what_is_stuck", "What is stuck", "What is stuck?", "the stuck mechanism/process in plain language", "What is stuck: [answer] plus 2 bullets"),
@@ -191,12 +193,14 @@ function utility(utilityId: MarketingUtilityId, utilityName: string, expertRole:
 }
 
 function block(workBlockId: string, label: string, expertFrame: string, primaryDecision: string, actionDefs: Array<[string, string, string, string]>): WorkBlockContract {
+  const guidedActions = actionDefs.map(([actionId, buttonLabel, prompt, mustAnswer]) => action(actionId, buttonLabel, prompt, mustAnswer, `${buttonLabel}: [answer] plus 2-3 specific bullets`, mustAnswer));
   return {
     workBlockId,
     label,
     expertFrame,
     primaryDecision,
-    guidedActions: actionDefs.map(([actionId, buttonLabel, prompt, mustAnswer]) => action(actionId, buttonLabel, prompt, mustAnswer, `${buttonLabel}: [answer] plus 2-3 specific bullets`, mustAnswer)),
+    defaultActionId: guidedActions[0]?.actionId ?? "manual_question",
+    guidedActions,
   };
 }
 
@@ -231,6 +235,12 @@ export function getGuidedActionContract(utilityId: MarketingUtilityId, workBlock
 
 export function getGuidedActions(utilityId: MarketingUtilityId, workBlockId: string) {
   return getWorkBlockContract(utilityId, workBlockId)?.guidedActions ?? [];
+}
+
+export function getDefaultGuidedAction(utilityId: MarketingUtilityId, workBlockId: string) {
+  const workBlock = getWorkBlockContract(utilityId, workBlockId);
+  if (!workBlock) return null;
+  return workBlock.guidedActions.find((guidedAction) => guidedAction.actionId === workBlock.defaultActionId) ?? workBlock.guidedActions[0] ?? null;
 }
 
 export function assertGuidedActionContract(utilityId: MarketingUtilityId, workBlockId: string, actionId: string) {
