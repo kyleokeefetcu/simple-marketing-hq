@@ -9,9 +9,10 @@ export type DiagnosticQuestion = {
   eyebrow: string;
   question: string;
   helper: string;
-  type: "url" | "text" | "choice";
+  type: "url" | "text" | "choice" | "textarea";
   inputHint?: string;
   options?: DiagnosticAnswer[];
+  optional?: boolean;
 };
 
 export type WebsiteAnalysisProfile = {
@@ -90,133 +91,50 @@ export type LaunchPadResult = {
 
 export const diagnosticQuestions: DiagnosticQuestion[] = [
   {
-    id: "whatSelling",
-    eyebrow: "Fill the gaps",
-    question: "What do you most want to sell right now?",
-    helper: "Pick the offer, service, product, package, or appointment you want the command center to prioritize.",
-    type: "text",
-    inputHint: "Roof replacement, bookkeeping cleanup, strategy call, design package...",
-  },
-  {
-    id: "targetCustomer",
-    eyebrow: "Fill the gaps",
-    question: "What kind of customer do you want more of?",
-    helper: "Think about the customers who are easiest to help, most profitable, or most likely to value what you do.",
-    type: "text",
-    inputHint: "Homeowners in Dallas with storm damage, 10-50 employee law firms, early-stage SaaS founders...",
-  },
-  {
-    id: "customerNeedType",
-    eyebrow: "Fill the gaps",
-    question: "What do customers usually need help with?",
-    helper: "Pick the closest real-life reason people reach out. We will translate this into the marketing angle.",
-    type: "choice",
-    options: [
-      { id: "fix-problem", label: "Fix a problem", value: "fix_problem" },
-      { id: "save-time", label: "Save time", value: "save_time" },
-      { id: "save-money", label: "Save money", value: "save_money" },
-      { id: "more-leads", label: "Get more leads/sales", value: "more_leads_sales" },
-      { id: "safer", label: "Feel safer / more protected", value: "safer_protected" },
-      { id: "status", label: "Look better / improve status", value: "status_improvement" },
-      { id: "easier", label: "Make something easier", value: "make_easier" },
-      { id: "not-sure", label: "Not sure", value: "not_sure" },
-    ],
-  },
-  {
-    id: "customerWords",
-    eyebrow: "Fill the gaps",
-    question: "What do people usually say they need when they contact you?",
-    helper: "Use their words if you can. This helps Simple Marketing HQ find the pain behind the purchase.",
-    type: "text",
-    inputHint: "I need this fixed fast, I am confused by my options, we are losing leads...",
-  },
-  {
-    id: "marketingFrustration",
-    eyebrow: "Fill the gaps",
-    question: "What feels stuck in your marketing right now?",
-    helper: "Say it plainly. We will turn it into a bottleneck and next action.",
-    type: "text",
-    inputHint: "We get traffic but no calls, referrals are inconsistent, content takes too long...",
-  },
-  {
     id: "leadSource",
-    eyebrow: "Fill the gaps",
-    question: "How do customers find you now?",
-    helper: "Pick the main source, even if you are not completely sure.",
+    eyebrow: "Current business info",
+    question: "How do customers find you today?",
+    helper: "Choose what is currently true. The AI will recommend what to improve.",
     type: "choice",
     options: [
-      { id: "referrals", label: "Referrals / word of mouth", value: "referrals" },
-      { id: "search", label: "Google search", value: "search" },
-      { id: "maps", label: "Google Business Profile / Maps", value: "maps" },
+      { id: "search", label: "Google / search", value: "search" },
+      { id: "referrals", label: "Referrals", value: "referrals" },
+      { id: "website", label: "Website", value: "website" },
       { id: "social", label: "Social media", value: "social" },
       { id: "ads", label: "Paid ads", value: "ads" },
-      { id: "email", label: "Email", value: "email" },
-      { id: "cold", label: "Cold outreach", value: "cold_outreach" },
-      { id: "website", label: "Website traffic", value: "website" },
-      { id: "events", label: "Events / networking", value: "events" },
-      { id: "unknown", label: "I am not sure", value: "unknown" },
-    ],
-  },
-  {
-    id: "marketingTried",
-    eyebrow: "Fill the gaps",
-    question: "What marketing have you tried, and what has worked best so far?",
-    helper: "A short answer is fine. We use this to avoid recommending something that already felt like a waste.",
-    type: "text",
-    inputHint: "Referrals work, Facebook was inconsistent, Google brings good calls, email has not worked...",
-  },
-  {
-    id: "businessModel",
-    eyebrow: "Fill the gaps",
-    question: "Do you sell locally, online, or both?",
-    helper: "This helps us recommend the first channel to prepare for.",
-    type: "choice",
-    options: [
-      { id: "local", label: "Local", value: "local" },
-      { id: "online", label: "Online", value: "online" },
-      { id: "both", label: "Both", value: "both" },
-      { id: "not-sure", label: "Not sure", value: "unknown" },
+      { id: "email", label: "Email / follow-up", value: "email" },
+      { id: "partnerships", label: "Partnerships", value: "partnerships" },
+      { id: "local", label: "Walk-ins / local visibility", value: "local_visibility" },
+      { id: "unknown", label: "Not sure", value: "unknown" },
+      { id: "other", label: "Other", value: "other" },
     ],
   },
   {
     id: "leadDropoff",
-    eyebrow: "Fill the gaps",
-    question: "Where are leads falling through?",
-    helper: "This is usually where the next highest-leverage move lives.",
+    eyebrow: "Current business info",
+    question: "Where do leads or sales usually get stuck?",
+    helper: "Pick the closest answer. The AI will find the marketing bottleneck.",
     type: "choice",
     options: [
-      { id: "traffic", label: "Not enough visitors", value: "traffic" },
-      { id: "website", label: "Website does not convert", value: "website" },
-      { id: "followup", label: "Follow-up is slow", value: "followup" },
-      { id: "appointments", label: "People do not book", value: "appointments" },
-      { id: "unknown", label: "I am not sure", value: "unknown" },
+      { id: "traffic", label: "Not enough leads", value: "traffic" },
+      { id: "website", label: "Website visitors do not convert", value: "website" },
+      { id: "followup", label: "Leads are not followed up fast enough", value: "followup" },
+      { id: "qualified", label: "Leads are not qualified", value: "qualified" },
+      { id: "offer", label: "Offer is not clear enough", value: "offer" },
+      { id: "questions", label: "People ask questions but do not take action", value: "questions" },
+      { id: "appointments", label: "We get interest but not enough booked calls/jobs", value: "appointments" },
+      { id: "unknown", label: "Not sure", value: "unknown" },
+      { id: "other", label: "Other", value: "other" },
     ],
   },
   {
-    id: "responseSpeed",
-    eyebrow: "Fill the gaps",
-    question: "How quickly do you respond to new leads?",
-    helper: "Fast follow-up is often the simplest way to win more booked calls.",
-    type: "choice",
-    options: [
-      { id: "fast", label: "Under 5 minutes", value: "fast" },
-      { id: "sameDay", label: "Same day", value: "sameDay" },
-      { id: "nextDay", label: "Next day", value: "nextDay" },
-      { id: "inconsistent", label: "It depends", value: "inconsistent" },
-    ],
-  },
-  {
-    id: "timePerWeek",
-    eyebrow: "Fill the gaps",
-    question: "How much time can you realistically spend on marketing each week?",
-    helper: "We will use this to keep the first plan realistic.",
-    type: "choice",
-    options: [
-      { id: "one", label: "About 1 hour", value: "1_hour" },
-      { id: "two-four", label: "2-4 hours", value: "2_4_hours" },
-      { id: "five-plus", label: "5+ hours", value: "5_plus_hours" },
-      { id: "not-sure", label: "Not sure yet", value: "unknown" },
-    ],
+    id: "intakeNotes",
+    eyebrow: "Optional",
+    question: "Anything important we should know?",
+    helper: "Optional. Add notes about customers, offers, services, locations, objections, or goals.",
+    type: "textarea",
+    inputHint: "Add anything the website may have missed...",
+    optional: true,
   },
 ];
 
@@ -230,10 +148,11 @@ export const dashboardModules = [
   { slug: "momentum", title: "Your Momentum", body: "Weekly traction, check-ins, asset progress, referrals, repeat visitors, and the next recommended action." },
 ];
 
-export function buildLaunchPadResult(answers: Record<string, string>): LaunchPadResult {
-  const websiteUrl = answers.websiteUrl || "";
+export function buildLaunchPadResult(rawAnswers: Record<string, string>): LaunchPadResult {
+  const websiteUrl = rawAnswers.websiteUrl || "";
   const host = websiteUrl.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0];
-  const businessName = answers.businessName || answers.detectedBusinessName || (host ? titleCase(host.split(".")[0].replace(/[-_]/g, " ")) : "Your business");
+  const businessName = rawAnswers.businessName || rawAnswers.detectedBusinessName || (host ? titleCase(host.split(".")[0].replace(/[-_]/g, " ")) : "Your business");
+  const answers = prepareLaunchPadAnswers(rawAnswers, businessName);
   const clearOffer =
     (answers.currentOffer?.includes("clear") && !answers.currentOffer?.includes("needs")) ||
     Boolean(answers.whatSelling?.trim() && answers.primaryCta?.trim());
@@ -243,7 +162,7 @@ export function buildLaunchPadResult(answers: Record<string, string>): LaunchPad
   const hasUrgentProblem = Boolean(answers.urgentProblem?.trim() || answers.marketingFrustration?.trim() || answers.customerWords?.trim() || answers.customerNeedType);
   const hasAlternative = Boolean(answers.currentAlternative?.trim() || answers.leadDropoff?.trim());
   const hasTrust = Boolean(answers.trustFactor?.trim());
-  const slowFollowUp = ["nextDay", "inconsistent"].includes(answers.responseSpeed || "");
+  const slowFollowUp = ["nextDay", "inconsistent"].includes(answers.responseSpeed || "") || answers.leadDropoff === "followup";
   const dropoff = answers.leadDropoff || "unknown";
   const trafficRisk = ["referrals", "unknown"].includes(answers.leadSource || "");
   const industryProfile = getIndustryProfile(answers.industryCategory);
@@ -302,7 +221,7 @@ export function buildLaunchPadResult(answers: Record<string, string>): LaunchPad
     channelToIgnoreForNow: channelRecommendation.ignoreForNow,
     actionItems: [
       nextMove,
-      "Tighten your ICP: best-fit customer, bad-fit warning, buying trigger, proof needed, and channel fit.",
+      "Confirm the best-fit customer, buying trigger, proof needed, and channel fit.",
       `Shape the offer around what customers likely want most: ${customerDesiredOutcome}.`,
       `Prepare for ${channelRecommendation.channel}: ${channelRecommendation.prepareFirst[0]}.`,
       "Create one authority content asset that explains the customer problem and the next step.",
@@ -352,11 +271,121 @@ export function getStopStackIdeas(result: LaunchPadResult | null) {
   ];
 }
 
+function prepareLaunchPadAnswers(rawAnswers: Record<string, string>, businessName: string): Record<string, string> {
+  const answers = { ...rawAnswers };
+  const industryProfile = getIndustryProfile(answers.industryCategory);
+  const safePrimaryCustomer = sanitizeCustomerProfile(answers.primaryCustomer, answers.whatSelling || answers.services);
+  const safeTargetCustomer = sanitizeCustomerProfile(answers.targetCustomer || answers.idealCustomer, answers.whatSelling || answers.services);
+  const inferredTarget = safeTargetCustomer || safePrimaryCustomer || inferBestFitCustomer(answers, industryProfile);
+  const inferredProblem = inferBuyerProblem(answers);
+
+  return {
+    ...answers,
+    businessName,
+    targetCustomer: inferredTarget,
+    primaryCustomer: safePrimaryCustomer || inferredTarget,
+    customerWords: answers.customerWords || inferredProblem,
+    marketingFrustration: answers.marketingFrustration || getDropoffLabel(answers.leadDropoff),
+    customerNeedType: answers.customerNeedType || inferNeedType(answers),
+    currentAlternative: answers.currentAlternative || getDropoffLabel(answers.leadDropoff),
+    responseSpeed: answers.responseSpeed || (answers.leadDropoff === "followup" ? "inconsistent" : "sameDay"),
+    businessModel: answers.businessModel || inferBusinessModel(answers),
+    marketingTried: answers.marketingTried || getLeadSourceLabel(answers.leadSource),
+    currentOffer: answers.currentOffer || (answers.whatSelling ? "The offer is understandable and ready to tighten." : "The offer needs to be confirmed."),
+  };
+}
+
+function sanitizeCustomerProfile(value?: string, offer?: string) {
+  const cleaned = (value ?? "").trim();
+  if (!cleaned) return "";
+  const offerText = (offer ?? "").trim().toLowerCase();
+  const lower = cleaned.toLowerCase();
+  const hasAudienceLanguage = /\b(businesses|companies|owners|teams|agencies|customers|clients|patients|homeowners|contractors|firms|buyers|families|residents|professionals|service businesses)\b/.test(lower);
+  const looksLikeOffer = /\b(is the|we provide|we offer|helps|captures|answers|books|automates|software|platform|plugin|agent|assistant|24\/7|text or voice|from approved content)\b/.test(lower);
+  if (offerText && (lower === offerText || offerText.includes(lower) || lower.includes(offerText.slice(0, 80)))) return "";
+  if (looksLikeOffer && !hasAudienceLanguage) return "";
+  return cleaned;
+}
+
+function inferBestFitCustomer(answers: Record<string, string>, industryProfile: ReturnType<typeof getIndustryProfile>) {
+  const offerText = `${answers.whatSelling ?? ""} ${answers.services ?? ""} ${answers.messagingClarityNotes ?? ""}`.toLowerCase();
+  if (/ai|agent|assistant|chatbot|website|visitor|lead|book|voice|approved content|guardrail/.test(offerText)) {
+    return "Home service companies, regulated service businesses, and website agencies that rely on inbound website leads and need fast, safe follow-up.";
+  }
+  if (answers.industryCategory === "home_services") return "Homeowners and property owners who need a reliable service provider and a clear next step.";
+  if (answers.industryCategory === "professional_services") return "Business owners and individuals who need expert help, trust, and a clear process before they take action.";
+  if (answers.industryCategory === "b2b_services") return "Service businesses with a clear operational problem, budget pressure, and a need for a practical next step.";
+  if (answers.industryCategory === "agency") return "Businesses that need better leads, clearer messaging, or stronger marketing execution without adding internal capacity.";
+  return `${industryProfile.label} customers who have an urgent problem, need trust before buying, and are ready for a clear next step.`;
+}
+
+function inferBuyerProblem(answers: Record<string, string>) {
+  const offerText = `${answers.whatSelling ?? ""} ${answers.services ?? ""} ${answers.messagingClarityNotes ?? ""}`.toLowerCase();
+  if (/ai|agent|assistant|chatbot|website|visitor|lead|book|voice/.test(offerText)) return "Website visitors have questions, but they leave before getting a clear answer or becoming a lead.";
+  if (answers.leadDropoff === "traffic") return "Not enough qualified people are finding the business.";
+  if (answers.leadDropoff === "website") return "Website visitors are not taking the next step.";
+  if (answers.leadDropoff === "followup") return "Leads go cold before anyone follows up.";
+  if (answers.leadDropoff === "qualified") return "The business is spending time on leads that are not a strong fit.";
+  if (answers.leadDropoff === "offer") return "People do not quickly understand what they get or why it matters.";
+  if (answers.leadDropoff === "questions") return "People have questions, but the answers are not turning into action.";
+  if (answers.leadDropoff === "appointments") return "People show interest but do not book the next step.";
+  return answers.intakeNotes || "Customers need a clearer reason to trust the business and take the next step.";
+}
+
+function inferNeedType(answers: Record<string, string>) {
+  if (["traffic", "website", "appointments", "qualified"].includes(answers.leadDropoff || "")) return "more_leads_sales";
+  if (answers.leadDropoff === "followup") return "save_time";
+  if (answers.leadDropoff === "questions") return "make_easier";
+  if (answers.leadDropoff === "offer") return "fix_problem";
+  return "not_sure";
+}
+
+function inferBusinessModel(answers: Record<string, string>) {
+  if (answers.leadSource === "local_visibility" || answers.serviceArea) return "local";
+  if (["home_services", "medical_wellness", "real_estate", "restaurant_retail", "local_service"].includes(answers.industryCategory || "")) return "local";
+  if (["saas_software", "creator_course", "ecommerce"].includes(answers.industryCategory || "")) return "online";
+  return "both";
+}
+
+function getLeadSourceLabel(value?: string) {
+  const labels: Record<string, string> = {
+    search: "Customers currently come from Google or search.",
+    referrals: "Customers currently come from referrals.",
+    website: "Customers currently come through the website.",
+    social: "Customers currently come from social media.",
+    ads: "Customers currently come from paid ads.",
+    email: "Customers currently come from email or follow-up.",
+    partnerships: "Customers currently come from partnerships.",
+    local_visibility: "Customers currently come from walk-ins or local visibility.",
+    other: "Customers currently come from another source.",
+    unknown: "The main customer source is not clear yet.",
+  };
+  return labels[value ?? ""] ?? "The main customer source is not clear yet.";
+}
+
+function getDropoffLabel(value?: string) {
+  const labels: Record<string, string> = {
+    traffic: "Not enough leads.",
+    website: "Website visitors do not convert.",
+    followup: "Leads are not followed up fast enough.",
+    qualified: "Leads are not qualified.",
+    offer: "The offer is not clear enough.",
+    questions: "People ask questions but do not take action.",
+    appointments: "People show interest but do not book calls or jobs.",
+    other: "The lead or sales issue needs more context.",
+    unknown: "The lead or sales issue is not clear yet.",
+  };
+  return labels[value ?? ""] ?? "The lead or sales issue is not clear yet.";
+}
+
 function getBottleneck(dropoff: string, slowFollowUp: boolean) {
   if (slowFollowUp) return "Leads are not getting fast enough follow-up.";
   if (dropoff === "website") return "Your website is not turning interest into action.";
   if (dropoff === "traffic") return "Your business needs a more reliable visibility channel.";
   if (dropoff === "appointments") return "People are showing interest but not booking.";
+  if (dropoff === "qualified") return "Too many leads are not a strong fit.";
+  if (dropoff === "offer") return "The offer is not clear enough yet.";
+  if (dropoff === "questions") return "People have questions but do not take action.";
   return "Your next bottleneck needs clearer tracking and prioritization.";
 }
 
@@ -365,7 +394,10 @@ function getNextMove(dropoff: string, slowFollowUp: boolean) {
   if (dropoff === "website") return "Strengthen the homepage CTA and add proof near the first conversion point.";
   if (dropoff === "traffic") return "Pick one visibility channel and build a simple weekly publishing or outreach rhythm.";
   if (dropoff === "appointments") return "Rewrite the booking offer so the next step feels easy and low-risk.";
-  return "Run one focused diagnostic review and choose a single next marketing move.";
+  if (dropoff === "qualified") return "Add a simple qualifier before the main booking or contact step.";
+  if (dropoff === "offer") return "Rewrite the offer in one clear sentence with one next step.";
+  if (dropoff === "questions") return "Answer the top buyer question near the first website CTA.";
+  return "Use the website analysis and current answers to choose one clear next marketing move.";
 }
 
 function inferCustomerDesiredOutcome(answers: Record<string, string>) {

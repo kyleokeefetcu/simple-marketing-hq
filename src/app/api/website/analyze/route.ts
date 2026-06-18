@@ -241,7 +241,7 @@ function buildProfile(parsedUrl: URL, pages: CrawledPage[]): WebsiteAnalysisProf
     summary,
     findings: buildFindings(extractedFields, repeatedTerms),
     extractionQuality,
-    qualityWarning: extractionQuality === "low" || extractionQuality === "medium" ? "We could not confidently read everything from your website. We will ask a few quick questions to fill the gaps." : "",
+    qualityWarning: extractionQuality === "low" || extractionQuality === "medium" ? "We could not confidently read everything from your website. Confirm the basics and we will infer the rest." : "",
     pagesAnalyzed: pages.map((page) => page.url),
     extractedFields,
   };
@@ -275,7 +275,7 @@ function buildFallbackProfile(parsedUrl: URL): WebsiteAnalysisProfile {
     summary: "We could not read enough from your website. We will ask a few quick questions instead.",
     findings: ["Website crawl was limited, so the diagnostic will use your quick answers."],
     extractionQuality: "low",
-    qualityWarning: "We could not confidently read everything from your website. We will ask a few quick questions to fill the gaps.",
+    qualityWarning: "We could not confidently read everything from your website. Confirm the basics and we will infer the rest.",
     pagesAnalyzed: [],
     extractedFields: fields,
   };
@@ -382,14 +382,19 @@ function getServiceAreaCandidate(text: string, pages: CrawledPage[]): Candidate 
 
 function getPrimaryCustomerCandidate(text: string, pages: CrawledPage[], industryCategory: string): Candidate {
   const sentences = sentenceCandidates(text);
-  const explicit = sentences.find((sentence) => /for businesses|for business owners|for teams|for website visitors|customers|visitors|leads|sales teams/i.test(sentence));
+  const explicit = sentences.find((sentence) => {
+    const lower = sentence.toLowerCase();
+    const hasAudience = /\b(for|serving|built for|designed for|made for)\s+(small businesses|business owners|companies|teams|agencies|contractors|homeowners|professionals|sales teams|service businesses|local businesses|clients|customers)\b/.test(lower);
+    const looksLikeOffer = /\b(is the|captures|answers|books|automates|software|platform|plugin|agent|assistant|24\/7|text or voice|from approved content)\b/.test(lower);
+    return hasAudience && !(looksLikeOffer && !/businesses|companies|owners|teams|agencies|contractors|homeowners|professionals|sales teams|service businesses|local businesses/.test(lower));
+  });
   if (explicit) {
     return {
       value: explicit,
       sourceUrl: findPageWithText(pages, explicit)?.url ?? pages[0]?.url ?? "",
       evidence: explicit,
       reason: "Customer language was explicitly present in page copy.",
-      score: /for businesses|business owners|sales teams/i.test(explicit) ? 84 : 70,
+      score: /businesses|business owners|companies|teams|agencies|contractors|sales teams|service businesses|local businesses/i.test(explicit) ? 84 : 70,
     };
   }
 

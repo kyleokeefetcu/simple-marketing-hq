@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { brand } from "@/lib/brand";
 import { buildLaunchPadResult, diagnosticQuestions, getIndustryProfile, saveStoredResult, type WebsiteAnalysisProfile } from "@/lib/launchpad";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { saveLaunchPadResultToSupabase } from "@/lib/supabase/diagnostics";
+import { getBusinesses, saveLaunchPadResultToSupabase, type BusinessSummary } from "@/lib/supabase/diagnostics";
 
 type IntakePhase = "website" | "confirm" | "questions";
 
@@ -20,14 +20,7 @@ const analysisSteps = [
 
 const confirmationFields = [
   { key: "businessName", analysisKey: "business_name", label: "Business name" },
-  { key: "industryLabel", analysisKey: "industry_category", label: "Industry/category" },
-  { key: "services", analysisKey: "services_offers", label: "What you sell" },
-  { key: "serviceArea", analysisKey: "service_area", label: "Service area/location" },
-  { key: "primaryCustomer", analysisKey: "primary_customer", label: "Primary customer" },
-  { key: "primaryCta", analysisKey: "main_cta", label: "Main website CTA" },
-  { key: "trustSignals", analysisKey: "trust_proof", label: "Trust/proof found" },
-  { key: "leadCapture", analysisKey: "lead_capture", label: "Lead capture found" },
-  { key: "messagingClarityNotes", analysisKey: "messaging_summary", label: "Messaging summary" },
+  { key: "services", analysisKey: "services_offers", label: "What they sell" },
 ] as const;
 
 export function DiagnosticFlow() {
@@ -42,13 +35,39 @@ export function DiagnosticFlow() {
   const [errorMessage, setErrorMessage] = useState("");
   const [saveStatus, setSaveStatus] = useState("");
   const [analysisStepIndex, setAnalysisStepIndex] = useState(0);
+  const [selectedBusiness, setSelectedBusiness] = useState<BusinessSummary | null>(null);
 
   const question = diagnosticQuestions[gapIndex];
   const currentValue = question ? answers[question.id] ?? "" : "";
   const totalSteps = 2 + diagnosticQuestions.length;
   const currentStep = phase === "website" ? 1 : phase === "confirm" ? 2 : 3 + gapIndex;
   const progress = (currentStep / totalSteps) * 100;
-  const canContinue = phase === "questions" ? currentValue.trim().length > 0 : true;
+  const canContinue = phase === "questions" ? Boolean(question?.optional) || currentValue.trim().length > 0 : true;
+
+  async function loadSelectedBusiness() {
+    const supabase = createBrowserSupabaseClient();
+    if (!supabase) return;
+    const selectedBusinessId = window.localStorage.getItem("simple-marketing-hq:selected-business-id");
+    if (!selectedBusinessId) return;
+    try {
+      const businesses = await getBusinesses(supabase);
+      const business = businesses.find((item) => item.id === selectedBusinessId) ?? null;
+      if (!business) return;
+      setSelectedBusiness(business);
+      setWebsiteUrl((current) => current || business.websiteUrl || "");
+      setAnswers((current) => ({
+        ...current,
+        businessName: current.businessName || business.name,
+        websiteUrl: current.websiteUrl || business.websiteUrl,
+        whatSelling: current.whatSelling || business.services,
+        services: current.services || business.services,
+        targetCustomer: sanitizeCustomerAnswer(current.targetCustomer || business.idealCustomer, business.services),
+        primaryCustomer: sanitizeCustomerAnswer(current.primaryCustomer || business.idealCustomer, business.services),
+      }));
+    } catch {
+      // Local diagnostic still works when saved Business Brain is unavailable.
+    }
+  }
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -68,6 +87,7 @@ export function DiagnosticFlow() {
         setAnswers({});
         setWebsiteUrl("");
         setProfile(null);
+        void loadSelectedBusiness();
         return;
       }
 
@@ -77,8 +97,11 @@ export function DiagnosticFlow() {
       setAnswers(savedProgress.answers);
       setWebsiteUrl(savedProgress.answers.websiteUrl ?? "");
       setProfile(savedProgress.profile);
+      void loadSelectedBusiness();
     });
   }, []);
+
+
 
   useEffect(() => {
     window.localStorage.setItem("simple-marketing-hq:diagnostic-progress", JSON.stringify({ phase, gapIndex, answers, profile, startedAt: answers.startedAt ?? new Date().toISOString() }));
@@ -206,7 +229,7 @@ export function DiagnosticFlow() {
           <div className="flex items-center justify-between text-sm">
             <p className="font-semibold text-cyan-900">{brand.diagnosticName}</p>
             <p className="text-slate-500">
-              {currentStep} of {totalSteps}
+              {phase === "questions" && question?.optional ? "Optional" : `${currentStep} of ${totalSteps}`}
             </p>
           </div>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
@@ -218,9 +241,9 @@ export function DiagnosticFlow() {
           {phase === "website" ? (
             <article className="w-full rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
               <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Step 1</p>
-              <h1 className="mt-3 text-3xl font-semibold text-slate-950 sm:text-4xl">What is your website?</h1>
+              <h1 className="mt-3 text-3xl font-semibold text-slate-950 sm:text-4xl">What website should we read?</h1>
               <p className="mt-3 text-base leading-7 text-slate-600">
-                We&apos;ll use this to understand your business so you don&apos;t have to type everything manually.
+                Tell us what is true right now. We&apos;ll read the site and do the marketing work.
               </p>
               <input
                 value={websiteUrl}
@@ -238,7 +261,7 @@ export function DiagnosticFlow() {
                 </div>
               ) : (
                 <div className="mt-5 rounded-md bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-                  Simple Marketing HQ will read public website basics, build a starting profile, then ask you to confirm or correct it.
+                  Simple Marketing HQ will read public website pages, build a starting profile, then ask you to confirm what we found.
                 </div>
               )}
               {errorMessage ? <p className="mt-5 rounded-md bg-red-50 p-4 text-sm font-medium text-red-700">{errorMessage}</p> : null}
@@ -254,15 +277,15 @@ export function DiagnosticFlow() {
 
           {phase === "confirm" && profile ? (
             <article className="w-full rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
-              <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">AI review</p>
-              <h1 className="mt-3 text-3xl font-semibold text-slate-950 sm:text-4xl">Here is what we found from your website.</h1>
+              <p className="text-sm font-semibold uppercase tracking-wide text-cyan-800">Confirm what we found</p>
+              <h1 className="mt-3 text-3xl font-semibold text-slate-950 sm:text-4xl">Confirm what this business sells.</h1>
               <p className="mt-3 text-base leading-7 text-slate-600">
-                {profile.readable ? "Please confirm anything we missed. We will only prefill fields when the website evidence is strong enough." : "We could not read enough from your website. We will ask a few quick questions instead."}
+                {profile.readable ? "We pulled this from your website. Edit it if needed." : "We could not read enough from your website. Add the basics and we will infer the rest."}
               </p>
               {profile.qualityWarning || lowConfidenceCount >= 4 ? (
                 <div className="mt-5 flex gap-3 rounded-md bg-amber-50 p-4 text-sm leading-6 text-amber-900">
                   <AlertTriangle className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
-                  <p>{profile.qualityWarning || "We could not confidently read everything from your website. We will ask a few quick questions to fill the gaps."}</p>
+                  <p>{profile.qualityWarning || "We could not confidently read everything from your website. Confirm the basics and we will infer the rest."}</p>
                 </div>
               ) : null}
               {profile.pagesAnalyzed?.length ? (
@@ -276,6 +299,7 @@ export function DiagnosticFlow() {
                   const extraction = profile.extractedFields?.[field.analysisKey];
                   const confidence = extraction?.confidence ?? "low";
                   const isLowConfidence = confidence === "low" || !extraction?.value;
+                  const fieldValue = field.key === "services" ? profile.services || selectedBusiness?.services || "" : profile[field.key];
                   return (
                     <label key={field.key} className="rounded-md border border-slate-200 bg-slate-50 p-4">
                       <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-600">
@@ -286,7 +310,7 @@ export function DiagnosticFlow() {
                         </span>
                       </span>
                       <input
-                        value={profile[field.key]}
+                        value={fieldValue}
                         onChange={(event) => updateProfileField(field.key, event.target.value)}
                         placeholder={isLowConfidence ? "We could not confirm this yet." : undefined}
                         className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100"
@@ -344,6 +368,14 @@ export function DiagnosticFlow() {
                     );
                   })}
                 </div>
+              ) : question.type === "textarea" ? (
+                <textarea
+                  value={currentValue}
+                  onChange={(event) => setQuestionAnswer(event.target.value)}
+                  placeholder={question.inputHint}
+                  rows={5}
+                  className="mt-6 w-full rounded-md border border-slate-300 px-4 py-4 text-lg outline-none focus:border-cyan-700 focus:ring-4 focus:ring-cyan-100"
+                />
               ) : (
                 <input
                   value={currentValue}
@@ -443,8 +475,8 @@ function mergeProfileIntoAnswers(current: Record<string, string>, profile: Websi
     whatSelling: current.whatSelling || profile.services,
     services: profile.services,
     serviceArea: profile.serviceArea,
-    targetCustomer: current.targetCustomer || profile.primaryCustomer,
-    primaryCustomer: profile.primaryCustomer,
+    targetCustomer: sanitizeCustomerAnswer(current.targetCustomer || profile.primaryCustomer, profile.services),
+    primaryCustomer: sanitizeCustomerAnswer(profile.primaryCustomer, profile.services),
     primaryCta: profile.primaryCta,
     trustFactor: current.trustFactor || profile.trustSignals,
     leadCaptureFound: profile.leadCapture,
@@ -466,6 +498,7 @@ function normalizeProfile(profile: WebsiteAnalysisProfile, websiteUrl: string): 
     businessName: profile.businessName || "",
     industryCategory,
     industryLabel: profile.industryLabel || (industryCategory ? getIndustryProfile(industryCategory).label : ""),
+    primaryCustomer: sanitizeCustomerAnswer(profile.primaryCustomer, profile.services),
   };
 }
 
@@ -487,6 +520,18 @@ function resolveIndustryCategory(profile: WebsiteAnalysisProfile) {
     "ecommerce",
   ];
   return candidates.find((candidate) => getIndustryProfile(candidate).label.toLowerCase() === normalizedLabel) ?? "";
+}
+
+function sanitizeCustomerAnswer(value?: string, offer?: string) {
+  const cleaned = (value ?? "").trim();
+  if (!cleaned) return "";
+  const offerText = (offer ?? "").trim().toLowerCase();
+  const lower = cleaned.toLowerCase();
+  const hasAudienceLanguage = /\b(businesses|companies|owners|teams|agencies|customers|clients|patients|homeowners|contractors|firms|buyers|families|residents|professionals|service businesses)\b/.test(lower);
+  const looksLikeOffer = /\b(is the|helps|captures|answers|books|automates|software|platform|plugin|agent|assistant|24\/7|text or voice|from approved content)\b/.test(lower);
+  if (offerText && (lower === offerText || offerText.includes(lower) || lower.includes(offerText.slice(0, 80)))) return "";
+  if (looksLikeOffer && !hasAudienceLanguage) return "";
+  return cleaned;
 }
 
 function validateWebsiteUrl(value: string) {
