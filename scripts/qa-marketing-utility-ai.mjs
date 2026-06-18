@@ -37,6 +37,7 @@ function normalize(value) {
 }
 
 const forbiddenMain = /^(not enough leads|need more leads|need more traffic|improve marketing|create more content|run ads|build awareness|increase conversions|get more customers|better messaging|follow up more)\.?$/i;
+const forbiddenOutput = /should make|should build|should create|could make|consider making|Audience HQ decision|Offer HQ decision|Messaging HQ decision|Strategy HQ decision|top pain points decision|Business context:|the selected business should/i;
 let contractCount = 0;
 let actionCount = 0;
 
@@ -54,6 +55,8 @@ for (const contract of Object.values(marketingUtilityContracts)) {
       assert(`${contract.utilityId}/${block.workBlockId} default output is specific`, defaultResult.content.includes("Talk to Fred") || defaultResult.content.includes("approved-content") || defaultResult.content.includes("service businesses"), defaultResult.content);
       assert(`${contract.utilityId}/${block.workBlockId} default output is not generic`, !forbiddenMain.test(defaultFirstLine.trim()), defaultResult.content);
       assert(`${contract.utilityId}/${block.workBlockId} default output passes validation`, validateMarketingUtilityAnswer({ response: defaultResult.content, utilityId: contract.utilityId, workBlockId: block.workBlockId, actionId: defaultAction.actionId, context }).length === 0, defaultResult.content);
+      assert(`${contract.utilityId}/${block.workBlockId} default output has no forbidden scaffolding`, !forbiddenOutput.test(defaultResult.content), defaultResult.content);
+      if (block.workBlockId !== "use") assert(`${contract.utilityId}/${block.workBlockId} default output does not force Use this now`, !/Use this now:/i.test(defaultResult.content), defaultResult.content);
     }
     const outputs = [];
     for (const action of block.guidedActions) {
@@ -65,12 +68,32 @@ for (const contract of Object.values(marketingUtilityContracts)) {
       assert(`${contract.utilityId}/${block.workBlockId}/${action.actionId} is not generic`, !forbiddenMain.test(firstLine.trim()), result.content);
       assert(`${contract.utilityId}/${block.workBlockId}/${action.actionId} passes validation`, validateMarketingUtilityAnswer({ response: result.content, utilityId: contract.utilityId, workBlockId: block.workBlockId, actionId: action.actionId, context }).length === 0, result.content);
       assert(`${contract.utilityId}/${block.workBlockId}/${action.actionId} is answer-first length`, result.content.length <= 1400, result.content.length.toString());
+      assert(`${contract.utilityId}/${block.workBlockId}/${action.actionId} has no forbidden scaffolding`, !forbiddenOutput.test(result.content), result.content);
+      if (block.workBlockId !== "use") assert(`${contract.utilityId}/${block.workBlockId}/${action.actionId} does not force Use this now`, !/Use this now:/i.test(result.content), result.content);
     }
     const uniqueOutputs = new Set(outputs);
     assert(`${contract.utilityId}/${block.workBlockId} guided outputs are not identical`, uniqueOutputs.size === outputs.length, outputs.join("\n---\n"));
   }
 }
 
+const talkToFredChecks = [
+  ["Audience Buyer Problems", "icp", "buyer-problems", "top_pain", /website visitors|website questions/i, /lead capture|qualified leads|conversion|sharing contact/i, /approved|safe|off-brand|hallucinat|trust|compliance/i],
+  ["Audience Best-Fit Customer", "icp", "best-fit-customer", "define_best_fit_customer", /service businesses|regulated|agencies|website visitors/i, /approved|safe|lead capture|questions/i, /not the priority|strong fit/i],
+  ["Audience Buying Triggers", "icp", "buying-triggers", "why_now", /website traffic|after hours|agency client/i, /qualified leads|lead capture|questions/i, /hallucinated|off-brand|compliance|generic chatbot/i],
+  ["Audience Objections", "icp", "objections", "top_objections", /make up answers|fit our website|hurt trust/i, /approved content|qualified opportunity/i, /hard to manage|industry/i],
+  ["Strategy Current Bottleneck", "strategy_map", "current-bottleneck", "find_bottleneck", /safe conversion path|approved-content/i, /qualified leads|visitor questions/i, /not just raw lead volume|trust/i],
+  ["Offer Core Offer", "offer", "core-offer", "define_offer", /approved-content AI website assistant/i, /visitor questions|qualified opportunities/i, /off-brand|risky|safe/i],
+];
+
+for (const [name, utilityId, workBlockId, actionId, mustA, mustB, mustC] of talkToFredChecks) {
+  const result = buildMarketingUtilityAnswer({ utilityId, workBlockId, actionId, prompt: "fixture", context });
+  assert(name + " includes Talk to Fred context", result.content.includes("Talk to Fred") || /approved-content|service businesses|website visitors/i.test(result.content), result.content);
+  assert(name + " includes required buyer/product signal A", mustA.test(result.content), result.content);
+  assert(name + " includes required buyer/product signal B", mustB.test(result.content), result.content);
+  assert(name + " includes required trust/role signal", mustC.test(result.content), result.content);
+  assert(name + " has no forbidden scaffolding", !forbiddenOutput.test(result.content), result.content);
+  assert(name + " is not generic meta output", !/decision|Business context:/i.test(result.content), result.content);
+}
 const strategyActions = [
   ["find_bottleneck", "What is the current bottleneck?", /Current bottleneck:/, /not just raw lead volume|proof, trust, and conversion clarity/i],
   ["fix_first", "What should we fix first?", /Fix first:/, /demo|approved content|handoff/i],

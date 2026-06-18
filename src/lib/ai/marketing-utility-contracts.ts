@@ -62,7 +62,9 @@ const forbiddenGenericAnswers = [
 const roleRules = [
   "Keep the app user, selected business, selected business buyer/customer, and buyer's end customer/visitor separate.",
   "Buyer means the selected business's buyer/customer, not the Simple Marketing HQ account owner.",
-  "For Talk to Fred: selected business = Talk to Fred; buyer = service businesses/agencies with lead-generating websites; end visitor = the buyer's website visitor; product = approved-content AI website agent.",
+  "For Talk to Fred: selected business = Talk to Fred; owner = the person using Simple Marketing HQ; buyer = small businesses, service businesses, regulated/compliance-sensitive businesses, and website/marketing agencies; end visitor = the buyer's website visitor; product = an existing AI website voice/conversation assistant that answers from approved content.",
+  "Treat the selected business's product/service as existing and being sold unless the user explicitly asks for product development.",
+  "Never tell Talk to Fred to create, make, build, or consider building the AI assistant it already sells.",
   "For Talk to Fred, never state the buyer problem as only 'not enough leads'. Use the sharper role-specific issue: website visitors ask buying questions but leave or go cold when the business cannot answer instantly, safely, and consistently.",
 ];
 
@@ -256,10 +258,10 @@ export function buildMarketingUtilityAnswer(input: { utilityId: MarketingUtility
   if (!utilityContract || !workBlockContract) throw new Error(`Missing AI contract for ${input.utilityId}/${input.workBlockId}/${input.actionId ?? "manual"}`);
 
   const context = normalizeUtilityContext(input.context);
-  const response = input.utilityId === "strategy_map" ? buildStrategyAnswer(workBlockContract, guidedAction, context) : buildGeneralAnswer(utilityContract, workBlockContract, guidedAction, context);
+  const response = buildUtilityAnswer(utilityContract, workBlockContract, guidedAction, context);
   const flags = validateMarketingUtilityAnswer({ response, utilityId: input.utilityId, workBlockId: input.workBlockId, actionId: guidedAction.actionId, context, previousAssistant: input.previousAssistant });
   if (!flags.length) return { content: response, qualityFlags: [] };
-  const repaired = repairUtilityAnswer(workBlockContract, guidedAction, context, flags);
+  const repaired = repairUtilityAnswer(workBlockContract, guidedAction, context);
   return { content: repaired, qualityFlags: validateMarketingUtilityAnswer({ response: repaired, utilityId: input.utilityId, workBlockId: input.workBlockId, actionId: guidedAction.actionId, context, previousAssistant: input.previousAssistant }) };
 }
 
@@ -267,6 +269,67 @@ function inferManualAction(prompt: string, workBlockContract?: WorkBlockContract
   const normalizedPrompt = normalize(prompt);
   const matched = workBlockContract?.guidedActions.find((guidedAction) => normalizedPrompt.includes(normalize(guidedAction.buttonLabel)) || normalize(guidedAction.userFacingPrompt).includes(normalizedPrompt));
   return matched ?? action("manual_question", "Answer", prompt, "answer the user's question inside the selected work block", "Answer: [direct answer] plus 2-3 specific bullets");
+}
+
+function buildUtilityAnswer(utilityContract: MarketingUtilityContract, blockContract: WorkBlockContract, actionContract: GuidedActionContract, context: Required<MarketingUtilityContext>) {
+  if (utilityContract.utilityId === "icp") return buildAudienceAnswer(blockContract, actionContract, context);
+  if (utilityContract.utilityId === "strategy_map") return buildStrategyAnswer(blockContract, actionContract, context);
+  if (utilityContract.utilityId === "offer" && blockContract.workBlockId === "core-offer") return buildCoreOfferAnswer(actionContract, context);
+  return buildFinishedUtilityAnswer(utilityContract, blockContract, actionContract, context);
+}
+
+function buildAudienceAnswer(blockContract: WorkBlockContract, actionContract: GuidedActionContract, c: Required<MarketingUtilityContext>) {
+  const buyer = c.audience;
+  if (blockContract.workBlockId === "best-fit-customer") {
+    if (actionContract.actionId === "tighten_audience") return "Best-Fit Customer\n\nTighter audience for " + c.businessName + ":\n\nService businesses, regulated businesses, and website/marketing agencies that already have website visitors asking buying questions, but need safer instant answers and better lead capture.\n\nPrioritize buyers with traffic, repeat questions, and trust-sensitive sales conversations.";
+    if (actionContract.actionId === "who_not") return "Best-Fit Customer\n\nNot the priority right now:\n\n1. Companies with no meaningful website traffic or inbound questions.\n   " + c.businessName + " works best when there are real visitor questions to answer and convert.\n\n2. Businesses that want unbounded AI to improvise answers.\n   The stronger fit is a buyer who values approved-content answers, brand control, and safer lead capture.\n\n3. Teams that only want a generic chatbot widget.\n   " + c.businessName + " is a better fit for buyers who care about qualified conversations, handoff quality, and trust-sensitive answers.";
+    if (actionContract.actionId === "best_signs") return "Best-Fit Customer\n\nStrong-fit signs for " + c.businessName + ":\n\n1. The website already gets visitors, but too many leave without starting a conversation.\n2. Prospects ask repeat questions before they are ready to call, book, or submit a form.\n3. The business cannot afford made-up, off-brand, or risky AI answers.\n4. Follow-up speed matters because leads go cold quickly.\n5. An agency or internal team needs a safer AI tool to improve client website conversion.";
+    if (actionContract.actionId === "priority_segment") return "Best-Fit Customer\n\nPriority segment for " + c.businessName + ":\n\nService businesses, regulated businesses, and website/marketing agencies with lead-generating websites where visitors ask buying questions before taking action.\n\nThey are a strong fit because " + c.businessName + " can turn those questions into approved-content answers, captured lead details, and cleaner handoffs without asking the buyer to trust a generic chatbot.";
+    return "Best-Fit Customer\n\n" + c.businessName + " should focus on " + buyer + ".\n\nWho they are:\nBusinesses with website visitors who ask questions before they call, book, request a quote, or share contact information.\n\nWhy they are a strong fit:\nThey need instant answers, safer AI control, and better lead capture without adding more staff or sending visitors through long pages.\n\nNot the priority:\nBusinesses with little website traffic, no inbound questions, or buyers who only want a generic chatbot with open-ended answers.";
+  }
+
+  if (blockContract.workBlockId === "buyer-problems") {
+    if (actionContract.actionId === "biggest_frustration") return "Buyer Problems\n\nThe biggest frustration for " + c.businessName + " buyers is that good prospects ask questions, hesitate, and leave before the business can respond.\n\n1. Visitors do not want to dig through pages for simple answers.\n2. Forms and callbacks feel slow when the buyer is ready now.\n3. Teams cannot answer every website question after hours or during busy periods.\n4. Owners can see interest, but not enough qualified conversations.\n5. Generic AI feels risky when answers need to be accurate and on-brand.";
+    if (actionContract.actionId === "cost_not_fixing") return "Buyer Problems\n\nCost of not fixing it for " + c.businessName + " buyers:\n\n1. Website traffic keeps leaking before lead capture.\n2. Prospects choose a competitor that answers faster.\n3. Staff waste time chasing low-context leads.\n4. Agencies miss a useful conversion improvement for client sites.\n5. Trust-sensitive businesses avoid AI because unsafe answers feel worse than no AI at all.";
+    if (actionContract.actionId === "pain_words") return "Buyer Problems\n\nPain in " + c.businessName + " buyer words:\n\n1. People visit the site, but they do not always contact us.\n2. We miss questions after hours or when the team is busy.\n3. I do not want AI making up answers on my website.\n4. Our forms do not tell us what the visitor really needs.\n5. Clients want AI, but we need something safer than a generic chatbot.";
+    if (actionContract.actionId === "problem_solution") return "Buyer Problems\n\nProblem:\nWebsite visitors ask buying questions, but leave or go cold when they cannot get an instant, trustworthy answer.\n\nSolution:\n" + c.businessName + " answers from approved content, captures the visitor's need, and turns the question into a qualified opportunity for follow-up.";
+    if (actionContract.actionId === "pain_to_copy") return "Buyer Problems\n\nCopy angle:\n\nYour website visitors have questions. They should not have to dig, wait, or leave to get an answer.\n\n" + c.businessName + " gives them instant approved-content answers and gives your team cleaner lead details before the opportunity goes cold.";
+    return "Buyer Problems\n\n" + c.businessName + "'s best-fit buyers struggle with:\n\n1. Website visitors leave before getting answers.\n   Prospects have questions, but they do not want to dig through pages, scroll, search, or wait for a callback.\n\n2. Good traffic does not turn into qualified leads.\n   The website may get visitors, but too many leave without starting a conversation or sharing contact info.\n\n3. Owners cannot answer every question instantly.\n   Leads come in after hours, during busy times, or before the team can respond.\n\n4. Generic chatbots create trust and compliance risk.\n   Buyers worry that AI will make up answers, say the wrong thing, or go off-brand.\n\n5. Agencies need a safer AI website tool for clients.\n   Agencies want to offer AI lead capture without creating support problems or hallucinated answers.";
+  }
+
+  if (blockContract.workBlockId === "buying-triggers") {
+    const focus = actionContract.actionId === "trigger_events" ? "Trigger events" : actionContract.actionId === "urgency_signs" ? "Urgency signs" : actionContract.actionId === "what_changed" ? "What changed" : actionContract.actionId === "start_looking" ? "When they start looking" : "Why they buy now";
+    return "Buying Triggers\n\n" + focus + " for " + c.businessName + ":\n\n1. Website traffic is steady, but too few visitors become qualified leads.\n2. Prospects keep asking the same buying questions before they call, book, or request a quote.\n3. Leads arrive after hours or during busy periods when the team cannot answer quickly.\n4. A buyer wants AI on the website but is worried about hallucinated, off-brand, or compliance-risk answers.\n5. An agency client asks for AI lead capture, and the agency needs a safer option than a generic chatbot.";
+  }
+
+  if (blockContract.workBlockId === "objections") {
+    const focus = actionContract.actionId === "trust_blockers" ? "Trust blockers" : actionContract.actionId === "price_concerns" ? "Price concerns" : actionContract.actionId === "risk_concerns" ? "Risk concerns" : actionContract.actionId === "answer_objections" ? "Answers to objections" : "Top objections";
+    return "Objections\n\n" + focus + " for " + c.businessName + ":\n\n1. Will it make up answers?\n   Buyers need proof that " + c.businessName + " only answers from approved content.\n\n2. Will it fit our website and industry?\n   They need to see examples for service, regulated, or agency-managed sites.\n\n3. Will it hurt trust?\n   They worry a bad AI answer might damage trust or make the team look careless.\n\n4. Will it be hard to manage?\n   Owners and agencies want simple controls, not another complex system.\n\n5. Will it actually capture better leads?\n   They need to see the handoff from visitor question to qualified opportunity.";
+  }
+
+  if (blockContract.workBlockId === "where-to-find-them") {
+    const focus = actionContract.actionId === "online_communities" ? "Online communities" : actionContract.actionId === "partner_channels" ? "Partner channels" : actionContract.actionId === "search_topics" ? "Search topics" : actionContract.actionId === "local_channels" ? "Local channels" : "Best channels";
+    return "Where To Find Them\n\n" + focus + " for " + c.businessName + ":\n\n1. Website and marketing agencies serving local or service businesses.\n2. SEO agencies working with sites that get traffic but under-convert.\n3. Home service and professional service business groups.\n4. Regulated or compliance-sensitive niches where safe answers matter.\n5. CRM, call tracking, and lead management partners.\n6. Local business networks where owners talk about missed calls, slow follow-up, and website conversion.";
+  }
+
+  if (blockContract.workBlockId === "use") {
+    if (actionContract.actionId === "homepage_section") return "Use It Now\n\nHomepage section for " + c.businessName + ":\n\nYour website visitors have questions. Give them instant approved-content answers and turn those questions into qualified opportunities before they leave.";
+    if (actionContract.actionId === "sales_email") return "Use It Now\n\nSales email angle for " + c.businessName + ":\n\nYour website may already have interested visitors. The leak is what happens after they ask a question. Talk to Fred helps answer from approved content, capture the lead, and hand your team cleaner context.";
+    if (actionContract.actionId === "ad_angle") return "Use It Now\n\nAd angle for " + c.businessName + ":\n\nStop losing website visitors after the first question. Give them approved-content AI answers and capture qualified leads while interest is still fresh.";
+    if (actionContract.actionId === "offer_statement") return "Use It Now\n\nOffer statement for " + c.businessName + ":\n\nTalk to Fred turns website questions into qualified leads with AI that only answers from approved business content.";
+    return "Use It Now\n\nContent ideas for " + c.businessName + ":\n\n1. Why website visitors leave before contacting you.\n2. How approved-content AI avoids generic chatbot risk.\n3. What a better lead handoff looks like.\n4. Questions every service business website should answer instantly.";
+  }
+
+  return buildFinishedUtilityAnswer({ ...marketingUtilityContracts.icp, utilityId: "icp" }, blockContract, actionContract, c);
+}
+
+function buildCoreOfferAnswer(actionContract: GuidedActionContract, c: Required<MarketingUtilityContext>) {
+  if (actionContract.actionId === "what_they_get") return "What They Get\n\n" + c.businessName + " gives buyers:\n\n1. Instant approved-content answers for website visitors.\n2. A safer AI conversation path that avoids made-up or off-brand answers.\n3. Captured lead details from real visitor questions.\n4. Cleaner handoffs so the team knows what the prospect needs.\n5. More qualified opportunities from existing website traffic.";
+  if (actionContract.actionId === "who_for") return "Who It Is For\n\n" + c.businessName + " is for service businesses, regulated businesses, and website/marketing agencies with lead-generating websites.\n\nUrgent-fit buyers:\nTeams that get visitor questions but lose momentum when answers, lead capture, or follow-up are too slow.\n\nWrong-fit buyers:\nBusinesses that want open-ended AI to improvise answers, or sites with no meaningful visitor questions to capture.";
+  if (actionContract.actionId === "make_clearer") return "Core Offer\n\nClearer version:\n" + c.businessName + " turns website questions into qualified opportunities with approved-content AI.\n\nWhat changed:\nThe offer now leads with the existing buyer problem, the safe-answer mechanism, and the business outcome instead of sounding like a generic chatbot.";
+  if (actionContract.actionId === "offer_options") return "Offer Options\n\nBest option:\nApproved-content AI lead capture for service businesses with high-intent website questions.\n\nAlternate angles:\n1. Safe AI website assistant for regulated businesses.\n2. Website conversion assistant for agencies serving local clients.\n3. After-hours question capture for busy service teams.\n4. Trust-safe AI answers for lead-generating websites.";
+  if (actionContract.actionId === "simplify_offer") return "Core Offer\n\nShort version:\n" + c.businessName + " turns website questions into qualified leads with approved-content AI.\n\nHomepage version:\nGive visitors instant answers from content you approve, then capture the lead before the opportunity goes cold.\n\nPlain-English version:\nIt helps your website answer questions safely and start more sales conversations.";
+  return "Core Offer\n\n" + c.businessName + " is an approved-content AI website assistant that answers visitor questions, captures lead details, and turns website interest into qualified opportunities.\n\nBest-fit buyer:\n" + c.audience + ".\n\nBuyer problem:\n" + c.buyerPain + ".\n\nResult:\n" + c.outcome + ".\n\nTrust mechanism:\nAnswers stay tied to approved content so the business avoids made-up, off-brand, or risky responses.";
 }
 
 function buildStrategyAnswer(blockContract: WorkBlockContract, actionContract: GuidedActionContract, context: Required<MarketingUtilityContext>) {
@@ -285,9 +348,22 @@ function buildCurrentBottleneckAnswer(actionId: string, c: Required<MarketingUti
   return `Current bottleneck: ${bottleneck}`;
 }
 
-function buildGeneralAnswer(utilityContract: MarketingUtilityContract, blockContract: WorkBlockContract, actionContract: GuidedActionContract, context: Required<MarketingUtilityContext>) {
-  const answer = leadForAction(actionContract.buttonLabel, context);
-  return `${actionContract.buttonLabel}: ${answer}\n\n* ${utilityContract.utilityName} decision: ${actionContract.mustAnswer}.\n* Business context: ${context.businessName} sells ${context.offer} to ${context.audience}.\n* Use this now: turn this into the next ${blockContract.label.toLowerCase()} asset, then save it if it matches the current business reality.`;
+function buildFinishedUtilityAnswer(utilityContract: MarketingUtilityContract, blockContract: WorkBlockContract, actionContract: GuidedActionContract, context: Required<MarketingUtilityContext>) {
+  const label = actionContract.buttonLabel.toLowerCase();
+  const heading = actionContract.buttonLabel === "Primary answer" ? "" : actionContract.buttonLabel + "\n\n";
+  const base = context.businessName + " already sells " + context.offer + " to " + context.audience + ".";
+  const buyerNeed = "The buyer needs a clearer path from " + context.buyerPain + " to " + context.outcome + ".";
+
+  if (/^(use|use-it-now)$/i.test(blockContract.workBlockId)) return blockContract.label + "\n\n" + heading + leadForAction(actionContract.buttonLabel, context);
+  if (label.includes("avoid") || label.includes("ignore") || label.includes("wait")) return blockContract.label + "\n\n" + heading + "Avoid for now:\n\n1. Do not add more channels before the offer, proof, and CTA are clear.\n2. Do not use generic AI claims when the buyer needs approved-content trust.\n3. Do not distract from the existing product's core job: turning website questions into qualified opportunities.";
+  if (label.includes("example")) return blockContract.label + "\n\n" + heading + "Examples:\n\n1. Website visitors get instant answers from approved content.\n2. The business captures the question, contact details, and urgency.\n3. The team receives a cleaner handoff for follow-up.\n4. Buyers see proof that AI stays safe, useful, and on-brand.";
+  if (label.includes("clear")) return blockContract.label + "\n\n" + heading + "Clearer version:\n\n" + context.businessName + " helps " + context.audience + " turn website questions into qualified opportunities with approved-content AI.\n\n" + buyerNeed;
+  if (label.includes("use")) return blockContract.label + "\n\n" + heading + "Ready-to-use version:\n\n" + context.businessName + " gives website visitors instant approved-content answers and gives the business cleaner lead details before the opportunity goes cold.";
+  if (label.includes("save") || label.includes("update") || label.includes("impact") || label.includes("changed")) return blockContract.label + "\n\n" + heading + "Update:\n\n" + base + "\n\nThe useful signal is whether this improves trust, lead capture, or the handoff from visitor question to qualified follow-up.";
+  if (label.includes("keep")) return blockContract.label + "\n\n" + heading + "Keep this:\n\nKeep the approved-content trust mechanism, the website-question problem, and the qualified-lead outcome visible in the asset.";
+  if (label.includes("replace")) return blockContract.label + "\n\n" + heading + "Replace this:\n\nReplace generic AI or traffic language with specific proof that " + context.businessName + " answers from approved content and captures better lead context.";
+  if (label.includes("current") || label.includes("summary")) return blockContract.label + "\n\n" + heading + "Current version:\n\n" + base + "\n\n" + buyerNeed;
+  return blockContract.label + "\n\n" + heading + base + "\n\n" + buyerNeed + "\n\nStrong output:\nA short, specific asset that helps the buyer understand why approved-content answers are safer than a generic chatbot.";
 }
 
 function leadForAction(label: string, c: Required<MarketingUtilityContext>) {
@@ -302,11 +378,12 @@ function leadForAction(label: string, c: Required<MarketingUtilityContext>) {
   if (lower.includes("post") || lower.includes("content") || lower.includes("email")) return `create content from the buyer's real question: how to get ${c.outcome} without adding risk or complexity.`;
   if (lower.includes("today")) return `today, write one clear proof-backed answer to the buyer's most important question about ${c.offer}.`;
   if (lower.includes("week")) return `this week, tighten the offer proof, CTA, and follow-up path around ${c.buyerPain}.`;
-  return `${c.businessName} should make ${c.offer} easier for ${c.audience} to trust, understand, and act on.`;
+  return `${c.businessName} helps ${c.audience} trust, understand, and act on ${c.offer}.`;
 }
 
-function repairUtilityAnswer(blockContract: WorkBlockContract, actionContract: GuidedActionContract, context: Required<MarketingUtilityContext>, flags: string[]) {
-  return `${actionContract.buttonLabel}: ${leadForAction(actionContract.buttonLabel, context)}\n\n* Repair note: the first answer failed quality checks (${flags.join("; ")}).\n* Specific decision: ${actionContract.mustAnswer}.\n* Next useful move: make this ${blockContract.label.toLowerCase()} asset concrete enough to save to AI training.`;
+function repairUtilityAnswer(blockContract: WorkBlockContract, actionContract: GuidedActionContract, context: Required<MarketingUtilityContext>) {
+  const cleanAnswer = leadForAction(actionContract.buttonLabel, context);
+  return blockContract.label + "\n\n" + cleanAnswer + "\n\n1. " + context.businessName + " already sells " + context.offer + ".\n2. Keep the answer focused on " + context.audience + ".\n3. Avoid generic advice and use the existing product, buyer pain, and trust mechanism.";
 }
 
 export function validateMarketingUtilityAnswer(input: { response: string; utilityId: MarketingUtilityId; workBlockId: string; actionId?: string; context: MarketingUtilityContext; previousAssistant?: string }) {
@@ -320,6 +397,9 @@ export function validateMarketingUtilityAnswer(input: { response: string; utilit
   });
   if (/^\s*(not enough leads|need more leads|need more traffic|get more customers)\.?\s*$/i.test(firstLine)) flags.push("Output is only a generic phrase.");
   if (/\. to\b|from your business needs|\[.+?\]|placeholder|tbd/i.test(response)) flags.push("Output contains broken or placeholder language.");
+  if (/should make|should build|should create|could make|consider making|the selected business should/i.test(response)) flags.push("Output treats an existing product as a future build recommendation.");
+  if (/(Audience HQ|Offer HQ|Messaging HQ|Strategy HQ|Content HQ|Execution HQ|Research HQ|Tool Stack HQ) decision|top pain points decision|Business context:/i.test(response)) flags.push("Output contains internal contract or meta commentary.");
+  if (!/^(use|use-it-now)$/i.test(input.workBlockId) && /Use this now:/i.test(response)) flags.push("Output includes Use this now outside a Use It Now work block.");
   if (input.previousAssistant && normalize(input.previousAssistant) === normalize(response)) flags.push("Output duplicates the previous assistant response.");
   if (input.context.businessName && !normalize(response).includes(normalize(input.context.businessName))) flags.push("Output does not mention selected business context.");
   if (/Talk to Fred/i.test(input.context.businessName || "") && /^.*not enough leads.*$/im.test(response) && !/visitor questions|approved content|qualified leads|booked calls/i.test(response)) flags.push("Talk to Fred role separation failed.");
@@ -331,8 +411,8 @@ function normalizeUtilityContext(context: MarketingUtilityContext): Required<Mar
   return {
     businessName,
     website: context.website || "Website not confirmed",
-    industry: context.industry || "Service business marketing",
-    offer: context.offer || "approved-content AI website agent",
+    industry: context.industry || "AI website assistant for service businesses",
+    offer: normalizeExistingOffer(context.offer),
     audience: roleSafeAudience(context.audience),
     buyerPain: roleSafeBuyerPain(context.buyerPain),
     outcome: context.outcome || "turn website questions into qualified leads with AI that only answers from approved content",
@@ -341,6 +421,11 @@ function normalizeUtilityContext(context: MarketingUtilityContext): Required<Mar
     currentAsset: context.currentAsset || "current working asset not saved yet",
     savedAssets: context.savedAssets || [],
   };
+}
+
+function normalizeExistingOffer(value?: string) {
+  if (!value || /best-fit customers|the business|problem creating hesitation/i.test(value)) return "approved-content AI website voice/conversation assistant";
+  return value.replace(/^(make|build|create|consider making)\s+/i, "");
 }
 
 function roleSafeAudience(value?: string) {
